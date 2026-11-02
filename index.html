@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#090d1c" />
+  <meta name="description" content="LinerCall's — comunidade, minigames e calls." />
+  <title>LinerCall's — sua comunidade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="pixel-noise" aria-hidden="true"></div>
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="brand-mark"><span class="brand-cube">▣</span><div><span class="brand-name">LINER<span>CALL'S</span></span><small>COMMUNITY HUB</small></div></div>
+      <div class="auth-art"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="pixel-cube">✦</div><span class="art-spark spark-a">✧</span><span class="art-spark spark-b">✦</span></div>
+      <p class="eyebrow">ACESSO RESTRITO · SEU PONTO DE ENCONTRO</p>
+      <h1>Entre na<br><span>sua comunidade.</span></h1>
+      <p class="auth-copy">Converse, jogue, desafie seus amigos e entre nas calls. Tudo em um só lugar.</p>
+      <label for="invite-code">Código de acesso</label>
+      <input id="invite-code" type="password" placeholder="Digite o código do servidor" autocomplete="off" />
+      <button id="google-login" class="btn btn-google"><span class="google-g">G</span> Continuar com Google</button>
+      <p id="auth-status" class="status-line">O acesso exige um código válido e uma conta Google.</p>
+      <div class="auth-foot"><span>● SERVIDOR PRIVADO</span><span>LINERCALL'S © 2026</span></div>
+    </div>
+  </section>
+
+  <div id="app-shell" class="app-shell hidden">
+    <aside class="sidebar">
+      <a class="brand-lockup" href="#inicio"><span class="brand-cube">▣</span><span>LINER<span>CALL'S</span><small>COMMUNITY HUB</small></span></a>
+      <div class="server-pill"><span class="online-dot"></span><span>LINERCALL'S SERVER</span><span class="pill-lock">✦</span></div>
+      <div class="nav-label">COMUNIDADE</div>
+      <button class="nav-item active" data-view="chat"><span>▤</span> Chat geral <i></i></button>
+      <button class="nav-item" data-view="calls"><span>◉</span> Salas de voz <i></i></button>
+      <div class="nav-label">JOGAR</div>
+      <button class="nav-item" data-view="games"><span>▣</span> Minigames <i></i></button>
+      <button class="nav-item" data-view="arena"><span>⚔</span> Desafios <i></i></button>
+      <button class="nav-item" data-view="ranking"><span>♛</span> Ranking <i></i></button>
+      <div class="sidebar-bottom">
+        <div class="sidebar-user"><div id="side-avatar" class="avatar">L</div><div class="user-meta"><b id="side-name">Jogador</b><small><span class="online-dot"></span> online</small></div><button id="logout" class="icon-btn" title="Sair">↗</button></div>
+        <button class="nav-item" data-view="settings"><span>⚙</span> Configurações <i></i></button>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar"><div><div class="breadcrumb">LINERCALL'S <span>/</span> <b id="crumb-current">CHAT GERAL</b></div><h2 id="page-heading">Ponto de encontro.</h2></div><div class="topbar-right"><div class="server-status"><span class="online-dot"></span> <span>Servidor conectado</span></div><button class="icon-btn notification" title="Notificações">♧<i></i></button><div id="top-avatar" class="avatar avatar-small">L</div></div></header>
+
+      <section id="view-chat" class="view active-view">
+        <div class="chat-layout">
+          <div class="chat-main panel"><div class="panel-head"><div><span class="channel-tag"># GERAL</span><h3>Conversa da comunidade</h3><p>O que está acontecendo por aí?</p></div><span class="live-label"><i></i> AO VIVO</span></div>
+            <div id="chat-messages" class="messages"><div class="empty-state">As mensagens da comunidade aparecerão aqui.</div></div>
+            <form id="chat-form" class="composer"><button type="button" class="composer-plus" title="Em breve">＋</button><input id="chat-input" maxlength="700" placeholder="Envie uma mensagem para todo mundo..." autocomplete="off"><button class="send-button" type="submit">Enviar <span>➤</span></button></form>
+          </div>
+          <aside class="right-rail"><div class="panel call-card"><div class="mini-icon">◉</div><span class="eyebrow">CONEXÃO EM TEMPO REAL</span><h3>Partiu conversar?</h3><p>Entre em uma sala, ligue o microfone e compartilhe sua tela.</p><button class="btn btn-primary" data-go="calls">Ver salas <span>→</span></button></div>
+            <div class="panel members-card"><div class="panel-head compact"><div><span class="eyebrow">COMUNIDADE</span><h3>Membros online</h3></div><span id="online-count" class="count-pill">0</span></div><div id="online-members" class="member-list"><p class="muted">Carregando membros...</p></div></div>
+            <div class="tip-card"><span>✦ DICA DO DIA</span><p>Desafie alguém para subir no ranking. Toda vitória conta!</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-calls" class="view">
+        <div class="section-intro"><div><span class="eyebrow">VOZ · VÍDEO · TELA</span><h2>Salas de voz.</h2><p>Entre para conversar. O compartilhamento de tela fica disponível dentro da sala.</p></div><span class="live-label"><i></i> CONEXÃO EXTERNA</span></div>
+        <div class="call-grid"><article class="panel room-card"><div class="room-art room-blue">◉</div><div class="room-info"><span class="room-type">SALA PRINCIPAL</span><h3>Resenha geral</h3><p>Para conversar, jogar junto ou só ficar de boa.</p><div class="room-foot"><span>🎙 Áudio e tela</span><button class="btn btn-primary join-room" data-room="resenha-geral">Entrar na sala →</button></div></div></article>
+          <article class="panel room-card"><div class="room-art room-purple">✦</div><div class="room-info"><span class="room-type">SALA DE JOGOS</span><h3>Partidas & desafios</h3><p>Combine partidas e compartilhe suas jogadas.</p><div class="room-foot"><span>🎮 Comunidade</span><button class="btn btn-primary join-room" data-room="partidas-desafios">Entrar na sala →</button></div></div></article></div>
+        <div id="call-stage" class="panel call-stage hidden"><div class="panel-head"><div><span class="eyebrow">VOCÊ ESTÁ EM UMA SALA</span><h3 id="call-room-title">Resenha geral</h3></div><button id="leave-call" class="btn btn-danger">Sair da call</button></div><div id="jitsi-container" class="jitsi-container"></div><p class="muted call-note">Use os controles da chamada para ativar microfone, câmera e compartilhar sua tela. O navegador pode pedir permissão.</p></div>
+      </section>
+
+      <section id="view-games" class="view">
+        <div class="section-intro"><div><span class="eyebrow">ARCADE LINERCALL'S</span><h2>Escolha seu jogo.</h2><p>Partidas rápidas para disputar com a comunidade.</p></div><span class="pixel-badge">BETA 01</span></div>
+        <div class="game-grid"><article class="panel game-card"><div class="game-art art-dice">⚄</div><div class="game-info"><span class="eyebrow">SORTE · 1 JOGADOR</span><h3>Dados do caos</h3><p>Role um dado de 20 lados e tente superar seu próprio recorde.</p><button id="play-dice" class="btn btn-primary">Jogar agora →</button></div></article>
+          <article class="panel game-card"><div class="game-art art-reaction">⚡</div><div class="game-info"><span class="eyebrow">REFLEXO · 1 JOGADOR</span><h3>Teste de reflexo</h3><p>Espere o sinal e clique o mais rápido que conseguir.</p><button id="play-reaction" class="btn btn-primary">Jogar agora →</button></div></article></div>
+        <div id="game-stage" class="panel game-stage hidden"><div class="panel-head"><div><span class="eyebrow">MINIGAME</span><h3 id="game-title">Dados do caos</h3></div><button id="close-game" class="icon-btn">✕</button></div><div id="game-content" class="game-content"></div></div>
+      </section>
+
+      <section id="view-arena" class="view">
+        <div class="section-intro"><div><span class="eyebrow">COMPETIÇÃO AMIGÁVEL</span><h2>Arena de desafios.</h2><p>Escolha um membro e envie um desafio de dados. A outra pessoa precisa aceitar.</p></div><span class="pixel-badge">PVP</span></div>
+        <div class="arena-layout"><div class="panel"><div class="panel-head"><div><span class="eyebrow">JOGADORES</span><h3>Quem está na arena?</h3></div></div><div id="arena-members" class="arena-list"><p class="muted">Carregando...</p></div></div><div class="panel"><div class="panel-head"><div><span class="eyebrow">SEUS CONVITES</span><h3>Desafios recebidos</h3></div></div><div id="challenge-inbox" class="challenge-list"><p class="muted">Nenhum desafio por enquanto.</p></div><div class="panel-divider"></div><div class="panel-head compact"><div><span class="eyebrow">HISTÓRICO</span><h3>Últimos resultados</h3></div></div><div id="challenge-history" class="challenge-list"><p class="muted">Seus duelos aparecerão aqui.</p></div></div></div>
+      </section>
+
+      <section id="view-ranking" class="view">
+        <div class="section-intro"><div><span class="eyebrow">HALL DA FAMA</span><h2>Placar de líderes.</h2><p>As vitórias da comunidade, em um só lugar.</p></div><span class="pixel-badge">GLOBAL</span></div>
+        <div class="panel ranking-panel"><div class="podium" id="podium"><div class="podium-empty">O pódio está esperando os primeiros campeões.</div></div><div class="ranking-table-head"><span>#</span><span>JOGADOR</span><span>VITÓRIAS</span><span>DERROTAS</span></div><div id="ranking-list" class="ranking-list"><p class="muted">Carregando ranking...</p></div></div>
+      </section>
+
+      <section id="view-settings" class="view">
+        <div class="section-intro"><div><span class="eyebrow">SUA CONTA</span><h2>Configurações.</h2><p>Personalize como você aparece na comunidade.</p></div></div>
+        <div class="panel settings-panel"><div class="settings-avatar-row"><div id="settings-avatar" class="avatar avatar-large">L</div><div><h3 id="settings-email">Conta Google</h3><p class="muted">Conta autenticada</p></div></div><form id="profile-form"><label for="display-name">Nome de exibição</label><input id="display-name" maxlength="24" required placeholder="Como a galera vai te chamar?"><button class="btn btn-primary" type="submit">Salvar perfil →</button><p id="profile-status" class="status-line"></p></form></div>
+        <div class="security-note">🔒 Sua senha Google nunca é solicitada pelo LinerCall's. A autenticação é feita pelo próprio Google.</div>
+      </section>
+      <footer class="app-footer"><span>LINERCALL'S COMMUNITY HUB</span><span>FEITO PARA JOGAR JUNTO <b>✦</b></span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
