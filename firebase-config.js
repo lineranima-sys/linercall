@@ -1,10 +1,10 @@
-// Cole aqui as chaves do seu projeto Firebase (Configurações do projeto > Seus apps > Web).
-// Essas chaves identificam o projeto; a segurança real fica nas Rules e nas Cloud Functions.
+
 export const firebaseConfig = {
-  apiKey: "COLE_SUA_API_KEY",
-  authDomain: "SEU-PROJETO.firebaseapp.com",
-  projectId: "SEU-PROJETO",
-  storageBucket: "SEU-PROJETO.firebasestorage.app",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyBShUyUCW03j96qFKJtJuasoYkSi6RHqdU",
+  authDomain: "linercalls.firebaseapp.com",
+  projectId: "linercalls",
+  storageBucket: "linercalls.firebasestorage.app",
+  messagingSenderId: "830501898291",
+  appId: "1:830501898291:web:14567d147cedd6a95f3b46",
+  measurementId: "G-TFD0FZ0C7N"
 };
