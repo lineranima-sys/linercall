@@ -1443,17 +1443,11 @@ function closeCinemaPlayer() {
 
 function toggleMyList(id) {
   const list = getMyList();
-
-  if (list.includes(id)) {
-    saveMyList(list.filter(item => item !== id));
-    toast('Removido da sua lista.');
-  } else {
-    list.push(id);
-    saveMyList(list);
-    toast('Adicionado à sua lista.');
-  }
-
+  const removing = list.includes(id);
+  saveMyList(removing ? list.filter(item => item !== id) : [...list, id]);
+  toast(removing ? 'Removido da sua lista.' : 'Adicionado à sua lista.');
   renderCinema();
+  renderCinemaList();
 }
 
 // ========================================
