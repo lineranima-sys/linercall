@@ -779,6 +779,10 @@ function showMiniGamePage(page) {
   const tabs = $('minigame-tabs');
   if (tabs) tabs.classList.toggle('hidden', page !== 'home');
   if (root) root.classList.toggle('hidden', page === 'home');
+  const pokemonContent = $('pokemon-arena-content');
+  const gameStage = $('game-stage');
+  if (pokemonContent) pokemonContent.classList.toggle('hidden', page !== 'pokemon');
+  if (gameStage) { if (gameStage.parentElement !== root) root?.appendChild(gameStage); gameStage.classList.toggle('hidden', page === 'home' || page === 'pokemon'); }
   if (page === 'pokemon') renderPokemonArena();
   if (page === 'dice') showDice();
   if (page === 'reaction') showReaction();
@@ -787,6 +791,7 @@ function backToMiniGames() {
   miniGamePage = 'home';
   $('minigame-stage')?.classList.add('hidden');
   $('minigame-tabs')?.classList.remove('hidden');
+  $('pokemon-arena-content')?.classList.remove('hidden');
   $('game-stage')?.classList.add('hidden');
 }
 function renderPokemonArena() {
