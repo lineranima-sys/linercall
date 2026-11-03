@@ -69,7 +69,7 @@ async function startApp(user){
   currentUser=user;
   const userRef=doc(db,'users',user.uid);const snap=await getDoc(userRef);
   if(!snap.exists()){
-    profile={displayName:user.displayName||'Jogador',email:user.email,wins:0,losses:0,createdAt:serverTimestamp(),lastSeen:serverTimestamp()};
+    profile={displayName:user.displayName||'Jogador',wins:0,losses:0,createdAt:serverTimestamp(),lastSeen:serverTimestamp()};
     await setDoc(userRef,profile);
   }else profile=snap.data();
   await updateDoc(userRef,{lastSeen:serverTimestamp()});
