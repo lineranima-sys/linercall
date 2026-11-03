@@ -37,6 +37,7 @@
       <div class="nav-label">COMUNIDADE</div>
       <button class="nav-item" data-view="chat"><span>▤</span> Chat geral <i></i></button>
       <button class="nav-item" data-view="calls"><span>◉</span> Salas de voz <i></i></button>
+      <button class="nav-item" data-view="friends"><span>♡</span> Amigos <i></i></button>
       <div class="nav-label">JOGAR</div>
       <button class="nav-item" data-view="games"><span>▣</span> Minigames <i></i></button>
       <button class="nav-item" data-view="ranking"><span>♛</span> Ranking <i></i></button>
@@ -71,6 +72,15 @@
             <div class="panel members-card"><div class="panel-head compact"><div><span class="eyebrow">COMUNIDADE</span><h3>Membros online</h3></div><span id="online-count" class="count-pill">0</span></div><div id="online-members" class="member-list"><p class="muted">Carregando membros...</p></div></div>
             <div class="tip-card"><span>✦ DICA DO DIA</span><p>Desafie alguém para subir no ranking. Toda vitória conta!</p></div>
           </aside>
+        </div>
+      </section>
+
+      <section id="view-friends" class="view">
+        <div class="friends-grid">
+          <div class="panel friends-panel"><div class="panel-head"><div><span class="eyebrow">SUA COMUNIDADE</span><h3>Adicionar amigos</h3><p>Busque pelo nome de exibição exato.</p></div></div><form id="friend-search-form" class="friend-search"><input id="friend-search-input" maxlength="60" placeholder="Nome de exibição..." autocomplete="off"><button class="btn btn-primary">Buscar</button></form><div id="friend-search-result" class="friend-results"></div></div>
+          <div class="panel friends-panel"><div class="panel-head"><div><span class="eyebrow">CONEXÕES</span><h3>Pedidos recebidos</h3></div></div><div id="friend-requests"><p class="muted">Carregando...</p></div></div>
+          <div class="panel friends-panel"><div class="panel-head"><div><span class="eyebrow">SUA GALERA</span><h3>Lista de amigos</h3></div></div><div id="friends-list"><p class="muted">Carregando...</p></div></div>
+          <div id="dm-panel" class="panel friends-panel dm-panel hidden"><div class="panel-head"><div><span class="eyebrow">MENSAGEM PRIVADA</span><h3 id="dm-title">Conversa</h3></div></div><div id="dm-messages" class="dm-messages"></div><form id="dm-form" class="friend-search"><input id="dm-input" maxlength="1000" placeholder="Escreva uma mensagem..." autocomplete="off"><button class="btn btn-primary">Enviar</button></form></div>
         </div>
       </section>
 
