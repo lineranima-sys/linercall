@@ -758,11 +758,11 @@ function pokemonStorageKey() {
 function loadPokemonArena() {
   try {
     const saved = JSON.parse(localStorage.getItem(pokemonStorageKey()) || 'null');
-    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { if (saved.coins === 300 && !saved.wins && saved.history.length === 0) saved.coins = 0; return saved; }
+    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { if (saved.coins === 300 && !saved.wins && saved.history.length === 0) saved.coins = 0; saved.losses = Number(saved.losses) || saved.history.filter(x => !x.win).length; return saved; }
   } catch (error) {
     console.warn('Não foi possível carregar o progresso Pokémon:', error);
   }
-  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 0, wins: 0, history: [] };
+  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 0, wins: 0, losses: 0, history: [] };
 }
 
 function savePokemonArena() {
@@ -827,7 +827,7 @@ function renderPokemonArena() {
     <div class="pokemon-team-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div><div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus Pokémon abaixo.</p>'}</div></div>
     <div class="pokemon-roster-title"><b>Escolha seus Pokémon</b><small>Selecione até três para a batalha.</small></div><div class="pokemon-roster pokemon-roster-art">${roster}</div>
     <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length!==3 || pokemonArena.battle?'disabled':''}>⚔ INICIAR BATALHA</button>
-    <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
+    <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.losses || 0}</b><small>DERROTAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
     <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
     <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle?'':'hidden'}"></div>`;
   if (pokemonArena.battle) renderPokemonBattle();
@@ -860,6 +860,7 @@ function startPokemonBattle() {
     finished: false
   };
   renderPokemonArena();
+  requestAnimationFrame(() => $('pokemon-battle-stage')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
 
 function currentBattlePokemon(side) {
@@ -935,8 +936,11 @@ async function finishPokemonBattle(won) {
   const opponent = b.enemy.map(p => p.name).join(', ');
   if (won) {
     pokemonArena.coins += 50;
-    pokemonArena.wins += 1;
+    pokemonArena.wins = (Number(pokemonArena.wins) || 0) + 1;
+  } else {
+    pokemonArena.losses = (Number(pokemonArena.losses) || 0) + 1;
   }
+  b.result = won ? 'win' : 'loss';
   pokemonArena.history.unshift({ win: won, opponent, date: Date.now() });
   pokemonArena.history = pokemonArena.history.slice(0, 20);
   savePokemonArena();
@@ -968,13 +972,14 @@ function renderPokemonBattle() {
   const player = currentBattlePokemon('player'), enemy = currentBattlePokemon('enemy');
   const bar = p => Math.max(0,Math.round(p.hpNow/p.hp*100));
   root.innerHTML = `
-    <div class="pokemon-battle-heading"><div><span class="eyebrow">ARENA · BATALHA POR TURNOS</span><h2>${b.finished ? (b.enemy.every(p=>p.hpNow<=0)?'VITÓRIA!':'FIM DE BATALHA') : 'ESCOLHA SEU ATAQUE'}</h2></div><span class="pixel-badge">PVE</span></div>
-    <div class="pokemon-arena-scene">
-      <div class="arena-fighter arena-enemy"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
+    <div class="pokemon-battle-heading"><div><span class="eyebrow">ARENA · BATALHA POR TURNOS</span><h2>${b.finished ? (b.result === 'win' ? 'VITÓRIA!' : 'DERROTA') : 'A BATALHA COMEÇOU!'}</h2><p class="battle-turn-label">${b.finished ? 'Resultado final' : (b.turn === 'player' ? 'Sua vez: escolha um ataque.' : 'Turno do adversário…')}</p></div><span class="pixel-badge">PVE</span></div>
+    <div class="pokemon-arena-scene ${b.finished ? (b.result === 'win' ? 'arena-victory' : 'arena-defeat') : ''}">
+      <div class="arena-fighter arena-enemy ${enemy.hpNow <= 0 ? 'pokemon-fainted' : ''}"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
       <div class="arena-spike-band"><span>VS</span></div>
-      <div class="arena-fighter arena-player"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+      <div class="arena-fighter arena-player ${player.hpNow <= 0 ? 'pokemon-fainted' : ''}"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+      ${b.finished ? `<div class="arena-result-stamp ${b.result}">${b.result === 'win' ? 'VITÓRIA!' : 'DERROTA'}</div>` : ''}
     </div>
-    ${b.finished ? `<div class="pokemon-result">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +50 moedas.':'💤 Seus Pokémon precisam descansar.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +50 moedas.':'💤 Seus Pokémon foram derrotados. Tente novamente.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
       <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
       <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
     <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
@@ -1004,8 +1009,11 @@ function addPokemonToTeam(id) {
 const SHOP_KEY_PREFIX = 'linercall-shop-';
 function shopStorageKey() { return SHOP_KEY_PREFIX + (currentUser?.uid || 'guest'); }
 function loadShopState() {
-  try { const old=JSON.parse(localStorage.getItem(shopStorageKey())||'null'); return { avatarData:'', avatarZoom:1, avatarX:50, avatarY:50, bannerStyle:0, bannerCredits:0, ...(old||{}) }; }
-  catch { return { avatarData:'', avatarZoom:1, avatarX:50, avatarY:50, bannerStyle:0, bannerCredits:0 }; }
+  const cloud = { avatarData: profile?.avatarData || currentUser?.photoURL || '', avatarZoom: 1, avatarX: 50, avatarY: 50, bannerStyle: Number(profile?.bannerStyle) || 0, bannerCredits: 0 };
+  try {
+    const old = JSON.parse(localStorage.getItem(shopStorageKey()) || 'null') || {};
+    return { ...cloud, ...old, avatarData: old.avatarData || cloud.avatarData, bannerStyle: Number(old.bannerStyle) || cloud.bannerStyle };
+  } catch { return cloud; }
 }
 let shopState = null;
 function saveShopState() { try { localStorage.setItem(shopStorageKey(),JSON.stringify(shopState)); } catch { toast('Não foi possível salvar os cosméticos.'); } }
@@ -1066,12 +1074,12 @@ function saveCroppedAvatar(){
  shopState.avatarData=canvas.toDataURL('image/jpeg',.88);shopState.avatarZoom=1;shopState.avatarX=50;shopState.avatarY=50;
  shopState.avatarCredits=Math.max(0,(shopState.avatarCredits||0)-1);
  pendingAvatarImage=null;saveShopState();applyShopCosmetics();$('avatar-cropper').classList.add('hidden');renderShop();
- updateDoc(doc(db,'users',currentUser.uid),{avatarData:shopState.avatarData}).then(()=>{profile.avatarData=shopState.avatarData;toast('Foto sincronizada com seu perfil!');}).catch(error=>{console.error('Falha ao sincronizar avatar:',error);toast('Foto salva neste navegador, mas não sincronizou.');});
+ updateDoc(doc(db,'users',currentUser.uid),{avatarData:shopState.avatarData}).then(()=>{profile={...profile,avatarData:shopState.avatarData};toast('Foto salva no perfil e disponível para outras contas.');}).catch(error=>{console.error('Falha ao sincronizar avatar:',error);toast('A foto ficou neste navegador; o Firestore recusou a sincronização. Confira as regras/permissões.');});
 }
 function saveBannerChoice(style){
  if(!shopState||!(shopState.bannerCredits>0))return toast('Compre uma alteração de banner primeiro.');
  shopState.bannerStyle=style;shopState.bannerCredits--;saveShopState();applyShopCosmetics();renderShop();
- updateDoc(doc(db,'users',currentUser.uid),{bannerStyle:style}).then(()=>{profile.bannerStyle=style;toast('Banner sincronizado com seu perfil!');}).catch(error=>{console.error('Falha ao sincronizar banner:',error);toast('Banner salvo localmente, mas não sincronizou.');});
+ updateDoc(doc(db,'users',currentUser.uid),{bannerStyle:style}).then(()=>{profile={...profile,bannerStyle:style};toast('Banner sincronizado com seu perfil!');}).catch(error=>{console.error('Falha ao sincronizar banner:',error);toast('Banner salvo localmente, mas não sincronizou. Confira as regras do Firestore.');});
 }
 function createShopPage() {
   const sidebar = document.querySelector('.sidebar');
