@@ -232,6 +232,11 @@ async function startApp(user) {
     profile = snap.data();
   }
 
+  if (user.photoURL && !profile.photoURL) {
+    try { await updateDoc(userRef, { photoURL: user.photoURL }); profile = { ...profile, photoURL: user.photoURL }; }
+    catch (error) { console.warn('Não foi possível publicar a foto Google no perfil:', error); }
+  }
+
   await updateDoc(userRef, {
     lastSeen: serverTimestamp()
   });
@@ -879,11 +884,13 @@ function performPokemonMove(moveIndex) {
 
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
+  b.faintNotice = '';
   b.turn = 'enemy';
   defender.hpNow = Math.max(0, defender.hpNow - damage);
   b.log.unshift(`${attacker.name} usou ${move.name}! ${damage} de dano.${multiplier > 1 ? ' É super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
 
   if (defender.hpNow <= 0) {
+    b.faintNotice = `${defender.name} desmaiou!`;
     b.log.unshift(`${defender.name} foi derrotado!`);
     const next = b.enemy.findIndex(p => p.hpNow > 0);
     if (next === -1) return finishPokemonBattle(true);
@@ -905,10 +912,12 @@ function pokemonEnemyTurn() {
   const move = livingMoves[Math.floor(Math.random() * livingMoves.length)];
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
+  b.faintNotice = '';
   defender.hpNow = Math.max(0, defender.hpNow - damage);
   b.log.unshift(`${attacker.name} usou ${move.name}! Você recebeu ${damage} de dano.${multiplier > 1 ? ' Foi super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
 
   if (defender.hpNow <= 0) {
+    b.faintNotice = `${defender.name} desmaiou!`;
     const next = b.player.findIndex(p => p.hpNow > 0);
     if (next === -1) return finishPokemonBattle(false);
     b.playerActive = next;
@@ -979,6 +988,7 @@ function renderPokemonBattle() {
       <div class="arena-fighter arena-player ${player.hpNow <= 0 ? 'pokemon-fainted' : ''}"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
       ${b.finished ? `<div class="arena-result-stamp ${b.result}">${b.result === 'win' ? 'VITÓRIA!' : 'DERROTA'}</div>` : ''}
     </div>
+    ${b.faintNotice && !b.finished ? `<div class="pokemon-faint-notice">${safeText(b.faintNotice)}</div>` : ''}
     ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +50 moedas.':'💤 Seus Pokémon foram derrotados. Tente novamente.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
       <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
       <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
