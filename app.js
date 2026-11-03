@@ -541,7 +541,7 @@ function listenUsers() {
     $('online-members').innerHTML = active.length
       ? active.slice(0, 9).map(user => `
           <button class="member-row profile-open-trigger" data-profile-open="${safeText(user.id)}" data-profile-name="${safeText(user.displayName || 'Jogador')}">
-            <div class="avatar">${safeText(initials(user.displayName))}</div>
+            <div class="avatar member-avatar" ${user.avatarData ? `style="background-image:url('${user.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${user.avatarData ? '' : safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
             <small>online</small>
           </button>
@@ -694,9 +694,8 @@ async function openMemberProfile(uid, fallbackName) {
   const own = uid === currentUser?.uid;
   modal.innerHTML = `<div class="cropper-card member-profile-card">
     <div class="panel-head"><h3>Perfil do jogador</h3><button class="icon-btn" data-profile-close>✕</button></div>
-    <div class="profile-banner-preview" data-style="${own ? (shopState?.bannerStyle || 0) : 0}">${safeText(member.displayName || 'Jogador')}</div>
-    <div class="member-profile-identity"><div class="avatar avatar-large">${safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : 'Membro da comunidade'}</small></div></div>
-    <p class="muted">Perfil público básico. Personalizações compradas neste protótipo ainda ficam salvas apenas no navegador de quem comprou.</p>
+    <div class="profile-banner-preview ${member.bannerStyle ? '' : 'no-profile-banner'}" data-style="${member.bannerStyle || 0}">${safeText(member.displayName || 'Jogador')}</div>
+    <div class="member-profile-identity"><div class="avatar avatar-large" ${member.avatarData ? `style="background-image:url('${member.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${member.avatarData ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : 'Membro da comunidade'}</small></div></div>
   </div>`;
   modal.classList.remove('hidden');
 }
