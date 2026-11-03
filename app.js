@@ -110,6 +110,7 @@ function setUserUI() {
   if ($('settings-avatar')) $('settings-avatar').textContent = initials(name);
   if ($('settings-email')) $('settings-email').textContent = currentUser.email || '';
   if ($('display-name')) $('display-name').value = name;
+  applyShopCosmetics();
 }
 
 // ========================================
@@ -245,6 +246,9 @@ async function startApp(user) {
   listenRanking();
   listenChallenges();
   initPokemonArena();
+  shopState = loadShopState();
+  renderShop();
+  applyShopCosmetics();
   loadCinema();
 
   const presence = setInterval(() => {
@@ -416,7 +420,8 @@ function switchView(name) {
     arena: 'DESAFIOS',
     ranking: 'RANKING',
     settings: 'CONFIGURAÇÕES',
-    cinema: 'NETFLIXLINER'
+    cinema: 'NETFLIXLINER',
+    shop: 'LOJA'
   };
 
   const headings = {
@@ -426,7 +431,8 @@ function switchView(name) {
     arena: 'Bora competir?',
     ranking: 'Quem está no topo?',
     settings: 'Seu espaço.',
-    cinema: 'Seu cinema começa aqui.'
+    cinema: 'Seu cinema começa aqui.',
+    shop: 'Seu estilo, suas regras.'
   };
 
   if ($('crumb-current')) {
@@ -562,31 +568,36 @@ function listenUsers() {
 // RANKING
 // ========================================
 
-function listenRanking() {
-  const q = query(
-    collection(db, 'users'),
-    orderBy('wins', 'desc'),
-    limit(50)
-  );
+function currentIsoWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
 
-  stopListeners.push(onSnapshot(q, snap => {
-    const users = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    }));
+function listenRanking() {
+  const weekKey = currentIsoWeekKey();
+  stopListeners.push(onSnapshot(collection(db, 'users'), snap => {
+    const users = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(user => user.weekKey === weekKey && Number(user.weeklyWins) > 0)
+      .sort((a, b) => (Number(b.weeklyWins) || 0) - (Number(a.weeklyWins) || 0)
+        || (Number(a.weeklyLosses) || 0) - (Number(b.weeklyLosses) || 0)
+        || String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'));
 
     const top = users.slice(0, 3);
-
     $('podium').innerHTML = top.length
       ? top.map((user, i) => `
           <div class="podium-place ${i === 0 ? 'first' : i === 1 ? 'second' : 'third'}">
             <div class="avatar">${safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>${user.wins || 0} vitórias</small>
+            <small>${Number(user.weeklyWins) || 0} vitórias na semana</small>
             <div class="podium-block">${i + 1}º</div>
           </div>
         `).join('')
-      : '<div class="podium-empty">O pódio está esperando os primeiros campeões.</div>';
+      : '<div class="podium-empty">Ainda não há resultados semanais registrados.</div>';
 
     $('ranking-list').innerHTML = users.map((user, i) => `
       <div class="ranking-row">
@@ -596,17 +607,18 @@ function listenRanking() {
           ${safeText(user.displayName || 'Jogador')}
           ${user.id === currentUser.uid ? ' (você)' : ''}
         </span>
-        <span class="wins">${user.wins || 0}</span>
-        <span class="losses">${user.losses || 0}</span>
+        <span class="wins">${Number(user.weeklyWins) || 0}</span>
+        <span class="losses">${Number(user.weeklyLosses) || 0}</span>
       </div>
-    `).join('') || '<p class="muted">Ainda não há jogadores no ranking.</p>';
+    `).join('') || '<p class="muted">O ranking semanal começa a aparecer quando resultados validados forem registrados.</p>';
 
+    const period = $('ranking-period');
+    if (period) period.textContent = `SEMANA ${weekKey} · ZERA AUTOMATICAMENTE NA PRÓXIMA SEMANA`;
   }, error => {
     console.error(error);
-    toast('Erro ao carregar ranking.');
+    toast('Erro ao carregar ranking semanal.');
   }));
 }
-
 // ========================================
 // DESAFIOS
 // ========================================
@@ -933,6 +945,115 @@ function addPokemonToTeam(id) {
   pokemonArena.team.push(id);
   savePokemonArena();
   renderPokemonArena();
+}
+
+
+const SHOP_KEY_PREFIX = 'linercall-shop-';
+function shopStorageKey() { return SHOP_KEY_PREFIX + (currentUser?.uid || 'guest'); }
+function loadShopState() {
+  try { return JSON.parse(localStorage.getItem(shopStorageKey()) || 'null') || { avatarUsed: false, bannerUsed: false, avatarData: '', bannerStyle: 0 }; }
+  catch { return { avatarUsed: false, bannerUsed: false, avatarData: '', bannerStyle: 0 }; }
+}
+let shopState = null;
+function saveShopState() {
+  try { localStorage.setItem(shopStorageKey(), JSON.stringify(shopState)); }
+  catch { toast('Não foi possível salvar os cosméticos neste navegador.'); }
+}
+function applyShopCosmetics() {
+  if (!shopState) return;
+  ['side-avatar','top-avatar','settings-avatar'].forEach(id => {
+    const el = $(id); if (!el) return;
+    if (shopState.avatarData) {
+      el.textContent = '';
+      el.style.backgroundImage = `url("${shopState.avatarData}")`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+    } else {
+      el.style.backgroundImage = '';
+      el.textContent = initials(profile?.displayName || 'L');
+    }
+  });
+  const banner = $('shop-banner-preview');
+  if (banner) banner.dataset.style = String(shopState.bannerStyle || 0);
+}
+function renderShop() {
+  const root = $('shop-content');
+  if (!root || !pokemonArena || !shopState) return;
+  root.innerHTML = `
+    <div class="shop-wallet panel"><span>SUAS MOEDAS</span><b>🪙 ${pokemonArena.coins}</b><small>As moedas atuais ficam salvas neste navegador.</small></div>
+    <div class="shop-grid">
+      <article class="shop-item panel">
+        <div class="shop-item-art shop-avatar-art">🖼️</div>
+        <div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO · USO ÚNICO</span><h3>Trocar foto de perfil</h3>
+        <p>Escolha uma imagem para usar como seu avatar. Esta troca só pode ser comprada uma vez.</p>
+        <b class="shop-price">🪙 100 moedas</b>
+        <button class="btn btn-primary" data-shop-buy="avatar" ${shopState.avatarUsed ? 'disabled' : ''}>${shopState.avatarUsed ? 'Já utilizado' : 'Comprar e escolher foto'}</button>
+        <input id="shop-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>
+      </article>
+      <article class="shop-item panel">
+        <div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle || 0}">✦ LINERCALL'S ✦</div>
+        <div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO · USO ÚNICO</span><h3>Trocar banner</h3>
+        <p>Desbloqueie um banner especial para o seu perfil. Mais caro que a foto de perfil.</p>
+        <b class="shop-price">🪙 200 moedas</b>
+        <button class="btn btn-primary" data-shop-buy="banner" ${shopState.bannerUsed ? 'disabled' : ''}>${shopState.bannerUsed ? 'Já utilizado' : 'Comprar banner'}</button></div>
+      </article>
+    </div>
+    <p class="shop-notice">Protótipo local: compras e cosméticos ficam neste navegador. Ainda não são compras globais protegidas pelo servidor e não sincronizam entre dispositivos.</p>
+  `;
+  applyShopCosmetics();
+}
+function buyShopItem(item) {
+  if (!pokemonArena || !shopState) return;
+  const isAvatar = item === 'avatar';
+  const used = isAvatar ? shopState.avatarUsed : shopState.bannerUsed;
+  const price = isAvatar ? 100 : 200;
+  if (used) return toast('Este item já foi utilizado.');
+  if (pokemonArena.coins < price) return toast('Você não tem moedas suficientes.');
+  pokemonArena.coins -= price;
+  if (isAvatar) {
+    shopState.avatarUsed = true;
+    savePokemonArena(); saveShopState(); renderShop();
+    $('shop-avatar-file')?.click();
+    toast('Compra feita. Escolha sua imagem.');
+  } else {
+    shopState.bannerUsed = true;
+    shopState.bannerStyle = 1;
+    savePokemonArena(); saveShopState(); renderShop();
+    toast('Banner desbloqueado!');
+  }
+}
+function handleShopAvatarFile(event) {
+  const file = event.target.files?.[0];
+  if (!file || !shopState?.avatarUsed) return;
+  if (!['image/png','image/jpeg','image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+    toast('Escolha PNG, JPG ou WebP de até 2 MB.'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    shopState.avatarData = String(reader.result || '');
+    saveShopState(); applyShopCosmetics(); toast('Foto de perfil atualizada neste navegador.');
+  };
+  reader.onerror = () => toast('Não foi possível ler essa imagem.');
+  reader.readAsDataURL(file);
+}
+function createShopPage() {
+  const sidebar = document.querySelector('.sidebar');
+  const main = document.querySelector('.main-area');
+  if (!sidebar || !main) return;
+  if (!document.querySelector('[data-view="shop"]')) {
+    const button = document.createElement('button');
+    button.className = 'nav-item'; button.dataset.view = 'shop';
+    button.innerHTML = '<span>🛍</span> Loja <i></i>';
+    const label = document.createElement('div'); label.className = 'nav-label'; label.textContent = 'PERSONALIZAR';
+    const bottom = sidebar.querySelector('.sidebar-bottom');
+    if (bottom) { sidebar.insertBefore(label, bottom); sidebar.insertBefore(button, bottom); }
+  }
+  if (!$('view-shop')) {
+    const section = document.createElement('section');
+    section.id = 'view-shop'; section.className = 'view';
+    section.innerHTML = `<div class="section-intro"><div><span class="eyebrow">LOJA LINERCALL'S</span><h2>Personalize seu perfil.</h2><p>Use suas moedas para desbloquear itens cosméticos.</p></div><span class="pixel-badge">SHOP</span></div><div id="shop-content"></div>`;
+    const footer = main.querySelector('.app-footer'); main.insertBefore(section, footer || null);
+  }
 }
 
 // ========================================
@@ -1353,6 +1474,7 @@ function setupEvents() {
   $('google-login')?.addEventListener('click', login);
   $('chat-form')?.addEventListener('submit', sendMessage);
   $('profile-form')?.addEventListener('submit', saveProfile);
+  document.addEventListener('change', event => { if (event.target.id === 'shop-avatar-file') handleShopAvatarFile(event); });
   $('logout')?.addEventListener('click', logout);
   $('leave-call')?.addEventListener('click', leaveCall);
 
@@ -1366,7 +1488,7 @@ function setupEvents() {
   // Delegação também atende ao botão NetflixLiner, criado dinamicamente.
   document.addEventListener('click', event => {
     const navButton = event.target.closest('.nav-item[data-view]');
-    if (navButton) switchView(navButton.dataset.view);
+    if (navButton) { switchView(navButton.dataset.view); if (navButton.dataset.view === 'shop') renderShop(); }
   });
 
   document.querySelectorAll('[data-go]').forEach(button => {
@@ -1406,6 +1528,9 @@ function setupEvents() {
 
     const mylist = event.target.closest('[data-mylist]');
     if (mylist) toggleMyList(mylist.dataset.mylist);
+
+    const shopBuy = event.target.closest('[data-shop-buy]');
+    if (shopBuy) buyShopItem(shopBuy.dataset.shopBuy);
   });
 }
 
@@ -1415,6 +1540,7 @@ function setupEvents() {
 
 setupEvents();
 createCinemaPage();
+createShopPage();
 
 if (configured) {
   try {
