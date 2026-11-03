@@ -535,7 +535,7 @@ function listenUsers() {
 
     $('online-members').innerHTML = active.length
       ? active.slice(0, 9).map(user => `
-          <div class="member-row">
+          <button class="member-row profile-open-trigger" data-profile-open="${safeText(user.id)}" data-profile-name="${safeText(user.displayName || 'Jogador')}">
             <div class="avatar">${safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
             <small>online</small>
