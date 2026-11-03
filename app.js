@@ -539,7 +539,7 @@ function listenUsers() {
             <div class="avatar">${safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
             <small>online</small>
-          </div>
+          </button>
         `).join('')
       : '<p class="muted">Ninguém online por enquanto.</p>';
 
@@ -967,9 +967,8 @@ function buyShopItem(item) {
  const avatar=item==='avatar', price=avatar?100:200;
  if(pokemonArena.coins<price)return toast('Você não tem moedas suficientes.');
  pokemonArena.coins-=price;
- if(avatar){shopState.avatarCredits=(shopState.avatarCredits||0)+1;savePokemonArena();saveShopState();$('shop-avatar-file')?.click();toast('Crédito comprado. Escolha a imagem.');}
+ if(avatar){shopState.avatarCredits=(shopState.avatarCredits||0)+1;savePokemonArena();saveShopState();renderShop();$('shop-avatar-file')?.click();toast('Crédito comprado. Escolha a imagem.');}
  else {shopState.bannerCredits=(shopState.bannerCredits||0)+1;savePokemonArena();saveShopState();renderShop();toast('Crédito de alteração de banner comprado.');}
- renderShop();
 }
 function handleShopAvatarFile(event) {
  const file=event.target.files?.[0]; if(!file)return;
