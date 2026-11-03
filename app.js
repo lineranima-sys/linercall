@@ -110,6 +110,7 @@ function setUserUI() {
   if ($('settings-avatar')) $('settings-avatar').textContent = initials(name);
   if ($('settings-email')) $('settings-email').textContent = currentUser.email || '';
   if ($('display-name')) $('display-name').value = name;
+  applyShopCosmetics();
 }
 
 // ========================================
@@ -244,6 +245,10 @@ async function startApp(user) {
   listenUsers();
   listenRanking();
   listenChallenges();
+  initPokemonArena();
+  shopState = loadShopState();
+  renderShop();
+  applyShopCosmetics();
   loadCinema();
 
   const presence = setInterval(() => {
@@ -415,7 +420,8 @@ function switchView(name) {
     arena: 'DESAFIOS',
     ranking: 'RANKING',
     settings: 'CONFIGURAÇÕES',
-    cinema: 'NETFLIXLINER'
+    cinema: 'NETFLIXLINER',
+    shop: 'LOJA'
   };
 
   const headings = {
@@ -425,7 +431,8 @@ function switchView(name) {
     arena: 'Bora competir?',
     ranking: 'Quem está no topo?',
     settings: 'Seu espaço.',
-    cinema: 'Seu cinema começa aqui.'
+    cinema: 'Seu cinema começa aqui.',
+    shop: 'Seu estilo, suas regras.'
   };
 
   if ($('crumb-current')) {
@@ -561,31 +568,36 @@ function listenUsers() {
 // RANKING
 // ========================================
 
-function listenRanking() {
-  const q = query(
-    collection(db, 'users'),
-    orderBy('wins', 'desc'),
-    limit(50)
-  );
+function currentIsoWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
 
-  stopListeners.push(onSnapshot(q, snap => {
-    const users = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    }));
+function listenRanking() {
+  const weekKey = currentIsoWeekKey();
+  stopListeners.push(onSnapshot(collection(db, 'users'), snap => {
+    const users = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(user => user.weekKey === weekKey && Number(user.weeklyWins) > 0)
+      .sort((a, b) => (Number(b.weeklyWins) || 0) - (Number(a.weeklyWins) || 0)
+        || (Number(a.weeklyLosses) || 0) - (Number(b.weeklyLosses) || 0)
+        || String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'));
 
     const top = users.slice(0, 3);
-
     $('podium').innerHTML = top.length
       ? top.map((user, i) => `
           <div class="podium-place ${i === 0 ? 'first' : i === 1 ? 'second' : 'third'}">
             <div class="avatar">${safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>${user.wins || 0} vitórias</small>
+            <small>${Number(user.weeklyWins) || 0} vitórias na semana</small>
             <div class="podium-block">${i + 1}º</div>
           </div>
         `).join('')
-      : '<div class="podium-empty">O pódio está esperando os primeiros campeões.</div>';
+      : '<div class="podium-empty">Ainda não há resultados semanais registrados.</div>';
 
     $('ranking-list').innerHTML = users.map((user, i) => `
       <div class="ranking-row">
@@ -595,17 +607,18 @@ function listenRanking() {
           ${safeText(user.displayName || 'Jogador')}
           ${user.id === currentUser.uid ? ' (você)' : ''}
         </span>
-        <span class="wins">${user.wins || 0}</span>
-        <span class="losses">${user.losses || 0}</span>
+        <span class="wins">${Number(user.weeklyWins) || 0}</span>
+        <span class="losses">${Number(user.weeklyLosses) || 0}</span>
       </div>
-    `).join('') || '<p class="muted">Ainda não há jogadores no ranking.</p>';
+    `).join('') || '<p class="muted">O ranking semanal começa a aparecer quando resultados validados forem registrados.</p>';
 
+    const period = $('ranking-period');
+    if (period) period.textContent = `SEMANA ${weekKey} · ZERA AUTOMATICAMENTE NA PRÓXIMA SEMANA`;
   }, error => {
     console.error(error);
-    toast('Erro ao carregar ranking.');
+    toast('Erro ao carregar ranking semanal.');
   }));
 }
-
 // ========================================
 // DESAFIOS
 // ========================================
@@ -676,6 +689,370 @@ async function challengePlayer(uid, name) {
   } catch (error) {
     console.error(error);
     toast('Não foi possível enviar o desafio.');
+  }
+}
+
+// ========================================
+ // ARENA POKÉMON — PRIMEIRA VERSÃO JOGÁVEL
+// ========================================
+
+const POKEMON_CATALOG = [
+  { id: 'pikachu', name: 'Pikachu', type: 'Elétrico', emoji: '⚡', hp: 92, atk: 23, def: 13, moves: [{ name: 'Choque do Trovão', power: 22, type: 'Elétrico' }, { name: 'Ataque Rápido', power: 16, type: 'Normal' }] },
+  { id: 'charizard', name: 'Charizard', type: 'Fogo', emoji: '🔥', hp: 112, atk: 26, def: 15, moves: [{ name: 'Lança-chamas', power: 25, type: 'Fogo' }, { name: 'Corte Aéreo', power: 19, type: 'Voador' }] },
+  { id: 'blastoise', name: 'Blastoise', type: 'Água', emoji: '💧', hp: 124, atk: 20, def: 21, moves: [{ name: 'Jato d’Água', power: 23, type: 'Água' }, { name: 'Cabeçada', power: 17, type: 'Normal' }] },
+  { id: 'venusaur', name: 'Venusaur', type: 'Planta', emoji: '🌿', hp: 118, atk: 21, def: 19, moves: [{ name: 'Chicote de Vinha', power: 22, type: 'Planta' }, { name: 'Folha Navalha', power: 19, type: 'Planta' }] },
+  { id: 'gengar', name: 'Gengar', type: 'Fantasma', emoji: '👻', hp: 88, atk: 29, def: 12, moves: [{ name: 'Bola Sombria', power: 27, type: 'Fantasma' }, { name: 'Lodo', power: 20, type: 'Veneno' }] },
+  { id: 'lucario', name: 'Lucario', type: 'Lutador', emoji: '🥊', hp: 104, atk: 25, def: 17, moves: [{ name: 'Esfera de Aura', power: 26, type: 'Lutador' }, { name: 'Metal Claw', power: 18, type: 'Aço' }] },
+  { id: 'eevee', name: 'Eevee', type: 'Normal', emoji: '🦊', hp: 100, atk: 19, def: 17, moves: [{ name: 'Investida', power: 18, type: 'Normal' }, { name: 'Ataque Rápido', power: 16, type: 'Normal' }] },
+  { id: 'snorlax', name: 'Snorlax', type: 'Normal', emoji: '😴', hp: 145, atk: 22, def: 23, moves: [{ name: 'Investida', power: 22, type: 'Normal' }, { name: 'Pancada', power: 18, type: 'Normal' }] }
+];
+
+let pokemonArena = null;
+
+function pokemonStorageKey() {
+  return 'linercall-pokemon-v1-' + (currentUser?.uid || 'guest');
+}
+
+function loadPokemonArena() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(pokemonStorageKey()) || 'null');
+    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) return saved;
+  } catch (error) {
+    console.warn('Não foi possível carregar o progresso Pokémon:', error);
+  }
+  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 300, wins: 0, history: [] };
+}
+
+function savePokemonArena() {
+  try {
+    localStorage.setItem(pokemonStorageKey(), JSON.stringify(pokemonArena));
+  } catch (error) {
+    toast('Não foi possível salvar o progresso neste navegador.');
+  }
+}
+
+function pokemonById(id) {
+  return POKEMON_CATALOG.find(p => p.id === id);
+}
+
+function initPokemonArena() {
+  if (!currentUser) return;
+  pokemonArena = loadPokemonArena();
+  renderPokemonArena();
+}
+
+function renderPokemonArena() {
+  const root = $('pokemon-arena-content');
+  if (!root || !pokemonArena) return;
+
+  const team = pokemonArena.team.map(pokemonById).filter(Boolean);
+  const roster = POKEMON_CATALOG.map(p => {
+    const selected = pokemonArena.team.includes(p.id);
+    return `<button class="pokemon-choice ${selected ? 'selected' : ''}" data-pokemon-pick="${p.id}" ${selected || pokemonArena.team.length >= 3 ? 'disabled' : ''}>
+      <span class="pokemon-emoji">${p.emoji}</span><b>${p.name}</b><small>${p.type} · HP ${p.hp}</small><span class="pokemon-pick-label">${selected ? 'NO TIME' : 'ADICIONAR'}</span>
+    </button>`;
+  }).join('');
+
+  const teamMarkup = team.map((p, i) => `<div class="pokemon-team-card">
+    <span class="pokemon-emoji">${p.emoji}</span><div><b>${p.name}</b><small>${p.type} · ATQ ${p.atk} · DEF ${p.def}</small></div>
+    <button class="pokemon-remove" data-pokemon-remove="${p.id}" title="Remover do time" ${pokemonArena.battle ? 'disabled' : ''}>×</button>
+  </div>`).join('');
+
+  const history = pokemonArena.history.slice(0, 5).map(h => `<div class="pokemon-history-row"><span>${h.win ? '🏆' : '⚔️'}</span><b>${safeText(h.opponent)}</b><small>${h.win ? '+50 moedas' : 'Derrota'}</small></div>`).join('');
+
+  root.innerHTML = `
+    <div class="pokemon-topline"><div><span class="eyebrow">SEU PROGRESSO</span><h3>Treinador ${safeText(profile?.displayName || 'Pokémon')}</h3></div><div class="pokemon-wallet">🪙 <b>${pokemonArena.coins}</b> moedas</div></div>
+    <div class="pokemon-mode-select">
+      <div class="pokemon-mode-card active">
+        <span class="eyebrow">MODO DISPONÍVEL</span>
+        <b>🤖 Jogador vs CPU</b>
+        <small>Monte seu time e enfrente um treinador controlado pelo jogo.</small>
+        <span class="pokemon-mode-status">SELECIONADO</span>
+      </div>
+      <div class="pokemon-mode-card unavailable" aria-disabled="true">
+        <span class="eyebrow">MODO EM DESENVOLVIMENTO</span>
+        <b>👥 Jogador vs Jogador</b>
+        <small>As batalhas online precisam de sincronização segura entre os dois jogadores.</small>
+        <span class="pokemon-mode-status">EM BREVE · NÃO DISPONÍVEL</span>
+      </div>
+    </div>
+    <div class="pokemon-columns">
+      <div class="pokemon-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div>
+        <div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus primeiros Pokémon!</p>'}</div>
+        <div class="pokemon-roster-title"><b>Escolha até 3 Pokémon</b><small>Monte sua equipe para a batalha.</small></div>
+        <div class="pokemon-roster">${roster}</div>
+        <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length !== 3 || pokemonArena.battle ? 'disabled' : ''}>⚔ Iniciar batalha</button>
+      </div>
+      <div class="pokemon-panel pokemon-side-panel">
+        <span class="eyebrow">ARENA DE TREINAMENTO</span><h3>Prepare-se para lutar.</h3>
+        <p>Combates por turnos contra treinadores controlados pelo jogo. Cada Pokémon tem seus próprios atributos e golpes.</p>
+        <div class="pokemon-rule"><b>Vantagens de tipo</b><small>Fogo vence Planta · Água vence Fogo · Planta vence Água · Elétrico vence Água.</small></div>
+        <div class="pokemon-rule"><b>Recompensa</b><small>Vitória: +50 moedas. Derrota: sem perda de moedas.</small></div>
+        <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div></div>
+        <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
+      </div>
+    </div>
+    <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle ? '' : 'hidden'}"></div>
+  `;
+
+  if (pokemonArena.battle) renderPokemonBattle();
+}
+
+function pokemonTypeMultiplier(moveType, targetType) {
+  const strong = { Fogo: ['Planta'], Água: ['Fogo'], Planta: ['Água'], Elétrico: ['Água'] };
+  const weak = { Fogo: ['Água'], Água: ['Planta', 'Elétrico'], Planta: ['Fogo'], Elétrico: ['Planta'] };
+  if (strong[moveType]?.includes(targetType)) return 1.5;
+  if (weak[moveType]?.includes(targetType)) return 0.75;
+  return 1;
+}
+
+function createBattlePokemon(id) {
+  const base = pokemonById(id);
+  return { ...base, hpNow: base.hp };
+}
+
+function startPokemonBattle() {
+  if (!pokemonArena || pokemonArena.team.length !== 3 || pokemonArena.battle) return;
+  const opponents = ['gengar', 'venusaur', 'lucario', 'snorlax', 'charizard', 'blastoise'];
+  const shuffled = [...opponents].sort(() => Math.random() - 0.5);
+  const enemyIds = shuffled.slice(0, 3);
+  pokemonArena.battle = {
+    player: pokemonArena.team.map(createBattlePokemon),
+    enemy: enemyIds.map(createBattlePokemon),
+    playerActive: 0,
+    enemyActive: 0,
+    log: ['A batalha começou! Escolha um golpe.'],
+    finished: false
+  };
+  renderPokemonArena();
+}
+
+function currentBattlePokemon(side) {
+  const battle = pokemonArena?.battle;
+  if (!battle) return null;
+  return side === 'player' ? battle.player[battle.playerActive] : battle.enemy[battle.enemyActive];
+}
+
+function performPokemonMove(moveIndex) {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished) return;
+  const attacker = currentBattlePokemon('player');
+  const defender = currentBattlePokemon('enemy');
+  const move = attacker.moves[moveIndex];
+  if (!attacker || !defender || !move || attacker.hpNow <= 0) return;
+
+  const multiplier = pokemonTypeMultiplier(move.type, defender.type);
+  const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
+  defender.hpNow = Math.max(0, defender.hpNow - damage);
+  b.log.unshift(`${attacker.name} usou ${move.name}! ${damage} de dano.${multiplier > 1 ? ' É super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
+
+  if (defender.hpNow <= 0) {
+    b.log.unshift(`${defender.name} foi derrotado!`);
+    const next = b.enemy.findIndex(p => p.hpNow > 0);
+    if (next === -1) return finishPokemonBattle(true);
+    b.enemyActive = next;
+    b.log.unshift(`O adversário enviou ${b.enemy[next].name}!`);
+  }
+
+  renderPokemonBattle();
+  setTimeout(pokemonEnemyTurn, 650);
+}
+
+function pokemonEnemyTurn() {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished) return;
+  const attacker = currentBattlePokemon('enemy');
+  const defender = currentBattlePokemon('player');
+  if (!attacker || !defender) return;
+  const livingMoves = attacker.moves;
+  const move = livingMoves[Math.floor(Math.random() * livingMoves.length)];
+  const multiplier = pokemonTypeMultiplier(move.type, defender.type);
+  const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
+  defender.hpNow = Math.max(0, defender.hpNow - damage);
+  b.log.unshift(`${attacker.name} usou ${move.name}! Você recebeu ${damage} de dano.${multiplier > 1 ? ' Foi super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
+
+  if (defender.hpNow <= 0) {
+    const next = b.player.findIndex(p => p.hpNow > 0);
+    if (next === -1) return finishPokemonBattle(false);
+    b.playerActive = next;
+    b.log.unshift(`Seu ${defender.name} caiu! ${b.player[next].name} entrou na batalha.`);
+  }
+  renderPokemonBattle();
+}
+
+function switchPokemonInBattle(index) {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished || !b.player[index] || b.player[index].hpNow <= 0 || index === b.playerActive) return;
+  const old = currentBattlePokemon('player');
+  b.playerActive = index;
+  b.log.unshift(`Você trocou ${old.name} por ${b.player[index].name}.`);
+  renderPokemonBattle();
+  setTimeout(pokemonEnemyTurn, 500);
+}
+
+function finishPokemonBattle(won) {
+  const b = pokemonArena.battle;
+  b.finished = true;
+  const opponent = b.enemy.map(p => p.name).join(', ');
+  if (won) {
+    pokemonArena.coins += 50;
+    pokemonArena.wins += 1;
+  }
+  pokemonArena.history.unshift({ win: won, opponent, date: Date.now() });
+  pokemonArena.history = pokemonArena.history.slice(0, 20);
+  savePokemonArena();
+  renderPokemonBattle();
+}
+
+function renderPokemonBattle() {
+  const root = $('pokemon-battle-stage');
+  const b = pokemonArena?.battle;
+  if (!root || !b) return;
+  const player = currentBattlePokemon('player');
+  const enemy = currentBattlePokemon('enemy');
+  const bar = p => Math.max(0, Math.round(p.hpNow / p.hp * 100));
+  root.innerHTML = `
+    <div class="pokemon-battle-heading"><div><span class="eyebrow">BATALHA POR TURNOS</span><h3>${b.finished ? (b.enemy.every(p => p.hpNow <= 0) ? 'VITÓRIA!' : 'FIM DE BATALHA') : 'Treinador adversário'}</h3></div><span class="pixel-badge">PVE</span></div>
+    <div class="pokemon-duel">
+      <div class="pokemon-fighter enemy-fighter"><div class="pokemon-fighter-info"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><span class="pokemon-fighter-emoji">${enemy.emoji}</span></div>
+      <div class="pokemon-vs">VS</div>
+      <div class="pokemon-fighter player-fighter"><span class="pokemon-fighter-emoji">${player.emoji}</span><div class="pokemon-fighter-info"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+    </div>
+    ${b.finished ? `<div class="pokemon-result">${b.enemy.every(p => p.hpNow <= 0) ? '🏆 Você venceu! +50 moedas.' : '💤 Seus Pokémon precisam descansar. Tente novamente!'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+      <div class="pokemon-controls"><div><b>Golpes de ${player.name}</b><div class="pokemon-moves">${player.moves.map((m,i) => `<button class="pokemon-move-btn" data-pokemon-move="${i}"><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
+      <div><b>Trocar Pokémon</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0 || i===b.playerActive ? 'disabled' : ''}>${p.emoji} ${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>
+    `}
+    <div class="pokemon-battle-log"><b>Registro da batalha</b>${b.log.slice(0,5).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>
+  `;
+}
+
+function closePokemonBattle() {
+  if (!pokemonArena) return;
+  pokemonArena.battle = null;
+  savePokemonArena();
+  renderPokemonArena();
+}
+
+function removePokemonFromTeam(id) {
+  if (!pokemonArena || pokemonArena.battle) return;
+  pokemonArena.team = pokemonArena.team.filter(x => x !== id);
+  savePokemonArena();
+  renderPokemonArena();
+}
+
+function addPokemonToTeam(id) {
+  if (!pokemonArena || pokemonArena.battle || pokemonArena.team.length >= 3 || pokemonArena.team.includes(id)) return;
+  pokemonArena.team.push(id);
+  savePokemonArena();
+  renderPokemonArena();
+}
+
+
+const SHOP_KEY_PREFIX = 'linercall-shop-';
+function shopStorageKey() { return SHOP_KEY_PREFIX + (currentUser?.uid || 'guest'); }
+function loadShopState() {
+  try { return JSON.parse(localStorage.getItem(shopStorageKey()) || 'null') || { avatarUsed: false, bannerUsed: false, avatarData: '', bannerStyle: 0 }; }
+  catch { return { avatarUsed: false, bannerUsed: false, avatarData: '', bannerStyle: 0 }; }
+}
+let shopState = null;
+function saveShopState() {
+  try { localStorage.setItem(shopStorageKey(), JSON.stringify(shopState)); }
+  catch { toast('Não foi possível salvar os cosméticos neste navegador.'); }
+}
+function applyShopCosmetics() {
+  if (!shopState) return;
+  ['side-avatar','top-avatar','settings-avatar'].forEach(id => {
+    const el = $(id); if (!el) return;
+    if (shopState.avatarData) {
+      el.textContent = '';
+      el.style.backgroundImage = `url("${shopState.avatarData}")`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+    } else {
+      el.style.backgroundImage = '';
+      el.textContent = initials(profile?.displayName || 'L');
+    }
+  });
+  const banner = $('shop-banner-preview');
+  if (banner) banner.dataset.style = String(shopState.bannerStyle || 0);
+}
+function renderShop() {
+  const root = $('shop-content');
+  if (!root || !pokemonArena || !shopState) return;
+  root.innerHTML = `
+    <div class="shop-wallet panel"><span>SUAS MOEDAS</span><b>🪙 ${pokemonArena.coins}</b><small>As moedas atuais ficam salvas neste navegador.</small></div>
+    <div class="shop-grid">
+      <article class="shop-item panel">
+        <div class="shop-item-art shop-avatar-art">🖼️</div>
+        <div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO · USO ÚNICO</span><h3>Trocar foto de perfil</h3>
+        <p>Escolha uma imagem para usar como seu avatar. Esta troca só pode ser comprada uma vez.</p>
+        <b class="shop-price">🪙 100 moedas</b>
+        <button class="btn btn-primary" data-shop-buy="avatar" ${shopState.avatarUsed ? 'disabled' : ''}>${shopState.avatarUsed ? 'Já utilizado' : 'Comprar e escolher foto'}</button>
+        <input id="shop-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>
+      </article>
+      <article class="shop-item panel">
+        <div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle || 0}">✦ LINERCALL'S ✦</div>
+        <div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO · USO ÚNICO</span><h3>Trocar banner</h3>
+        <p>Desbloqueie um banner especial para o seu perfil. Mais caro que a foto de perfil.</p>
+        <b class="shop-price">🪙 200 moedas</b>
+        <button class="btn btn-primary" data-shop-buy="banner" ${shopState.bannerUsed ? 'disabled' : ''}>${shopState.bannerUsed ? 'Já utilizado' : 'Comprar banner'}</button></div>
+      </article>
+    </div>
+    <p class="shop-notice">Protótipo local: compras e cosméticos ficam neste navegador. Ainda não são compras globais protegidas pelo servidor e não sincronizam entre dispositivos.</p>
+  `;
+  applyShopCosmetics();
+}
+function buyShopItem(item) {
+  if (!pokemonArena || !shopState) return;
+  const isAvatar = item === 'avatar';
+  const used = isAvatar ? shopState.avatarUsed : shopState.bannerUsed;
+  const price = isAvatar ? 100 : 200;
+  if (used) return toast('Este item já foi utilizado.');
+  if (pokemonArena.coins < price) return toast('Você não tem moedas suficientes.');
+  pokemonArena.coins -= price;
+  if (isAvatar) {
+    shopState.avatarUsed = true;
+    savePokemonArena(); saveShopState(); renderShop();
+    $('shop-avatar-file')?.click();
+    toast('Compra feita. Escolha sua imagem.');
+  } else {
+    shopState.bannerUsed = true;
+    shopState.bannerStyle = 1;
+    savePokemonArena(); saveShopState(); renderShop();
+    toast('Banner desbloqueado!');
+  }
+}
+function handleShopAvatarFile(event) {
+  const file = event.target.files?.[0];
+  if (!file || !shopState?.avatarUsed) return;
+  if (!['image/png','image/jpeg','image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+    toast('Escolha PNG, JPG ou WebP de até 2 MB.'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    shopState.avatarData = String(reader.result || '');
+    saveShopState(); applyShopCosmetics(); toast('Foto de perfil atualizada neste navegador.');
+  };
+  reader.onerror = () => toast('Não foi possível ler essa imagem.');
+  reader.readAsDataURL(file);
+}
+function createShopPage() {
+  const sidebar = document.querySelector('.sidebar');
+  const main = document.querySelector('.main-area');
+  if (!sidebar || !main) return;
+  if (!document.querySelector('[data-view="shop"]')) {
+    const button = document.createElement('button');
+    button.className = 'nav-item'; button.dataset.view = 'shop';
+    button.innerHTML = '<span>🛍</span> Loja <i></i>';
+    const label = document.createElement('div'); label.className = 'nav-label'; label.textContent = 'PERSONALIZAR';
+    const bottom = sidebar.querySelector('.sidebar-bottom');
+    if (bottom) { sidebar.insertBefore(label, bottom); sidebar.insertBefore(button, bottom); }
+  }
+  if (!$('view-shop')) {
+    const section = document.createElement('section');
+    section.id = 'view-shop'; section.className = 'view';
+    section.innerHTML = `<div class="section-intro"><div><span class="eyebrow">LOJA LINERCALL'S</span><h2>Personalize seu perfil.</h2><p>Use suas moedas para desbloquear itens cosméticos.</p></div><span class="pixel-badge">SHOP</span></div><div id="shop-content"></div>`;
+    const footer = main.querySelector('.app-footer'); main.insertBefore(section, footer || null);
   }
 }
 
@@ -1097,6 +1474,7 @@ function setupEvents() {
   $('google-login')?.addEventListener('click', login);
   $('chat-form')?.addEventListener('submit', sendMessage);
   $('profile-form')?.addEventListener('submit', saveProfile);
+  document.addEventListener('change', event => { if (event.target.id === 'shop-avatar-file') handleShopAvatarFile(event); });
   $('logout')?.addEventListener('click', logout);
   $('leave-call')?.addEventListener('click', leaveCall);
 
@@ -1110,7 +1488,7 @@ function setupEvents() {
   // Delegação também atende ao botão NetflixLiner, criado dinamicamente.
   document.addEventListener('click', event => {
     const navButton = event.target.closest('.nav-item[data-view]');
-    if (navButton) switchView(navButton.dataset.view);
+    if (navButton) { switchView(navButton.dataset.view); if (navButton.dataset.view === 'shop') renderShop(); }
   });
 
   document.querySelectorAll('[data-go]').forEach(button => {
@@ -1122,6 +1500,24 @@ function setupEvents() {
   });
 
   document.addEventListener('click', event => {
+    const pick = event.target.closest('[data-pokemon-pick]');
+    if (pick) addPokemonToTeam(pick.dataset.pokemonPick);
+
+    const remove = event.target.closest('[data-pokemon-remove]');
+    if (remove) removePokemonFromTeam(remove.dataset.pokemonRemove);
+
+    const battle = event.target.closest('[data-pokemon-battle]');
+    if (battle) startPokemonBattle();
+
+    const move = event.target.closest('[data-pokemon-move]');
+    if (move) performPokemonMove(Number(move.dataset.pokemonMove));
+
+    const swap = event.target.closest('[data-pokemon-switch]');
+    if (swap) switchPokemonInBattle(Number(swap.dataset.pokemonSwitch));
+
+    const closeBattle = event.target.closest('[data-pokemon-close-battle]');
+    if (closeBattle) closePokemonBattle();
+
     const duel = event.target.closest('[data-challenge]');
     if (duel) {
       challengePlayer(duel.dataset.challenge, duel.dataset.name);
@@ -1132,6 +1528,9 @@ function setupEvents() {
 
     const mylist = event.target.closest('[data-mylist]');
     if (mylist) toggleMyList(mylist.dataset.mylist);
+
+    const shopBuy = event.target.closest('[data-shop-buy]');
+    if (shopBuy) buyShopItem(shopBuy.dataset.shopBuy);
   });
 }
 
@@ -1141,6 +1540,7 @@ function setupEvents() {
 
 setupEvents();
 createCinemaPage();
+createShopPage();
 
 if (configured) {
   try {
