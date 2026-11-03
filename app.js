@@ -244,6 +244,7 @@ async function startApp(user) {
   listenUsers();
   listenRanking();
   listenChallenges();
+  initPokemonArena();
   loadCinema();
 
   const presence = setInterval(() => {
@@ -677,6 +678,247 @@ async function challengePlayer(uid, name) {
     console.error(error);
     toast('Não foi possível enviar o desafio.');
   }
+}
+
+// ========================================
+ // ARENA POKÉMON — PRIMEIRA VERSÃO JOGÁVEL
+// ========================================
+
+const POKEMON_CATALOG = [
+  { id: 'pikachu', name: 'Pikachu', type: 'Elétrico', emoji: '⚡', hp: 92, atk: 23, def: 13, moves: [{ name: 'Choque do Trovão', power: 22, type: 'Elétrico' }, { name: 'Ataque Rápido', power: 16, type: 'Normal' }] },
+  { id: 'charizard', name: 'Charizard', type: 'Fogo', emoji: '🔥', hp: 112, atk: 26, def: 15, moves: [{ name: 'Lança-chamas', power: 25, type: 'Fogo' }, { name: 'Corte Aéreo', power: 19, type: 'Voador' }] },
+  { id: 'blastoise', name: 'Blastoise', type: 'Água', emoji: '💧', hp: 124, atk: 20, def: 21, moves: [{ name: 'Jato d’Água', power: 23, type: 'Água' }, { name: 'Cabeçada', power: 17, type: 'Normal' }] },
+  { id: 'venusaur', name: 'Venusaur', type: 'Planta', emoji: '🌿', hp: 118, atk: 21, def: 19, moves: [{ name: 'Chicote de Vinha', power: 22, type: 'Planta' }, { name: 'Folha Navalha', power: 19, type: 'Planta' }] },
+  { id: 'gengar', name: 'Gengar', type: 'Fantasma', emoji: '👻', hp: 88, atk: 29, def: 12, moves: [{ name: 'Bola Sombria', power: 27, type: 'Fantasma' }, { name: 'Lodo', power: 20, type: 'Veneno' }] },
+  { id: 'lucario', name: 'Lucario', type: 'Lutador', emoji: '🥊', hp: 104, atk: 25, def: 17, moves: [{ name: 'Esfera de Aura', power: 26, type: 'Lutador' }, { name: 'Metal Claw', power: 18, type: 'Aço' }] },
+  { id: 'eevee', name: 'Eevee', type: 'Normal', emoji: '🦊', hp: 100, atk: 19, def: 17, moves: [{ name: ' investida', power: 18, type: 'Normal' }, { name: 'Ataque Rápido', power: 16, type: 'Normal' }] },
+  { id: 'snorlax', name: 'Snorlax', type: 'Normal', emoji: '😴', hp: 145, atk: 22, def: 23, moves: [{ name: 'Investida', power: 22, type: 'Normal' }, { name: 'Pancada', power: 18, type: 'Normal' }] }
+];
+
+let pokemonArena = null;
+
+function pokemonStorageKey() {
+  return 'linercall-pokemon-v1-' + (currentUser?.uid || 'guest');
+}
+
+function loadPokemonArena() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(pokemonStorageKey()) || 'null');
+    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) return saved;
+  } catch (error) {
+    console.warn('Não foi possível carregar o progresso Pokémon:', error);
+  }
+  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 300, wins: 0, history: [] };
+}
+
+function savePokemonArena() {
+  try {
+    localStorage.setItem(pokemonStorageKey(), JSON.stringify(pokemonArena));
+  } catch (error) {
+    toast('Não foi possível salvar o progresso neste navegador.');
+  }
+}
+
+function pokemonById(id) {
+  return POKEMON_CATALOG.find(p => p.id === id);
+}
+
+function initPokemonArena() {
+  if (!currentUser) return;
+  pokemonArena = loadPokemonArena();
+  renderPokemonArena();
+}
+
+function renderPokemonArena() {
+  const root = $('pokemon-arena-content');
+  if (!root || !pokemonArena) return;
+
+  const team = pokemonArena.team.map(pokemonById).filter(Boolean);
+  const roster = POKEMON_CATALOG.map(p => {
+    const selected = pokemonArena.team.includes(p.id);
+    return `<button class="pokemon-choice ${selected ? 'selected' : ''}" data-pokemon-pick="${p.id}" ${selected || pokemonArena.team.length >= 3 ? 'disabled' : ''}>
+      <span class="pokemon-emoji">${p.emoji}</span><b>${p.name}</b><small>${p.type} · HP ${p.hp}</small><span class="pokemon-pick-label">${selected ? 'NO TIME' : 'ADICIONAR'}</span>
+    </button>`;
+  }).join('');
+
+  const teamMarkup = team.map((p, i) => `<div class="pokemon-team-card">
+    <span class="pokemon-emoji">${p.emoji}</span><div><b>${p.name}</b><small>${p.type} · ATQ ${p.atk} · DEF ${p.def}</small></div>
+    <button class="pokemon-remove" data-pokemon-remove="${p.id}" title="Remover do time" ${pokemonArena.battle ? 'disabled' : ''}>×</button>
+  </div>`).join('');
+
+  const history = pokemonArena.history.slice(0, 5).map(h => `<div class="pokemon-history-row"><span>${h.win ? '🏆' : '⚔️'}</span><b>${safeText(h.opponent)}</b><small>${h.win ? '+50 moedas' : 'Derrota'}</small></div>`).join('');
+
+  root.innerHTML = `
+    <div class="pokemon-topline"><div><span class="eyebrow">SEU PROGRESSO</span><h3>Treinador ${safeText(profile?.displayName || 'Pokémon')}</h3></div><div class="pokemon-wallet">🪙 <b>${pokemonArena.coins}</b> moedas</div></div>
+    <div class="pokemon-columns">
+      <div class="pokemon-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div>
+        <div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus primeiros Pokémon!</p>'}</div>
+        <div class="pokemon-roster-title"><b>Escolha até 3 Pokémon</b><small>Monte sua equipe para a batalha.</small></div>
+        <div class="pokemon-roster">${roster}</div>
+        <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length !== 3 || pokemonArena.battle ? 'disabled' : ''}>⚔ Iniciar batalha</button>
+      </div>
+      <div class="pokemon-panel pokemon-side-panel">
+        <span class="eyebrow">ARENA DE TREINAMENTO</span><h3>Prepare-se para lutar.</h3>
+        <p>Combates por turnos contra treinadores controlados pelo jogo. Cada Pokémon tem seus próprios atributos e golpes.</p>
+        <div class="pokemon-rule"><b>Vantagens de tipo</b><small>Fogo vence Planta · Água vence Fogo · Planta vence Água · Elétrico vence Água.</small></div>
+        <div class="pokemon-rule"><b>Recompensa</b><small>Vitória: +50 moedas. Derrota: sem perda de moedas.</small></div>
+        <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div></div>
+        <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
+      </div>
+    </div>
+    <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle ? '' : 'hidden'}"></div>
+  `;
+
+  if (pokemonArena.battle) renderPokemonBattle();
+}
+
+function pokemonTypeMultiplier(moveType, targetType) {
+  const strong = { Fogo: ['Planta'], Água: ['Fogo'], Planta: ['Água'], Elétrico: ['Água'] };
+  const weak = { Fogo: ['Água'], Água: ['Planta', 'Elétrico'], Planta: ['Fogo'], Elétrico: ['Planta'] };
+  if (strong[moveType]?.includes(targetType)) return 1.5;
+  if (weak[moveType]?.includes(targetType)) return 0.75;
+  return 1;
+}
+
+function createBattlePokemon(id) {
+  const base = pokemonById(id);
+  return { ...base, hpNow: base.hp };
+}
+
+function startPokemonBattle() {
+  if (!pokemonArena || pokemonArena.team.length !== 3 || pokemonArena.battle) return;
+  const opponents = ['gengar', 'venusaur', 'lucario', 'snorlax', 'charizard', 'blastoise'];
+  const shuffled = [...opponents].sort(() => Math.random() - 0.5);
+  const enemyIds = shuffled.slice(0, 3);
+  pokemonArena.battle = {
+    player: pokemonArena.team.map(createBattlePokemon),
+    enemy: enemyIds.map(createBattlePokemon),
+    playerActive: 0,
+    enemyActive: 0,
+    log: ['A batalha começou! Escolha um golpe.'],
+    finished: false
+  };
+  renderPokemonArena();
+}
+
+function currentBattlePokemon(side) {
+  const battle = pokemonArena?.battle;
+  if (!battle) return null;
+  return side === 'player' ? battle.player[battle.playerActive] : battle.enemy[battle.enemyActive];
+}
+
+function performPokemonMove(moveIndex) {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished) return;
+  const attacker = currentBattlePokemon('player');
+  const defender = currentBattlePokemon('enemy');
+  const move = attacker.moves[moveIndex];
+  if (!attacker || !defender || !move || attacker.hpNow <= 0) return;
+
+  const multiplier = pokemonTypeMultiplier(move.type, defender.type);
+  const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
+  defender.hpNow = Math.max(0, defender.hpNow - damage);
+  b.log.unshift(`${attacker.name} usou ${move.name}! ${damage} de dano.${multiplier > 1 ? ' É super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
+
+  if (defender.hpNow <= 0) {
+    b.log.unshift(`${defender.name} foi derrotado!`);
+    const next = b.enemy.findIndex(p => p.hpNow > 0);
+    if (next === -1) return finishPokemonBattle(true);
+    b.enemyActive = next;
+    b.log.unshift(`O adversário enviou ${b.enemy[next].name}!`);
+  }
+
+  renderPokemonBattle();
+  setTimeout(pokemonEnemyTurn, 650);
+}
+
+function pokemonEnemyTurn() {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished) return;
+  const attacker = currentBattlePokemon('enemy');
+  const defender = currentBattlePokemon('player');
+  if (!attacker || !defender) return;
+  const livingMoves = attacker.moves;
+  const move = livingMoves[Math.floor(Math.random() * livingMoves.length)];
+  const multiplier = pokemonTypeMultiplier(move.type, defender.type);
+  const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
+  defender.hpNow = Math.max(0, defender.hpNow - damage);
+  b.log.unshift(`${attacker.name} usou ${move.name}! Você recebeu ${damage} de dano.${multiplier > 1 ? ' Foi super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
+
+  if (defender.hpNow <= 0) {
+    const next = b.player.findIndex(p => p.hpNow > 0);
+    if (next === -1) return finishPokemonBattle(false);
+    b.playerActive = next;
+    b.log.unshift(`Seu ${defender.name} caiu! ${b.player[next].name} entrou na batalha.`);
+  }
+  renderPokemonBattle();
+}
+
+function switchPokemonInBattle(index) {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished || !b.player[index] || b.player[index].hpNow <= 0 || index === b.playerActive) return;
+  const old = currentBattlePokemon('player');
+  b.playerActive = index;
+  b.log.unshift(`Você trocou ${old.name} por ${b.player[index].name}.`);
+  renderPokemonBattle();
+  setTimeout(pokemonEnemyTurn, 500);
+}
+
+function finishPokemonBattle(won) {
+  const b = pokemonArena.battle;
+  b.finished = true;
+  const opponent = b.enemy.map(p => p.name).join(', ');
+  if (won) {
+    pokemonArena.coins += 50;
+    pokemonArena.wins += 1;
+  }
+  pokemonArena.history.unshift({ win: won, opponent, date: Date.now() });
+  pokemonArena.history = pokemonArena.history.slice(0, 20);
+  savePokemonArena();
+  renderPokemonBattle();
+}
+
+function renderPokemonBattle() {
+  const root = $('pokemon-battle-stage');
+  const b = pokemonArena?.battle;
+  if (!root || !b) return;
+  const player = currentBattlePokemon('player');
+  const enemy = currentBattlePokemon('enemy');
+  const bar = p => Math.max(0, Math.round(p.hpNow / p.hp * 100));
+  root.innerHTML = `
+    <div class="pokemon-battle-heading"><div><span class="eyebrow">BATALHA POR TURNOS</span><h3>${b.finished ? (b.enemy.every(p => p.hpNow <= 0) ? 'VITÓRIA!' : 'FIM DE BATALHA') : 'Treinador adversário'}</h3></div><span class="pixel-badge">PVE</span></div>
+    <div class="pokemon-duel">
+      <div class="pokemon-fighter enemy-fighter"><div class="pokemon-fighter-info"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><span class="pokemon-fighter-emoji">${enemy.emoji}</span></div>
+      <div class="pokemon-vs">VS</div>
+      <div class="pokemon-fighter player-fighter"><span class="pokemon-fighter-emoji">${player.emoji}</span><div class="pokemon-fighter-info"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+    </div>
+    ${b.finished ? `<div class="pokemon-result">${b.enemy.every(p => p.hpNow <= 0) ? '🏆 Você venceu! +50 moedas.' : '💤 Seus Pokémon precisam descansar. Tente novamente!'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+      <div class="pokemon-controls"><div><b>Golpes de ${player.name}</b><div class="pokemon-moves">${player.moves.map((m,i) => `<button class="pokemon-move-btn" data-pokemon-move="${i}"><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
+      <div><b>Trocar Pokémon</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0 || i===b.playerActive ? 'disabled' : ''}>${p.emoji} ${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>
+    `}
+    <div class="pokemon-battle-log"><b>Registro da batalha</b>${b.log.slice(0,5).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>
+  `;
+}
+
+function closePokemonBattle() {
+  if (!pokemonArena) return;
+  pokemonArena.battle = null;
+  savePokemonArena();
+  renderPokemonArena();
+}
+
+function removePokemonFromTeam(id) {
+  if (!pokemonArena || pokemonArena.battle) return;
+  pokemonArena.team = pokemonArena.team.filter(x => x !== id);
+  savePokemonArena();
+  renderPokemonArena();
+}
+
+function addPokemonToTeam(id) {
+  if (!pokemonArena || pokemonArena.battle || pokemonArena.team.length >= 3 || pokemonArena.team.includes(id)) return;
+  pokemonArena.team.push(id);
+  savePokemonArena();
+  renderPokemonArena();
 }
 
 // ========================================
@@ -1122,6 +1364,24 @@ function setupEvents() {
   });
 
   document.addEventListener('click', event => {
+    const pick = event.target.closest('[data-pokemon-pick]');
+    if (pick) addPokemonToTeam(pick.dataset.pokemonPick);
+
+    const remove = event.target.closest('[data-pokemon-remove]');
+    if (remove) removePokemonFromTeam(remove.dataset.pokemonRemove);
+
+    const battle = event.target.closest('[data-pokemon-battle]');
+    if (battle) startPokemonBattle();
+
+    const move = event.target.closest('[data-pokemon-move]');
+    if (move) performPokemonMove(Number(move.dataset.pokemonMove));
+
+    const swap = event.target.closest('[data-pokemon-switch]');
+    if (swap) switchPokemonInBattle(Number(swap.dataset.pokemonSwitch));
+
+    const closeBattle = event.target.closest('[data-pokemon-close-battle]');
+    if (closeBattle) closePokemonBattle();
+
     const duel = event.target.closest('[data-challenge]');
     if (duel) {
       challengePlayer(duel.dataset.challenge, duel.dataset.name);
