@@ -1,10 +1,9 @@
 
-import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   onAuthStateChanged,
   signOut
 } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
@@ -154,11 +153,14 @@ async function login() {
       throw new Error(data.error || 'Código de acesso inválido.');
     }
 
-    showAuthStatus('Código válido! Redirecionando para o Google...');
+    showAuthStatus('Código válido! Abrindo o Google...');
 
-    // O fluxo por redirecionamento evita dependências do monitoramento
-    // de janelas popup e conclui a autenticação pelo onAuthStateChanged.
-    await signInWithRedirect(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+
+    if (!result.user.email?.toLowerCase().endsWith('@gmail.com')) {
+      await signOut(auth);
+      throw new Error('Entre com uma conta @gmail.com.');
+    }
 
   } catch (error) {
     console.error('Erro no login:', error);
@@ -1138,21 +1140,10 @@ createCinemaPage();
 
 if (configured) {
   try {
-    // Reutiliza a instância padrão caso o módulo seja avaliado novamente.
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig);
 
     auth = getAuth(app);
     db = getFirestore(app);
-
-    // Finaliza e captura erros de uma tentativa anterior por redirecionamento.
-    getRedirectResult(auth).catch(error => {
-      console.error('Erro ao retornar do Google:', error);
-      const detail = error.code ? ` [${error.code}]` : '';
-      showAuthStatus(
-        `Não foi possível concluir o retorno do Google${detail}: ${error.message || 'erro desconhecido'}`,
-        true
-      );
-    });
 
     onAuthStateChanged(auth, user => {
       if (user) {
