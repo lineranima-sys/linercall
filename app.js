@@ -652,8 +652,8 @@ function listenChallenges() {
           <small>Duelo de dados · melhor de um</small>
         </div>
         <div class="challenge-actions">
-          <button class="accept-btn" disabled title="Requer configuração das Cloud Functions">Aceitar</button>
-          <button class="reject-btn" disabled title="Requer configuração das Cloud Functions">Recusar</button>
+          <button class="accept-btn" data-challenge-accept="${safeText(challenge.id)}">Aceitar</button>
+          <button class="reject-btn" data-challenge-reject="${safeText(challenge.id)}">Recusar</button>
         </div>
       </div>
     `).join('') || '<p class="muted">Nenhum desafio recebido.</p>';
@@ -699,6 +699,21 @@ async function openMemberProfile(uid, fallbackName) {
   </div>`;
   modal.classList.remove('hidden');
 }
+async function respondToChallenge(id, accept) {
+  if (!currentUser || !id) return;
+  try {
+    await updateDoc(doc(db, 'challenges', id), {
+      status: accept ? 'accepted' : 'declined',
+      respondedAt: serverTimestamp(),
+      acceptedBy: currentUser.uid
+    });
+    toast(accept ? 'Convite aceito!' : 'Convite recusado.');
+  } catch (error) {
+    console.error('Erro ao responder convite:', error);
+    toast('Não foi possível responder. Verifique as regras do Firestore.');
+  }
+}
+
 async function challengePlayer(uid, name) {
   if (!currentUser || uid === currentUser.uid) return;
 
@@ -1539,6 +1554,11 @@ function setupEvents() {
 
     const closeBattle = event.target.closest('[data-pokemon-close-battle]');
     if (closeBattle) closePokemonBattle();
+
+    const acceptChallenge = event.target.closest('[data-challenge-accept]');
+    if (acceptChallenge) respondToChallenge(acceptChallenge.dataset.challengeAccept, true);
+    const rejectChallenge = event.target.closest('[data-challenge-reject]');
+    if (rejectChallenge) respondToChallenge(rejectChallenge.dataset.challengeReject, false);
 
     const duel = event.target.closest('[data-challenge]');
     if (duel) {
