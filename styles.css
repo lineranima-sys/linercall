@@ -447,3 +447,6 @@
 @keyframes defeat-shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
 .pokemon-result.loss{background:#ff7d8918;border-color:#ff7d8955;color:#ff9aa5}.pokemon-result.win{animation:result-stamp .55s ease both}
 .pokemon-stats{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:560px){.pokemon-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.pokemon-faint-notice{margin:10px auto;padding:10px 16px;width:max-content;max-width:100%;border:1px solid #ff899766;border-radius:10px;background:#4a2438;color:#ffd2d8;font-size:12px;font-weight:800;letter-spacing:.5px;animation:faint-notice-in .35s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes faint-notice-in{from{opacity:0;transform:translateY(12px) scale(.85)}to{opacity:1;transform:translateY(0) scale(1)}}
