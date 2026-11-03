@@ -741,63 +741,50 @@ function initPokemonArena() {
   renderPokemonArena();
 }
 
+function pokemonArt(p) {
+  const ids = { pikachu:25, charizard:6, blastoise:9, venusaur:3, gengar:94, lucario:448, eevee:133, snorlax:143 };
+  return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + ids[p.id] + '.png';
+}
+let miniGamePage = 'home';
+function showMiniGamePage(page) {
+  miniGamePage = page;
+  const root = $('minigame-stage');
+  const tabs = $('minigame-tabs');
+  if (tabs) tabs.classList.toggle('hidden', page !== 'home');
+  if (root) root.classList.toggle('hidden', page === 'home');
+  if (page === 'pokemon') renderPokemonArena();
+  if (page === 'dice') showDice();
+  if (page === 'reaction') showReaction();
+}
+function backToMiniGames() {
+  miniGamePage = 'home';
+  $('minigame-stage')?.classList.add('hidden');
+  $('minigame-tabs')?.classList.remove('hidden');
+  $('game-stage')?.classList.add('hidden');
+}
 function renderPokemonArena() {
   const root = $('pokemon-arena-content');
   if (!root || !pokemonArena) return;
-
   const team = pokemonArena.team.map(pokemonById).filter(Boolean);
   const roster = POKEMON_CATALOG.map(p => {
     const selected = pokemonArena.team.includes(p.id);
-    return `<button class="pokemon-choice ${selected ? 'selected' : ''}" data-pokemon-pick="${p.id}" ${selected || pokemonArena.team.length >= 3 ? 'disabled' : ''}>
-      <span class="pokemon-emoji">${p.emoji}</span><b>${p.name}</b><small>${p.type} · HP ${p.hp}</small><span class="pokemon-pick-label">${selected ? 'NO TIME' : 'ADICIONAR'}</span>
+    return `<button class="pokemon-choice-art ${selected ? 'selected' : ''}" data-pokemon-pick="${p.id}" ${selected || pokemonArena.team.length >= 3 ? 'disabled' : ''}>
+      <img src="${pokemonArt(p)}" alt="${p.name}" loading="lazy"><b>${p.name}</b><small>${p.type} · HP ${p.hp}</small><span>${selected ? 'NO TIME ✓' : '＋ ADICIONAR'}</span>
     </button>`;
   }).join('');
-
-  const teamMarkup = team.map((p, i) => `<div class="pokemon-team-card">
-    <span class="pokemon-emoji">${p.emoji}</span><div><b>${p.name}</b><small>${p.type} · ATQ ${p.atk} · DEF ${p.def}</small></div>
-    <button class="pokemon-remove" data-pokemon-remove="${p.id}" title="Remover do time" ${pokemonArena.battle ? 'disabled' : ''}>×</button>
-  </div>`).join('');
-
-  const history = pokemonArena.history.slice(0, 5).map(h => `<div class="pokemon-history-row"><span>${h.win ? '🏆' : '⚔️'}</span><b>${safeText(h.opponent)}</b><small>${h.win ? '+50 moedas' : 'Derrota'}</small></div>`).join('');
-
+  const teamMarkup = team.map(p => `<div class="pokemon-team-card"><img src="${pokemonArt(p)}" alt=""><div><b>${p.name}</b><small>${p.type} · ATQ ${p.atk} · DEF ${p.def}</small></div><button class="pokemon-remove" data-pokemon-remove="${p.id}" ${pokemonArena.battle ? 'disabled' : ''}>×</button></div>`).join('');
+  const history = pokemonArena.history.slice(0,5).map(h=>`<div class="pokemon-history-row"><span>${h.win?'🏆':'⚔️'}</span><b>${safeText(h.opponent)}</b><small>${h.win?'+50 moedas':'Derrota'}</small></div>`).join('');
   root.innerHTML = `
-    <div class="pokemon-topline"><div><span class="eyebrow">SEU PROGRESSO</span><h3>Treinador ${safeText(profile?.displayName || 'Pokémon')}</h3></div><div class="pokemon-wallet">🪙 <b>${pokemonArena.coins}</b> moedas</div></div>
-    <div class="pokemon-mode-select">
-      <div class="pokemon-mode-card active">
-        <span class="eyebrow">MODO DISPONÍVEL</span>
-        <b>🤖 Jogador vs CPU</b>
-        <small>Monte seu time e enfrente um treinador controlado pelo jogo.</small>
-        <span class="pokemon-mode-status">SELECIONADO</span>
-      </div>
-      <div class="pokemon-mode-card unavailable" aria-disabled="true">
-        <span class="eyebrow">MODO EM DESENVOLVIMENTO</span>
-        <b>👥 Jogador vs Jogador</b>
-        <small>As batalhas online precisam de sincronização segura entre os dois jogadores.</small>
-        <span class="pokemon-mode-status">EM BREVE · NÃO DISPONÍVEL</span>
-      </div>
-    </div>
-    <div class="pokemon-columns">
-      <div class="pokemon-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div>
-        <div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus primeiros Pokémon!</p>'}</div>
-        <div class="pokemon-roster-title"><b>Escolha até 3 Pokémon</b><small>Monte sua equipe para a batalha.</small></div>
-        <div class="pokemon-roster">${roster}</div>
-        <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length !== 3 || pokemonArena.battle ? 'disabled' : ''}>⚔ Iniciar batalha</button>
-      </div>
-      <div class="pokemon-panel pokemon-side-panel">
-        <span class="eyebrow">ARENA DE TREINAMENTO</span><h3>Prepare-se para lutar.</h3>
-        <p>Combates por turnos contra treinadores controlados pelo jogo. Cada Pokémon tem seus próprios atributos e golpes.</p>
-        <div class="pokemon-rule"><b>Vantagens de tipo</b><small>Fogo vence Planta · Água vence Fogo · Planta vence Água · Elétrico vence Água.</small></div>
-        <div class="pokemon-rule"><b>Recompensa</b><small>Vitória: +50 moedas. Derrota: sem perda de moedas.</small></div>
-        <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div></div>
-        <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
-      </div>
-    </div>
-    <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle ? '' : 'hidden'}"></div>
-  `;
-
+    <div class="minigame-subhead"><button class="btn pokemon-back" data-minigame-back>← Voltar aos minigames</button><div class="pokemon-wallet">🪙 <b>${pokemonArena.coins}</b> moedas</div></div>
+    <div class="pokemon-topline"><div><span class="eyebrow">TREINADOR</span><h2>${safeText(profile?.displayName || 'Pokémon')}</h2><p>Monte sua equipe e entre na arena.</p></div><span class="pixel-badge">POKÉMON ARENA</span></div>
+    <div class="pokemon-team-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div><div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus Pokémon abaixo.</p>'}</div></div>
+    <div class="pokemon-roster-title"><b>Escolha seus Pokémon</b><small>Selecione até três para a batalha.</small></div><div class="pokemon-roster pokemon-roster-art">${roster}</div>
+    <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length!==3 || pokemonArena.battle?'disabled':''}>⚔ INICIAR BATALHA</button>
+    <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
+    <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
+    <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle?'':'hidden'}"></div>`;
   if (pokemonArena.battle) renderPokemonBattle();
 }
-
 function pokemonTypeMultiplier(moveType, targetType) {
   const strong = { Fogo: ['Planta'], Água: ['Fogo'], Planta: ['Água'], Elétrico: ['Água'] };
   const weak = { Fogo: ['Água'], Água: ['Planta', 'Elétrico'], Planta: ['Fogo'], Elétrico: ['Planta'] };
@@ -905,27 +892,22 @@ function finishPokemonBattle(won) {
 }
 
 function renderPokemonBattle() {
-  const root = $('pokemon-battle-stage');
-  const b = pokemonArena?.battle;
+  const root = $('pokemon-battle-stage'), b = pokemonArena?.battle;
   if (!root || !b) return;
-  const player = currentBattlePokemon('player');
-  const enemy = currentBattlePokemon('enemy');
-  const bar = p => Math.max(0, Math.round(p.hpNow / p.hp * 100));
+  const player = currentBattlePokemon('player'), enemy = currentBattlePokemon('enemy');
+  const bar = p => Math.max(0,Math.round(p.hpNow/p.hp*100));
   root.innerHTML = `
-    <div class="pokemon-battle-heading"><div><span class="eyebrow">BATALHA POR TURNOS</span><h3>${b.finished ? (b.enemy.every(p => p.hpNow <= 0) ? 'VITÓRIA!' : 'FIM DE BATALHA') : 'Treinador adversário'}</h3></div><span class="pixel-badge">PVE</span></div>
-    <div class="pokemon-duel">
-      <div class="pokemon-fighter enemy-fighter"><div class="pokemon-fighter-info"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><span class="pokemon-fighter-emoji">${enemy.emoji}</span></div>
-      <div class="pokemon-vs">VS</div>
-      <div class="pokemon-fighter player-fighter"><span class="pokemon-fighter-emoji">${player.emoji}</span><div class="pokemon-fighter-info"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+    <div class="pokemon-battle-heading"><div><span class="eyebrow">ARENA · BATALHA POR TURNOS</span><h2>${b.finished ? (b.enemy.every(p=>p.hpNow<=0)?'VITÓRIA!':'FIM DE BATALHA') : 'ESCOLHA SEU ATAQUE'}</h2></div><span class="pixel-badge">PVE</span></div>
+    <div class="pokemon-arena-scene">
+      <div class="arena-fighter arena-enemy"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
+      <div class="arena-spike-band"><span>VS</span></div>
+      <div class="arena-fighter arena-player"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
     </div>
-    ${b.finished ? `<div class="pokemon-result">${b.enemy.every(p => p.hpNow <= 0) ? '🏆 Você venceu! +50 moedas.' : '💤 Seus Pokémon precisam descansar. Tente novamente!'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
-      <div class="pokemon-controls"><div><b>Golpes de ${player.name}</b><div class="pokemon-moves">${player.moves.map((m,i) => `<button class="pokemon-move-btn" data-pokemon-move="${i}"><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
-      <div><b>Trocar Pokémon</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0 || i===b.playerActive ? 'disabled' : ''}>${p.emoji} ${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>
-    `}
-    <div class="pokemon-battle-log"><b>Registro da batalha</b>${b.log.slice(0,5).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>
-  `;
+    ${b.finished ? `<div class="pokemon-result">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +50 moedas.':'💤 Seus Pokémon precisam descansar.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}"><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
+      <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
+    <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
 }
-
 function closePokemonBattle() {
   if (!pokemonArena) return;
   pokemonArena.battle = null;
@@ -951,90 +933,72 @@ function addPokemonToTeam(id) {
 const SHOP_KEY_PREFIX = 'linercall-shop-';
 function shopStorageKey() { return SHOP_KEY_PREFIX + (currentUser?.uid || 'guest'); }
 function loadShopState() {
-  try { return JSON.parse(localStorage.getItem(shopStorageKey()) || 'null') || { avatarUsed: false, bannerUsed: false, avatarData: '', bannerStyle: 0 }; }
-  catch { return { avatarUsed: false, bannerUsed: false, avatarData: '', bannerStyle: 0 }; }
+  try { const old=JSON.parse(localStorage.getItem(shopStorageKey())||'null'); return { avatarData:'', avatarZoom:1, avatarX:50, avatarY:50, bannerStyle:0, bannerCredits:0, ...(old||{}) }; }
+  catch { return { avatarData:'', avatarZoom:1, avatarX:50, avatarY:50, bannerStyle:0, bannerCredits:0 }; }
 }
 let shopState = null;
-function saveShopState() {
-  try { localStorage.setItem(shopStorageKey(), JSON.stringify(shopState)); }
-  catch { toast('Não foi possível salvar os cosméticos neste navegador.'); }
-}
+function saveShopState() { try { localStorage.setItem(shopStorageKey(),JSON.stringify(shopState)); } catch { toast('Não foi possível salvar os cosméticos.'); } }
 function applyShopCosmetics() {
   if (!shopState) return;
-  ['side-avatar','top-avatar','settings-avatar'].forEach(id => {
-    const el = $(id); if (!el) return;
-    if (shopState.avatarData) {
-      el.textContent = '';
-      el.style.backgroundImage = `url("${shopState.avatarData}")`;
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center';
-    } else {
-      el.style.backgroundImage = '';
-      el.textContent = initials(profile?.displayName || 'L');
-    }
+  ['side-avatar','top-avatar','settings-avatar'].forEach(id=>{
+    const el=$(id); if(!el)return;
+    el.style.backgroundImage=shopState.avatarData?`url("${shopState.avatarData}")`:'';
+    el.style.backgroundSize=shopState.avatarData?`${shopState.avatarZoom||1}00% auto`:'';
+    el.style.backgroundPosition=`${shopState.avatarX??50}% ${shopState.avatarY??50}%`;
+    if(shopState.avatarData)el.textContent=''; else el.textContent=initials(profile?.displayName||'L');
   });
-  const banner = $('shop-banner-preview');
-  if (banner) banner.dataset.style = String(shopState.bannerStyle || 0);
+  ['profile-banner-preview','shop-banner-preview'].forEach(id=>{const el=$(id);if(el)el.dataset.style=String(shopState.bannerStyle||0);});
+  const banner=$('profile-banner-preview'); if(banner)banner.classList.toggle('hidden',!shopState.bannerStyle);
 }
 function renderShop() {
-  const root = $('shop-content');
-  if (!root || !pokemonArena || !shopState) return;
-  root.innerHTML = `
-    <div class="shop-wallet panel"><span>SUAS MOEDAS</span><b>🪙 ${pokemonArena.coins}</b><small>As moedas atuais ficam salvas neste navegador.</small></div>
-    <div class="shop-grid">
-      <article class="shop-item panel">
-        <div class="shop-item-art shop-avatar-art">🖼️</div>
-        <div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO · USO ÚNICO</span><h3>Trocar foto de perfil</h3>
-        <p>Escolha uma imagem para usar como seu avatar. Esta troca só pode ser comprada uma vez.</p>
-        <b class="shop-price">🪙 100 moedas</b>
-        <button class="btn btn-primary" data-shop-buy="avatar" ${shopState.avatarUsed ? 'disabled' : ''}>${shopState.avatarUsed ? 'Já utilizado' : 'Comprar e escolher foto'}</button>
-        <input id="shop-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>
-      </article>
-      <article class="shop-item panel">
-        <div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle || 0}">✦ LINERCALL'S ✦</div>
-        <div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO · USO ÚNICO</span><h3>Trocar banner</h3>
-        <p>Desbloqueie um banner especial para o seu perfil. Mais caro que a foto de perfil.</p>
-        <b class="shop-price">🪙 200 moedas</b>
-        <button class="btn btn-primary" data-shop-buy="banner" ${shopState.bannerUsed ? 'disabled' : ''}>${shopState.bannerUsed ? 'Já utilizado' : 'Comprar banner'}</button></div>
-      </article>
-    </div>
-    <p class="shop-notice">Protótipo local: compras e cosméticos ficam neste navegador. Ainda não são compras globais protegidas pelo servidor e não sincronizam entre dispositivos.</p>
-  `;
-  applyShopCosmetics();
+ const root=$('shop-content'); if(!root||!pokemonArena||!shopState)return;
+ root.innerHTML=`
+ <div class="shop-wallet panel"><span>SUAS MOEDAS</span><b>🪙 ${pokemonArena.coins}</b></div>
+ <div class="shop-grid">
+  <article class="shop-item panel"><div class="shop-item-art shop-avatar-art">🖼️</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Foto de perfil</h3><p>Compre uma alteração e ajuste o enquadramento da imagem antes de salvar.</p><b class="shop-price">🪙 100 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="avatar">Comprar alteração</button><input id="shop-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></article>
+  <article class="shop-item panel"><div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle||0}">✦ LINERCALL'S ✦</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Banner de perfil</h3><p>Você pode trocar o banner uma vez por compra. Cada nova alteração custa moedas novamente.</p><b class="shop-price">🪙 200 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="banner">${shopState.bannerCredits>0?'Alterar banner · 1 crédito':'Comprar alteração'}</button></div></article>
+ </div><p class="shop-notice">Protótipo local: moedas e cosméticos ficam neste navegador e ainda não sincronizam entre dispositivos.</p>
+ <div id="avatar-cropper" class="cropper-modal hidden"><div class="cropper-card"><div class="panel-head"><h3>Enquadre sua foto</h3><button class="icon-btn" data-crop-cancel>✕</button></div><div class="cropper-window"><img id="avatar-crop-image" alt="Prévia da foto"></div><label>Zoom <input id="avatar-crop-zoom" type="range" min="1" max="3" step=".05" value="1"></label><label>Horizontal <input id="avatar-crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical <input id="avatar-crop-y" type="range" min="0" max="100" value="50"></label><div class="cropper-actions"><button class="btn" data-crop-cancel>Cancelar</button><button class="btn btn-primary" data-crop-save>Salvar foto</button></div></div></div>`;
+ applyShopCosmetics();
 }
+let pendingAvatarImage = null;
 function buyShopItem(item) {
-  if (!pokemonArena || !shopState) return;
-  const isAvatar = item === 'avatar';
-  const used = isAvatar ? shopState.avatarUsed : shopState.bannerUsed;
-  const price = isAvatar ? 100 : 200;
-  if (used) return toast('Este item já foi utilizado.');
-  if (pokemonArena.coins < price) return toast('Você não tem moedas suficientes.');
-  pokemonArena.coins -= price;
-  if (isAvatar) {
-    shopState.avatarUsed = true;
-    savePokemonArena(); saveShopState(); renderShop();
-    $('shop-avatar-file')?.click();
-    toast('Compra feita. Escolha sua imagem.');
-  } else {
-    shopState.bannerUsed = true;
-    shopState.bannerStyle = 1;
-    savePokemonArena(); saveShopState(); renderShop();
-    toast('Banner desbloqueado!');
-  }
+ if(!pokemonArena||!shopState)return;
+ const avatar=item==='avatar', price=avatar?100:200;
+ if(pokemonArena.coins<price)return toast('Você não tem moedas suficientes.');
+ pokemonArena.coins-=price;
+ if(avatar){shopState.avatarCredits=(shopState.avatarCredits||0)+1;savePokemonArena();saveShopState();$('shop-avatar-file')?.click();toast('Crédito comprado. Escolha a imagem.');}
+ else {shopState.bannerCredits=(shopState.bannerCredits||0)+1;savePokemonArena();saveShopState();renderShop();toast('Crédito de alteração de banner comprado.');}
+ renderShop();
 }
 function handleShopAvatarFile(event) {
-  const file = event.target.files?.[0];
-  if (!file || !shopState?.avatarUsed) return;
-  if (!['image/png','image/jpeg','image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
-    toast('Escolha PNG, JPG ou WebP de até 2 MB.'); return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    shopState.avatarData = String(reader.result || '');
-    saveShopState(); applyShopCosmetics(); toast('Foto de perfil atualizada neste navegador.');
-  };
-  reader.onerror = () => toast('Não foi possível ler essa imagem.');
-  reader.readAsDataURL(file);
+ const file=event.target.files?.[0]; if(!file)return;
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){toast('Escolha PNG, JPG ou WebP de até 2 MB.');return;}
+ if(!(shopState.avatarCredits>0)){toast('Compre uma alteração antes de trocar a foto.');return;}
+ const reader=new FileReader();
+ reader.onload=()=>{pendingAvatarImage=String(reader.result||'');$('avatar-crop-image').src=pendingAvatarImage;$('avatar-cropper').classList.remove('hidden');};
+ reader.onerror=()=>toast('Não foi possível ler essa imagem.');
+ reader.readAsDataURL(file);
+ event.target.value='';
+}
+function updateCropPreview(){
+ const img=$('avatar-crop-image');if(!img)return;
+ img.style.transform=`translate(${(50-Number($('avatar-crop-x')?.value||50))*0.7}%,${(50-Number($('avatar-crop-y')?.value||50))*0.7}%) scale(${$('avatar-crop-zoom')?.value||1})`;
+}
+function saveCroppedAvatar(){
+ const img=$('avatar-crop-image');if(!img||!pendingAvatarImage)return;
+ const size=512,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+ const ctx=canvas.getContext('2d'),iw=img.naturalWidth,ih=img.naturalHeight,zoom=Number($('avatar-crop-zoom').value||1);
+ const scale=Math.max(size/iw,size/ih)*zoom,w=iw*scale,h=ih*scale;
+ const x=(size-w)*Number($('avatar-crop-x').value)/100,y=(size-h)*Number($('avatar-crop-y').value)/100;
+ ctx.drawImage(img,x,y,w,h);
+ shopState.avatarData=canvas.toDataURL('image/jpeg',.88);shopState.avatarZoom=1;shopState.avatarX=50;shopState.avatarY=50;
+ shopState.avatarCredits=Math.max(0,(shopState.avatarCredits||0)-1);
+ pendingAvatarImage=null;saveShopState();applyShopCosmetics();$('avatar-cropper').classList.add('hidden');renderShop();toast('Foto atualizada!');
+}
+function saveBannerChoice(style){
+ if(!shopState||!(shopState.bannerCredits>0))return toast('Compre uma alteração de banner primeiro.');
+ shopState.bannerStyle=style;shopState.bannerCredits--;saveShopState();applyShopCosmetics();renderShop();toast('Banner atualizado!');
 }
 function createShopPage() {
   const sidebar = document.querySelector('.sidebar');
@@ -1482,8 +1446,10 @@ function setupEvents() {
     $('game-stage')?.classList.add('hidden');
   });
 
-  $('play-dice')?.addEventListener('click', showDice);
-  $('play-reaction')?.addEventListener('click', showReaction);
+  $('play-dice')?.addEventListener('click', () => showMiniGamePage('dice'));
+  $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
+  $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
+  document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 
   // Delegação também atende ao botão NetflixLiner, criado dinamicamente.
   document.addEventListener('click', event => {
@@ -1531,6 +1497,10 @@ function setupEvents() {
 
     const shopBuy = event.target.closest('[data-shop-buy]');
     if (shopBuy) buyShopItem(shopBuy.dataset.shopBuy);
+    if (event.target.closest('[data-minigame-back]')) backToMiniGames();
+    if (event.target.closest('[data-crop-cancel]')) { pendingAvatarImage=null; $('avatar-cropper')?.classList.add('hidden'); }
+    if (event.target.closest('[data-crop-save]')) saveCroppedAvatar();
+    const bannerPick=event.target.closest('[data-banner-style]'); if(bannerPick) saveBannerChoice(Number(bannerPick.dataset.bannerStyle));
   });
 }
 
