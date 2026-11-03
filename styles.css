@@ -239,3 +239,15 @@
 .legacy-challenges-panel{margin-top:20px}
 @media(max-width:900px){.pokemon-columns{grid-template-columns:1fr}.pokemon-roster{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:600px){.pokemon-team-list{grid-template-columns:1fr}.pokemon-roster{grid-template-columns:repeat(2,minmax(0,1fr))}.pokemon-duel{grid-template-columns:1fr;gap:8px}.pokemon-vs{text-align:center}.pokemon-fighter-emoji{font-size:42px}.pokemon-controls{grid-template-columns:1fr}.pokemon-topline{align-items:flex-start;flex-direction:column}.pokemon-battle-stage{padding:13px}}
+
+
+/* ARENA — seleção explícita de modo */
+.pokemon-mode-select{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 17px}
+.pokemon-mode-card{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--line);border-radius:11px;background:var(--panel);min-width:0}
+.pokemon-mode-card.active{border-color:rgba(98,230,165,.55);background:linear-gradient(145deg,rgba(98,230,165,.09),var(--panel))}
+.pokemon-mode-card.unavailable{opacity:.72;border-style:dashed}
+.pokemon-mode-card>b{font-size:15px}
+.pokemon-mode-card>small{font-size:10px;line-height:1.55;color:var(--muted)}
+.pokemon-mode-status{font-size:9px;font-weight:700;letter-spacing:.8px;color:var(--green);margin-top:3px}
+.pokemon-mode-card.unavailable .pokemon-mode-status{color:var(--gold)}
+@media(max-width:600px){.pokemon-mode-select{grid-template-columns:1fr}}
