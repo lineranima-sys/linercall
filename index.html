@@ -37,7 +37,6 @@
       <button class="nav-item" data-view="calls"><span>◉</span> Salas de voz <i></i></button>
       <div class="nav-label">JOGAR</div>
       <button class="nav-item" data-view="games"><span>▣</span> Minigames <i></i></button>
-      <button class="nav-item" data-view="arena"><span>⚔</span> Desafios <i></i></button>
       <button class="nav-item" data-view="ranking"><span>♛</span> Ranking <i></i></button>
       <div class="sidebar-bottom">
         <div class="sidebar-user"><div id="side-avatar" class="avatar">L</div><div class="user-meta"><b id="side-name">Jogador</b><small><span class="online-dot"></span> online</small></div><button id="logout" class="icon-btn" title="Sair">↗</button></div>
@@ -70,15 +69,16 @@
 
       <section id="view-games" class="view">
         <div class="section-intro"><div><span class="eyebrow">ARCADE LINERCALL'S</span><h2>Escolha seu jogo.</h2><p>Partidas rápidas para disputar com a comunidade.</p></div><span class="pixel-badge">BETA 01</span></div>
+        <article class="pokemon-featured panel">
+          <div class="pokemon-featured-heading">
+            <div><span class="eyebrow">MINIGAME EM DESTAQUE · RPG DE BATALHA</span><h3>Pokémon Arena</h3><p>Monte seu time, treine seus Pokémon e encare batalhas por turnos.</p></div>
+            <span class="featured-mark">★ DESTAQUE</span>
+          </div>
+          <div class="pokemon-featured-content"><div id="pokemon-arena-content"><p class="muted">Carregando sua equipe...</p></div></div>
+        </article>
         <div class="game-grid"><article class="panel game-card"><div class="game-art art-dice">⚄</div><div class="game-info"><span class="eyebrow">SORTE · 1 JOGADOR</span><h3>Dados do caos</h3><p>Role um dado de 20 lados e tente superar seu próprio recorde.</p><button id="play-dice" class="btn btn-primary">Jogar agora →</button></div></article>
           <article class="panel game-card"><div class="game-art art-reaction">⚡</div><div class="game-info"><span class="eyebrow">REFLEXO · 1 JOGADOR</span><h3>Teste de reflexo</h3><p>Espere o sinal e clique o mais rápido que conseguir.</p><button id="play-reaction" class="btn btn-primary">Jogar agora →</button></div></article></div>
         <div id="game-stage" class="panel game-stage hidden"><div class="panel-head"><div><span class="eyebrow">MINIGAME</span><h3 id="game-title">Dados do caos</h3></div><button id="close-game" class="icon-btn">✕</button></div><div id="game-content" class="game-content"></div></div>
-      </section>
-
-      <section id="view-arena" class="view">
-        <div class="section-intro"><div><span class="eyebrow">LINERCALL MONSTERS</span><h2>Arena Pokémon.</h2><p>Monte seu time, escolha seus golpes e enfrente treinadores.</p></div><span class="pixel-badge">BETA 01</span></div>
-        <div id="pokemon-arena-content"><p class="muted">Carregando sua equipe...</p></div>
-        <div class="panel legacy-challenges-panel"><div class="panel-head"><div><span class="eyebrow">DESAFIOS DA COMUNIDADE</span><h3>Convites recebidos</h3></div></div><div id="challenge-inbox" class="challenge-list"><p class="muted">Nenhum convite por enquanto.</p></div><div class="panel-divider"></div><div class="panel-head compact"><div><span class="eyebrow">HISTÓRICO ANTIGO</span><h3>Desafios de dados</h3></div></div><div id="challenge-history" class="challenge-list"><p class="muted">Seus desafios antigos aparecerão aqui.</p></div></div>
       </section>
 
       <section id="view-ranking" class="view">
@@ -95,6 +95,6 @@
     </main>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script type="module" src="app.js?v=shop-weekly-beta1"></script>
+  <script type="module" src="app.js?v=minigames-rework1"></script>
 </body>
 </html>
