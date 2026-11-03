@@ -400,12 +400,12 @@ function listenFriends(){
   },e=>{console.error(e);toast('Não foi possível carregar amigos.');}));
 }
 async function searchFriend(){
-  const term=$('friend-search-input')?.value.trim(),box=$('friend-search-result');
+  const term=$('friend-search-input')?.value.trim().toLocaleLowerCase('pt-BR'),box=$('friend-search-result');
   if(!term||term.length<2){box.textContent='Digite o nome de exibição completo (mínimo 2 caracteres).';return;}
   box.textContent='Buscando...';
   try{
-    const snap=await getDocs(query(collection(db,'users'),where('displayName','==',term),limit(8)));
-    const matches=snap.docs.filter(d=>d.id!==currentUser.uid);
+    const snap=await getDocs(query(collection(db,'users'),limit(100)));
+    const matches=snap.docs.filter(d=>d.id!==currentUser.uid && String(d.data().displayName||'').trim().toLocaleLowerCase('pt-BR')===term).slice(0,8);
     box.innerHTML=matches.length?matches.map(d=>'<div class="friend-row"><b>'+safeText(d.data().displayName||'Jogador')+'</b><button class="btn btn-primary" data-friend-add="'+d.id+'" data-friend-add-name="'+safeText(d.data().displayName||'Jogador')+'">Adicionar</button></div>').join(''):'<p class="muted">Ninguém encontrado com esse nome exato.</p>';
   }catch(e){console.error(e);box.textContent='Falha na busca. Confira as regras do Firestore.';}
 }
@@ -416,7 +416,7 @@ async function sendFriendRequest(uid,name){
     if(existing.docs.some(d=>d.data().uids.includes(uid))){toast('Vocês já são amigos.');return;}
     await addDoc(collection(db,'friendRequests'),{fromUid:currentUser.uid,fromName:profile?.displayName||'Jogador',toUid:uid,toName:name,status:'pending',createdAt:serverTimestamp()});
     toast('Pedido de amizade enviado!');
-  }catch(e){console.error(e);toast('Não foi possível enviar o pedido.');}
+  }catch(e){console.error('Falha ao enviar pedido:',e);toast(e.code==='permission-denied'?'O Firebase ainda não recebeu as novas regras de amizade.':'Não foi possível enviar o pedido: '+(e.code||'erro'));}
 }
 async function answerFriendRequest(requestId,accept){
   try{
@@ -817,7 +817,7 @@ function pokemonStorageKey() {
 function loadPokemonArena() {
   try {
     const saved = JSON.parse(localStorage.getItem(pokemonStorageKey()) || 'null');
-    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { if (saved.coins === 300 && !saved.wins && saved.history.length === 0) saved.coins = 0; saved.losses = Number(saved.losses) || saved.history.filter(x => !x.win).length; saved.battles = Number(saved.battles) || (Number(saved.wins)||0) + saved.losses || saved.history.length; return saved; }
+    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { saved.losses = Number(saved.losses) || saved.history.filter(x => !x.win).length; saved.battles = Number(saved.battles) || (Number(saved.wins)||0) + saved.losses || saved.history.length; return saved; }
   } catch (error) {
     console.warn('Não foi possível carregar o progresso Pokémon:', error);
   }
@@ -839,6 +839,7 @@ function pokemonById(id) {
 function initPokemonArena() {
   if (!currentUser) return;
   pokemonArena = loadPokemonArena();
+  if (String(profile?.displayName||'').trim().toLocaleLowerCase('pt-BR') === 'tom' && !localStorage.getItem('linercall-tom-coins-reset-v1')) { pokemonArena.coins=0; localStorage.setItem('linercall-tom-coins-reset-v1','1'); savePokemonArena(); }
   renderPokemonArena();
 }
 
@@ -901,7 +902,9 @@ function pokemonTypeMultiplier(moveType, targetType) {
 
 function createBattlePokemon(id) {
   const base = pokemonById(id);
-  return { ...base, hpNow: base.hp };
+  const isEnemy = ['gengar','venusaur','lucario','snorlax','charizard','blastoise'].includes(id);
+  const hp = isEnemy ? Math.round(base.hp * 1.3) : base.hp;
+  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.2) : base.atk, def: isEnemy ? Math.round(base.def * 1.12) : base.def, hpNow: hp };
 }
 
 function startPokemonBattle() {
@@ -963,7 +966,7 @@ function pokemonEnemyTurn() {
   const defender = currentBattlePokemon('player');
   if (!attacker || !defender) return;
   const livingMoves = attacker.moves;
-  const move = livingMoves[Math.floor(Math.random() * livingMoves.length)];
+  const move = [...livingMoves].sort((x,y)=>pokemonTypeMultiplier(y.type,defender.type)-pokemonTypeMultiplier(x.type,defender.type) || y.power-x.power)[0];
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
@@ -999,9 +1002,10 @@ async function finishPokemonBattle(won) {
   const opponent = b.enemy.map(p => p.name).join(', ');
   pokemonArena.battles = (Number(pokemonArena.battles) || 0) + 1;
   if (won) {
-    pokemonArena.coins += 50;
+    pokemonArena.coins += 25;
     pokemonArena.wins = (Number(pokemonArena.wins) || 0) + 1;
   } else {
+    pokemonArena.coins += 25;
     pokemonArena.losses = (Number(pokemonArena.losses) || 0) + 1;
   }
   b.result = won ? 'win' : 'loss';
@@ -1044,7 +1048,7 @@ function renderPokemonBattle() {
       ${b.finished ? `<div class="arena-result-stamp ${b.result}">${b.result === 'win' ? 'VITÓRIA!' : 'DERROTA'}</div>` : ''}
     </div>
     ${b.faintNotice && !b.finished ? `<div class="pokemon-faint-notice">${safeText(b.faintNotice)}</div>` : ''}
-    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +50 moedas.':'💤 Seus Pokémon foram derrotados. Tente novamente.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +25 moedas.':'💤 Seus Pokémon foram derrotados. +25 moedas pela batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
       <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
       <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
     <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
@@ -1180,7 +1184,7 @@ async function saveProfile(event) {
 
   if (!currentUser) return;
 
-  const name = $('display-name').value.trim();
+  const name = $('display-name').value.trim().toLocaleLowerCase('pt-BR');
 
   if (name.length < 2 || name.length > 24) {
     $('profile-status').textContent = 'Use um nome entre 2 e 24 caracteres.';
@@ -1441,11 +1445,28 @@ const SERIES_EPISODE_DATA = {
  'lighty-naruto': [{name:'Temporada 1',count:35},{name:'Temporada 2',count:48},{name:'Temporada 3',count:48},{name:'Temporada 4',count:48},{name:'Temporada 5',count:41}],
  'lighty-dragon-ball': [{name:'Temporada 1',count:13},{name:'Temporada 2',count:15},{name:'Temporada 3',count:40},{name:'Temporada 4',count:33},{name:'Temporada 5',count:31},{name:'Temporada 6',count:21}]
 };
+const EPISODE_TITLES = {
+ 'lighty-naruto': [[
+  'Sanjo! Uzumaki Naruto','Konohamaru da kore!','Shukuteki!? Sasuke to Sakura','Shiren! Sabaibaru enshû','Shikkaku? Kakashi no ketsuron'
+ ]],
+ 'lighty-dragon-ball': [[
+  'Bulma to Son Gokuu','Arararaa! Tama ga Nai!','Kame-Sennin no Kinto-Un','Hitosarai Youkai Oolong','Tsuyokute Warui Sabaku no Yamucha','Mayonaka no Houmonsha-tachi','Frypan Yama no Gyuumaou','Kame-Sennin no Kamehameha','Usagi Oyabun no Tokui Waza','Dragon Ball Ubawareru!!','Tsui ni Dragon Arawaru!','Shenron e no Negai','Gokuu no Dai Henshin'
+ ]]
+};
+function lightyPurchasesKey(){return 'linercall-lighty-purchases-'+(currentUser?.uid||'guest');}
+function getLightyPurchases(){try{return JSON.parse(localStorage.getItem(lightyPurchasesKey())||'{}');}catch{return {};}}
+function hasLightyPurchase(key){return !!getLightyPurchases()[key];}
+function buyLightyContent(key,cost,label){
+ if(!pokemonArena)return;
+ const purchases=getLightyPurchases();if(purchases[key])return toast('Você já comprou este conteúdo.');
+ if(pokemonArena.coins<cost)return toast('Moedas insuficientes.');
+ pokemonArena.coins-=cost;purchases[key]={boughtAt:Date.now()};localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));savePokemonArena();renderShop();toast(label+' comprado!');
+}
 function renderSeriesDetails(item){
  const root=$('cinema-episodes'),related=$('cinema-related');if(!root||!related)return;
  const seasons=SERIES_EPISODE_DATA[item.id];
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
- root.innerHTML='<h3>Temporadas e episódios</h3>'+seasons.map((season,index)=>'<details class="season-accordion" '+(index===0?'open':'')+'><summary>'+safeText(season.name)+' <span>'+season.count+' episódios</span></summary><ol>'+Array.from({length:season.count},(_,n)=>'<li><span>Episódio '+(n+1)+'</span></li>').join('')+'</ol></details>').join('');
+ root.innerHTML='<h3>Temporadas e episódios</h3>'+seasons.map((season,index)=>{const titles=EPISODE_TITLES[item.id]?.[index]||[];return '<details class="season-accordion" '+(index===0?'open':'')+'><summary>'+safeText(season.name)+' <span>'+season.count+' episódios</span></summary><ol class="episode-list">'+Array.from({length:season.count},(_,n)=>'<li class="episode-card"><img src="'+safeText(item.poster||item.backdrop||'')+'" alt="" loading="lazy"><span><b>'+safeText(titles[n]||'Título não cadastrado')+'</b><small>Episódio '+(n+1)+'</small></span></li>').join('')+'</ol><button class="btn btn-primary" data-buy-season="'+safeText(item.id)+'" data-season-index="'+index+'">Comprar temporada · 1.500 moedas</button></details>';}).join('');
  const recommendations=item.id==='lighty-steven-universe'?['Hora de Aventura','Gravity Falls','A Casa Coruja','Amphibia']:item.id==='lighty-naruto'?['Boruto','Dragon Ball','One Piece']:['Naruto','One Piece','Yu-Gi-Oh!'];
  related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';applyLanguage();
 }
@@ -1612,6 +1633,7 @@ function setupEvents() {
   });
 
   document.addEventListener('click', event => {
+    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightyContent('season:'+seasonBuy.dataset.buySeason+':'+seasonBuy.dataset.seasonIndex,1500,'Temporada');
     const addFriend = event.target.closest('[data-friend-add]'); if(addFriend)sendFriendRequest(addFriend.dataset.friendAdd,addFriend.dataset.friendAddName);
     const acceptFriend = event.target.closest('[data-friend-accept]'); if(acceptFriend)answerFriendRequest(acceptFriend.dataset.friendAccept,true);
     const rejectFriend = event.target.closest('[data-friend-reject]'); if(rejectFriend)answerFriendRequest(rejectFriend.dataset.friendReject,false);
