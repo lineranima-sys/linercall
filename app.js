@@ -1358,8 +1358,8 @@ function renderCinema() {
 
 const SERIES_EPISODE_DATA = {
  'lighty-steven-universe': [{name:'Temporada 1',count:52},{name:'Temporada 2',count:26},{name:'Temporada 3',count:25},{name:'Temporada 4',count:25},{name:'Temporada 5',count:32},{name:'Temporada 6',count:20}],
- 'lighty-naruto': [{name:'Temporada 1',count:35},{name:'Temporada 2',count:26},{name:'Temporada 3',count:28},{name:'Temporada 4',count:26},{name:'Temporada 5',count:25}],
- 'lighty-dragon-ball': [{name:'Saga Pilaf',count:13},{name:'Saga 21º Torneio',count:15},{name:'Saga Exército Red Ribbon',count:30},{name:'Saga Piccolo',count:23},{name:'Saga 23º Torneio',count:22},{name:'Saga Piccolo Jr.',count:50}]
+ 'lighty-naruto': [{name:'Temporada 1',count:35},{name:'Temporada 2',count:48},{name:'Temporada 3',count:48},{name:'Temporada 4',count:48},{name:'Temporada 5',count:41}],
+ 'lighty-dragon-ball': [{name:'Temporada 1',count:13},{name:'Temporada 2',count:15},{name:'Temporada 3',count:40},{name:'Temporada 4',count:33},{name:'Temporada 5',count:31},{name:'Temporada 6',count:21}]
 };
 function renderSeriesDetails(item){
  const root=$('cinema-episodes'),related=$('cinema-related');if(!root||!related)return;
@@ -1401,7 +1401,7 @@ async function loadCinema() {
       ...d.data()
     }));
     const builtInCatalog = [
-      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://image.tmdb.org/t/p/w780/3DYzq1oQK7dW8Z4xw4Z8QZ0Xy7P.jpg'},
+      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'},
       {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
       {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
       {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
