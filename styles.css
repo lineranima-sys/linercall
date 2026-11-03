@@ -429,3 +429,21 @@
 .cinema-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
 .cinema-coming-soon,.cinema-coming-soon:disabled{background:#f5c542!important;border:1px solid #ffe18a!important;color:#30240a!important;font-weight:800!important;opacity:1!important;cursor:not-allowed!important;box-shadow:0 3px 0 #9b7413}
 .cinema-coming-soon span{font-size:17px;vertical-align:-1px;margin-right:4px}
+
+/* Battle feedback animations */
+.pokemon-battle-stage{scroll-margin-top:22px;animation:battle-stage-in .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes battle-stage-in{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.battle-turn-label{margin:7px 0 0;color:#d4c8e8;font-size:12px}
+.pokemon-arena-scene{isolation:isolate}
+.arena-fighter img{transition:filter .35s,opacity .35s,transform .35s}
+.arena-fighter.pokemon-fainted img{filter:grayscale(1) brightness(.48);opacity:.45;transform:translateY(18px) scale(.82)}
+.arena-fighter.pokemon-fainted:after{content:'✕';position:absolute;font-size:46px;font-weight:900;color:#ff7d89;text-shadow:0 4px 18px #000;animation:faint-mark .45s ease both}
+@keyframes faint-mark{from{opacity:0;transform:scale(1.8) rotate(-25deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+.arena-result-stamp{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);padding:17px 25px;border:3px solid currentColor;border-radius:10px;font:900 clamp(20px,4vw,38px)/1 'Space Grotesk',sans-serif;letter-spacing:3px;text-shadow:0 3px 15px #0009;box-shadow:0 12px 35px #0008;animation:result-stamp .65s cubic-bezier(.15,1.5,.4,1) both}
+.arena-result-stamp.win{color:#ffe08a;background:#372a48ef}.arena-result-stamp.loss{color:#ff8997;background:#351d35ef}
+@keyframes result-stamp{from{opacity:0;transform:translate(-50%,-50%) scale(2.2) rotate(-18deg)}to{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-8deg)}}
+.arena-victory{animation:victory-glow 1.5s ease-in-out infinite alternate}.arena-defeat{filter:saturate(.55);animation:defeat-shake .5s ease both}
+@keyframes victory-glow{from{box-shadow:0 0 0 #ffc56d00}to{box-shadow:0 0 38px #ffc56d55}}
+@keyframes defeat-shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.pokemon-result.loss{background:#ff7d8918;border-color:#ff7d8955;color:#ff9aa5}.pokemon-result.win{animation:result-stamp .55s ease both}
+.pokemon-stats{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:560px){.pokemon-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
