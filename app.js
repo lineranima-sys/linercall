@@ -16,17 +16,53 @@ function showAuthStatus(msg,error=false){$('auth-status').textContent=msg;$('aut
 function setUserUI(){const name=profile?.displayName||currentUser.displayName||'Jogador';$('side-name').textContent=name;$('side-avatar').textContent=initials(name);$('top-avatar').textContent=initials(name);$('settings-avatar').textContent=initials(name);$('settings-email').textContent=currentUser.email;$('display-name').value=name;}
 function cleanupListeners(){stopListeners.forEach(fn=>fn());stopListeners=[];}
 
+
 async function login(){
-  if(!configured){showAuthStatus('Falta configurar o Firebase. Veja o README do projeto.',true);return;}
-  const code=$('invite-code').value.trim(); if(!code){showAuthStatus('Digite o código de acesso do servidor.',true);return;}
-  $('google-login').disabled=true;showAuthStatus('Validando o código...');
+  if(!configured){
+    showAuthStatus('Falta configurar o Firebase. Veja o README do projeto.',true);
+    return;
+  }
+
+  const code = $('invite-code').value.trim();
+
+  if(!code){
+    showAuthStatus('Digite o código de acesso do servidor.',true);
+    return;
+  }
+
+  $('google-login').disabled = true;
+  showAuthStatus('Validando o código...');
+
   try{
-    const validate= httpsCallable(functions,'validateInviteCode');
-    await validate({code});
+    const response = await fetch('/api/validateInviteCode', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code })
+    });
+
+    const data = await response.json();
+
+    if(!response.ok){
+      throw new Error(data.error || 'Código de acesso inválido.');
+    }
+
     showAuthStatus('Código válido. Abrindo o Google...');
-    const result=await signInWithPopup(auth,provider);
-    if(!result.user.email?.toLowerCase().endsWith('@gmail.com')){await signOut(auth);throw new Error('Use uma conta @gmail.com para entrar.');}
-  }catch(error){showAuthStatus(error.message||'Não foi possível entrar.',true);}finally{$('google-login').disabled=false;}
+
+    const result = await signInWithPopup(auth,provider);
+
+    if(!result.user.email?.toLowerCase().endsWith('@gmail.com')){
+      await signOut(auth);
+      throw new Error('Use uma conta @gmail.com para entrar.');
+    }
+
+  }catch(error){
+    console.error(error);
+    showAuthStatus(error.message || 'Não foi possível entrar.',true);
+  }finally{
+    $('google-login').disabled = false;
+  }
 }
 
 async function startApp(user){
