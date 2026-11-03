@@ -463,9 +463,13 @@ function listenChat() {
           const m = d.data();
           const date = m.createdAt?.toDate?.();
 
+          const ownAvatar = m.uid === currentUser?.uid ? shopState?.avatarData : m.avatarData;
+          const avatarStyle = ownAvatar
+            ? ` style="background-image:url('${ownAvatar}');background-size:cover;background-position:center;color:transparent"`
+            : '';
           return `
             <div class="message">
-              <div class="avatar">${safeText(initials(m.displayName))}</div>
+              <div class="avatar chat-message-avatar"${avatarStyle}>${ownAvatar ? '' : safeText(initials(m.displayName))}</div>
               <div class="message-body">
                 <div class="message-meta">
                   <b>${safeText(m.displayName || 'Jogador')}</b>
@@ -900,8 +904,9 @@ function switchPokemonInBattle(index) {
   setTimeout(pokemonEnemyTurn, 500);
 }
 
-function finishPokemonBattle(won) {
-  const b = pokemonArena.battle;
+async function finishPokemonBattle(won) {
+  const b = pokemonArena?.battle;
+  if (!b || b.finished) return;
   b.finished = true;
   const opponent = b.enemy.map(p => p.name).join(', ');
   if (won) {
@@ -912,6 +917,25 @@ function finishPokemonBattle(won) {
   pokemonArena.history = pokemonArena.history.slice(0, 20);
   savePokemonArena();
   renderPokemonBattle();
+
+  // Registra o resultado semanal no perfil Firestore para alimentar o ranking.
+  if (currentUser && db) {
+    const weekKey = currentIsoWeekKey();
+    const previous = profile?.weekKey === weekKey ? profile : {};
+    const update = {
+      weekKey,
+      weeklyWins: (Number(previous.weeklyWins) || 0) + (won ? 1 : 0),
+      weeklyLosses: (Number(previous.weeklyLosses) || 0) + (won ? 0 : 1)
+    };
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), update);
+      profile = { ...profile, ...update };
+      toast(won ? 'Vitória registrada no ranking semanal!' : 'Derrota registrada. Continue tentando!');
+    } catch (error) {
+      console.error('Não foi possível registrar resultado semanal:', error);
+      toast('A batalha foi salva, mas o ranking recusou o registro.');
+    }
+  }
 }
 
 function renderPokemonBattle() {
