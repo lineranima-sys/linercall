@@ -956,7 +956,7 @@ function renderShop() {
  <div class="shop-wallet panel"><span>SUAS MOEDAS</span><b>🪙 ${pokemonArena.coins}</b></div>
  <div class="shop-grid">
   <article class="shop-item panel"><div class="shop-item-art shop-avatar-art">🖼️</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Foto de perfil</h3><p>Compre uma alteração e ajuste o enquadramento da imagem antes de salvar.</p><b class="shop-price">🪙 100 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="avatar">Comprar alteração</button><input id="shop-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div></article>
-  <article class="shop-item panel"><div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle||0}">✦ LINERCALL'S ✦</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Banner de perfil</h3><p>Você pode trocar o banner uma vez por compra. Cada nova alteração custa moedas novamente.</p><b class="shop-price">🪙 200 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="banner">${shopState.bannerCredits>0?'Alterar banner · 1 crédito':'Comprar alteração'}</button></div></article>
+  <article class="shop-item panel"><div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle||0}">✦ LINERCALL'S ✦</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Banner de perfil</h3><p>Você pode trocar o banner uma vez por compra. Cada nova alteração custa moedas novamente.</p><b class="shop-price">🪙 200 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="banner">${shopState.bannerCredits>0?'Escolher banner · crédito disponível':'Comprar alteração'}</button><div class="banner-style-options"><button data-banner-style="1" ${shopState.bannerCredits>0?'':'disabled'}>Aurora</button><button data-banner-style="2" ${shopState.bannerCredits>0?'':'disabled'}>Nebulosa</button><button data-banner-style="3" ${shopState.bannerCredits>0?'':'disabled'}>Vulcão</button></div></div></article>
  </div><p class="shop-notice">Protótipo local: moedas e cosméticos ficam neste navegador e ainda não sincronizam entre dispositivos.</p>
  <div id="avatar-cropper" class="cropper-modal hidden"><div class="cropper-card"><div class="panel-head"><h3>Enquadre sua foto</h3><button class="icon-btn" data-crop-cancel>✕</button></div><div class="cropper-window"><img id="avatar-crop-image" alt="Prévia da foto"></div><label>Zoom <input id="avatar-crop-zoom" type="range" min="1" max="3" step=".05" value="1"></label><label>Horizontal <input id="avatar-crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical <input id="avatar-crop-y" type="range" min="0" max="100" value="50"></label><div class="cropper-actions"><button class="btn" data-crop-cancel>Cancelar</button><button class="btn btn-primary" data-crop-save>Salvar foto</button></div></div></div>`;
  applyShopCosmetics();
@@ -1143,7 +1143,7 @@ function showDice() {
       <div id="dice-result" style="font-size:75px;margin:20px;">⚄</div>
       <h2 id="dice-number">?</h2>
       <p>Role o dado de 20 lados!</p>
-      <button id="roll-dice" class="btn btn-primary">Rolar dado</button>
+      <button id="roll-dice" class="btn btn-primary">Rolar dado</button><button class="btn" data-minigame-back>← Voltar aos minigames</button>
     </div>
   `;
 
