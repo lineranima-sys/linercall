@@ -251,3 +251,23 @@
 .pokemon-mode-status{font-size:9px;font-weight:700;letter-spacing:.8px;color:var(--green);margin-top:3px}
 .pokemon-mode-card.unavailable .pokemon-mode-status{color:var(--gold)}
 @media(max-width:600px){.pokemon-mode-select{grid-template-columns:1fr}}
+
+/* LOJA — cosméticos locais */
+.shop-wallet{display:flex;align-items:center;gap:14px;padding:17px 20px;margin-bottom:16px}
+.shop-wallet>span{font-size:9px;letter-spacing:1px;color:var(--muted);font-weight:700}
+.shop-wallet>b{font-size:19px;color:var(--gold)}
+.shop-wallet>small{margin-left:auto;font-size:10px;color:var(--muted)}
+.shop-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.shop-item{overflow:hidden;min-width:0}
+.shop-item-art{height:160px;display:grid;place-items:center;font-size:54px;background:linear-gradient(135deg,#1b3658,#182344)}
+.shop-banner-art{font-family:'Press Start 2P';font-size:15px;color:#d5eaff;letter-spacing:1px}
+.shop-banner-art[data-style="1"]{background:linear-gradient(125deg,#153f48,#247d7b 48%,#192b50);color:#c5fff0}
+.shop-item-info{padding:19px}
+.shop-item-info h3{font-size:16px;margin:8px 0}
+.shop-item-info p{font-size:11px;line-height:1.6;color:var(--muted);min-height:52px}
+.shop-price{display:block;color:var(--gold);font-size:12px;margin:13px 0}
+.shop-item-info .btn{width:100%}
+.shop-item-info .btn:disabled{opacity:.45;cursor:not-allowed}
+.shop-notice{font-size:10px;line-height:1.6;color:var(--muted);margin-top:15px}
+#ranking-period{display:block;margin-top:8px;color:var(--muted);font-size:9px;letter-spacing:.7px}
+@media(max-width:650px){.shop-grid{grid-template-columns:1fr}.shop-wallet{align-items:flex-start;flex-wrap:wrap}.shop-wallet>small{width:100%;margin-left:0}}
