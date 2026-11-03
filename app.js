@@ -269,6 +269,7 @@ async function startApp(user) {
   switchView('welcome');
 
   setUserUI();
+  if(localStorage.getItem('linercall-sidebar-collapsed')==='1')$('app-shell')?.classList.add('sidebar-collapsed');
 
   listenChat();
   listenFriends();
@@ -428,7 +429,17 @@ async function answerFriendRequest(requestId,accept){
       await setDoc(doc(db,'friendships',friendPairId(...uids)),{uids,names,requestId,createdAt:serverTimestamp()});
     }
     await updateDoc(ref,{status:accept?'accepted':'rejected'});
-    toast(accept?'Amizade adicionada!':'Pedido recusado.');
+    if(accept){
+      const rewardKey='linercall-friend-reward-'+friendPairId(r.fromUid,r.toUid);
+      if(!localStorage.getItem(rewardKey)){
+        pokemonArena=pokemonArena||loadPokemonArena();
+        pokemonArena.coins=(Number(pokemonArena.coins)||0)+10;
+        savePokemonArena();
+        localStorage.setItem(rewardKey,'1');
+        renderPokemonArena();renderShop();
+        toast('Amizade adicionada! +10 LCoins');
+      } else toast('Amizade adicionada!');
+    } else toast('Pedido recusado.');
   }catch(e){console.error(e);toast('Não foi possível responder ao pedido.');}
 }
 function openDirectMessage(uid,name){
@@ -860,6 +871,7 @@ function showMiniGamePage(page) {
   if (page === 'pokemon') renderPokemonArena();
   if (page === 'dice') showDice();
   if (page === 'reaction') showReaction();
+  if (page === 'tetris') showTetris();
 }
 function backToMiniGames() {
   miniGamePage = 'home';
@@ -867,6 +879,7 @@ function backToMiniGames() {
   $('minigame-tabs')?.classList.remove('hidden');
   $('pokemon-arena-content')?.classList.remove('hidden');
   $('game-stage')?.classList.add('hidden');
+  stopTetris();
 }
 function renderPokemonArena() {
   const root = $('pokemon-arena-content');
@@ -879,7 +892,7 @@ function renderPokemonArena() {
     </button>`;
   }).join('');
   const teamMarkup = team.map(p => `<div class="pokemon-team-card"><img src="${pokemonArt(p)}" alt=""><div><b>${p.name}</b><small>${p.type} · ATQ ${p.atk} · DEF ${p.def}</small></div><button class="pokemon-remove" data-pokemon-remove="${p.id}" ${pokemonArena.battle ? 'disabled' : ''}>×</button></div>`).join('');
-  const history = pokemonArena.history.slice(0,5).map(h=>`<div class="pokemon-history-row"><span>${h.win?'🏆':'⚔️'}</span><b>${safeText(h.opponent)}</b><small>${h.win?'+50 moedas':'Derrota'}</small></div>`).join('');
+  const history = pokemonArena.history.slice(0,5).map(h=>`<div class="pokemon-history-row"><span>${h.win?'🏆':'⚔️'}</span><b>${safeText(h.opponent)}</b><small>${h.win?'+21 moedas':'Derrota'}</small></div>`).join('');
   root.innerHTML = `
     <div class="minigame-subhead"><button class="btn pokemon-back" data-minigame-back>← Voltar aos minigames</button><div class="pokemon-wallet">🪙 <b>${pokemonArena.coins}</b> moedas</div></div>
     <div class="pokemon-topline"><div><span class="eyebrow">TREINADOR</span><h2>${safeText(profile?.displayName || 'Pokémon')}</h2><p>Monte sua equipe e entre na arena.</p></div><span class="pixel-badge">POKÉMON ARENA</span></div>
@@ -902,8 +915,8 @@ function pokemonTypeMultiplier(moveType, targetType) {
 function createBattlePokemon(id) {
   const base = pokemonById(id);
   const isEnemy = ['gengar','venusaur','lucario','snorlax','charizard','blastoise'].includes(id);
-  const hp = isEnemy ? Math.round(base.hp * 1.3) : base.hp;
-  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.2) : base.atk, def: isEnemy ? Math.round(base.def * 1.12) : base.def, hpNow: hp };
+  const hp = isEnemy ? Math.round(base.hp * 1.5) : base.hp;
+  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.35) : base.atk, def: isEnemy ? Math.round(base.def * 1.2) : base.def, hpNow: hp };
 }
 
 function startPokemonBattle() {
@@ -1001,10 +1014,10 @@ async function finishPokemonBattle(won) {
   const opponent = b.enemy.map(p => p.name).join(', ');
   pokemonArena.battles = (Number(pokemonArena.battles) || 0) + 1;
   if (won) {
-    pokemonArena.coins += 25;
+    pokemonArena.coins += 21;
     pokemonArena.wins = (Number(pokemonArena.wins) || 0) + 1;
   } else {
-    pokemonArena.coins += 25;
+    pokemonArena.coins += 21;
     pokemonArena.losses = (Number(pokemonArena.losses) || 0) + 1;
   }
   b.result = won ? 'win' : 'loss';
@@ -1047,7 +1060,7 @@ function renderPokemonBattle() {
       ${b.finished ? `<div class="arena-result-stamp ${b.result}">${b.result === 'win' ? 'VITÓRIA!' : 'DERROTA'}</div>` : ''}
     </div>
     ${b.faintNotice && !b.finished ? `<div class="pokemon-faint-notice">${safeText(b.faintNotice)}</div>` : ''}
-    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +25 moedas.':'💤 Seus Pokémon foram derrotados. +25 moedas pela batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +21 moedas.':'💤 Seus Pokémon foram derrotados. +21 moedas pela batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
       <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
       <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
     <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
@@ -1308,6 +1321,19 @@ function showDice() {
     $('dice-result').textContent = '🎲';
   });
 }
+
+
+let tetrisTimer=null,tetrisBoard=[],tetrisPiece=null,tetrisScore=0,tetrisOver=false;
+const TETRIS_SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]]];
+function stopTetris(){if(tetrisTimer)clearInterval(tetrisTimer);tetrisTimer=null;document.removeEventListener('keydown',tetrisKeyHandler);}
+function newTetrisPiece(){const shape=TETRIS_SHAPES[Math.floor(Math.random()*TETRIS_SHAPES.length)].map(row=>row.slice());return {shape,x:Math.floor((10-shape[0].length)/2),y:0};}
+function tetrisCollides(piece,x=piece.x,y=piece.y,shape=piece.shape){return shape.some((row,dy)=>row.some((v,dx)=>v&&(x+dx<0||x+dx>=10||y+dy>=20||(y+dy>=0&&tetrisBoard[y+dy][x+dx]))));}
+function drawTetris(){const root=$('game-content');if(!root)return;const cells=tetrisBoard.map(row=>row.slice());if(tetrisPiece) tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0&&tetrisPiece.y+dy<20)cells[tetrisPiece.y+dy][tetrisPiece.x+dx]=2;}));root.querySelector('#tetris-grid').innerHTML=cells.flat().map(v=>'<i class="tetris-cell '+(v===2?'falling':v===1?'filled':'')+'"></i>').join('');root.querySelector('#tetris-score').textContent=tetrisScore;}
+function lockTetris(){tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0)tetrisBoard[tetrisPiece.y+dy][tetrisPiece.x+dx]=1;}));let cleared=0;tetrisBoard=tetrisBoard.filter(row=>{if(row.every(Boolean)){cleared++;return false;}return true;});while(tetrisBoard.length<20)tetrisBoard.unshift(Array(10).fill(0));tetrisScore+=cleared*[0,100,300,500,800][cleared];tetrisPiece=newTetrisPiece();if(tetrisCollides(tetrisPiece)){tetrisOver=true;stopTetris();$('game-content').insertAdjacentHTML('beforeend','<p class="tetris-over">Fim de jogo · Pontuação: '+tetrisScore+'</p><button class="btn btn-primary" id="tetris-restart">Jogar novamente</button>');}}
+function moveTetris(dx,dy){if(!tetrisPiece||tetrisOver)return;if(!tetrisCollides(tetrisPiece,tetrisPiece.x+dx,tetrisPiece.y+dy)){tetrisPiece.x+=dx;tetrisPiece.y+=dy;}else if(dy>0)lockTetris();drawTetris();}
+function rotateTetris(){if(!tetrisPiece||tetrisOver)return;const shape=tetrisPiece.shape[0].map((_,i)=>tetrisPiece.shape.map(row=>row[i]).reverse());if(!tetrisCollides(tetrisPiece,tetrisPiece.x,tetrisPiece.y,shape))tetrisPiece.shape=shape;drawTetris();}
+function tetrisKeyHandler(e){if(!['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key))return;e.preventDefault();if(e.key==='ArrowLeft')moveTetris(-1,0);else if(e.key==='ArrowRight')moveTetris(1,0);else if(e.key==='ArrowDown')moveTetris(0,1);else if(e.key==='ArrowUp')rotateTetris();else if(e.key===' ')while(!tetrisCollides(tetrisPiece,tetrisPiece.x,tetrisPiece.y+1))tetrisPiece.y++;if(e.key===' ')lockTetris();drawTetris();}
+function showTetris(){stopTetris();tetrisBoard=Array.from({length:20},()=>Array(10).fill(0));tetrisPiece=newTetrisPiece();tetrisScore=0;tetrisOver=false;$('game-stage').classList.remove('hidden');$('game-title').textContent='Tetris';$('game-content').innerHTML='<div class="tetris-wrap"><div class="tetris-info">Pontos: <b id="tetris-score">0</b><p>← → mover · ↑ girar · ↓ descer · Espaço: queda</p></div><div id="tetris-grid" class="tetris-grid" role="grid"></div><div class="tetris-mobile"><button data-tetris="left">←</button><button data-tetris="rotate">↻</button><button data-tetris="right">→</button><button data-tetris="down">↓</button></div><button class="btn" data-minigame-back>Voltar aos minigames</button></div>';document.addEventListener('keydown',tetrisKeyHandler);$('game-content').addEventListener('click',e=>{const b=e.target.closest('[data-tetris]');if(!b)return;({left:()=>moveTetris(-1,0),right:()=>moveTetris(1,0),down:()=>moveTetris(0,1),rotate:rotateTetris})[b.dataset.tetris]?.();});$('game-content').addEventListener('click',e=>{if(e.target.id==='tetris-restart')showTetris();});drawTetris();tetrisTimer=setInterval(()=>moveTetris(0,1),650);}
 
 // ========================================
 // MINIGAME: REFLEXO
@@ -1618,6 +1644,8 @@ function setupEvents() {
   $('play-dice')?.addEventListener('click', () => showMiniGamePage('dice'));
   $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
   $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
+  $('play-tetris')?.addEventListener('click', () => showMiniGamePage('tetris'));
+  $('sidebar-collapse')?.addEventListener('click',()=>{document.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed');localStorage.setItem('linercall-sidebar-collapsed',document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')?'1':'0');});
   document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 
   // Delegação também atende ao botão LightyFlix, criado dinamicamente.
