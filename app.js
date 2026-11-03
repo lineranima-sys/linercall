@@ -988,6 +988,7 @@ let pendingAvatarImage = null;
 function buyShopItem(item) {
  if(!pokemonArena||!shopState)return;
  const avatar=item==='avatar', price=avatar?100:200;
+ if(!avatar && (shopState.bannerCredits||0)>0){toast('Escolha um dos estilos de banner abaixo.');return;}
  if(pokemonArena.coins<price)return toast('Você não tem moedas suficientes.');
  pokemonArena.coins-=price;
  if(avatar){shopState.avatarCredits=(shopState.avatarCredits||0)+1;savePokemonArena();saveShopState();renderShop();$('shop-avatar-file')?.click();toast('Crédito comprado. Escolha a imagem.');}
