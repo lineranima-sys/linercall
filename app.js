@@ -382,10 +382,11 @@ let stopFriendListeners = [];
 function friendPairId(a,b){return [a,b].sort().join('_');}
 function listenFriends(){
   stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
-  const rq=query(collection(db,'friendRequests'),where('toUid','==',currentUser.uid),where('status','==','pending'));
+  const rq=query(collection(db,'friendRequests'),where('toUid','==',currentUser.uid));
   stopFriendListeners.push(onSnapshot(rq,snap=>{
     const box=$('friend-requests'); if(!box)return;
-    box.innerHTML=snap.empty?'<p class="muted">Nenhum pedido recebido.</p>':snap.docs.map(d=>{
+    const pending=snap.docs.filter(d=>d.data().status==='pending');
+    box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
       const r=d.data();return '<div class="friend-row"><b>'+safeText(r.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
     }).join('');
   },e=>{console.error(e);toast('Não foi possível carregar pedidos.');}));
