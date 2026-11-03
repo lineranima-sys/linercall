@@ -463,7 +463,7 @@ function listenChat() {
           const m = d.data();
           const date = m.createdAt?.toDate?.();
 
-          const ownAvatar = m.uid === currentUser?.uid ? shopState?.avatarData : m.avatarData;
+          const ownAvatar = m.uid === currentUser?.uid ? (shopState?.avatarData || currentUser?.photoURL) : m.avatarData;
           const avatarStyle = ownAvatar
             ? ` style="background-image:url('${ownAvatar}');background-size:cover;background-position:center;color:transparent"`
             : '';
