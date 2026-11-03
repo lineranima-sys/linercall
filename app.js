@@ -1001,7 +1001,12 @@ function createShopPage() {
     button.innerHTML = '<span>🛍</span> Loja <i></i>';
     const label = document.createElement('div'); label.className = 'nav-label'; label.textContent = 'PERSONALIZAR';
     const bottom = sidebar.querySelector('.sidebar-bottom');
-    if (bottom) { sidebar.insertBefore(label, bottom); sidebar.insertBefore(button, bottom); }
+    if (bottom) {
+      sidebar.insertBefore(label, bottom);
+      sidebar.insertBefore(button, bottom);
+      const homeButton = sidebar.querySelector('.nav-item[data-view="welcome"]');
+      if (homeButton) sidebar.insertBefore(homeButton, bottom);
+    }
   }
   if (!$('view-shop')) {
     const section = document.createElement('section');
