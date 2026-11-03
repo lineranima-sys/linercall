@@ -132,9 +132,19 @@ async function login() {
   const button = $('google-login');
   if (button) button.disabled = true;
 
-  showAuthStatus('Validando o código de acesso...');
-
   try {
+    // Abra o popup imediatamente no clique do usuário.
+    // Esperar uma chamada fetch antes disso pode fazer o navegador bloquear a janela.
+    showAuthStatus('Abrindo o Google...');
+    const result = await signInWithPopup(auth, provider);
+
+    if (!result.user.email?.toLowerCase().endsWith('@gmail.com')) {
+      await signOut(auth);
+      throw new Error('Entre com uma conta @gmail.com.');
+    }
+
+    showAuthStatus('Google conectado! Validando o código de acesso...');
+
     const response = await fetch('/api/validateInviteCode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -142,25 +152,19 @@ async function login() {
     });
 
     let data = {};
-
     try {
       data = await response.json();
     } catch {
+      await signOut(auth);
       throw new Error('O servidor retornou uma resposta inválida.');
     }
 
     if (!response.ok) {
+      await signOut(auth);
       throw new Error(data.error || 'Código de acesso inválido.');
     }
 
-    showAuthStatus('Código válido! Abrindo o Google...');
-
-    const result = await signInWithPopup(auth, provider);
-
-    if (!result.user.email?.toLowerCase().endsWith('@gmail.com')) {
-      await signOut(auth);
-      throw new Error('Entre com uma conta @gmail.com.');
-    }
+    showAuthStatus('Acesso autorizado! Carregando sua comunidade...');
 
   } catch (error) {
     console.error('Erro no login:', error);
