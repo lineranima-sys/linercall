@@ -271,6 +271,7 @@ async function startApp(user) {
   setUserUI();
 
   listenChat();
+  listenFriends();
   listenUsers();
   listenRanking();
   listenChallenges();
@@ -374,6 +375,82 @@ function buildSidebarNavigation() {
   sidebar.dataset.groupedNavigation = 'true';
 }
 
+
+/* AMIGOS E MENSAGENS PRIVADAS */
+let activeFriendId = null;
+let stopFriendListeners = [];
+function friendPairId(a,b){return [a,b].sort().join('_');}
+function listenFriends(){
+  stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
+  const rq=query(collection(db,'friendRequests'),where('toUid','==',currentUser.uid),where('status','==','pending'));
+  stopFriendListeners.push(onSnapshot(rq,snap=>{
+    const box=$('friend-requests'); if(!box)return;
+    box.innerHTML=snap.empty?'<p class="muted">Nenhum pedido recebido.</p>':snap.docs.map(d=>{
+      const r=d.data();return '<div class="friend-row"><b>'+safeText(r.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
+    }).join('');
+  },e=>{console.error(e);toast('Não foi possível carregar pedidos.');}));
+  const fq=query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid));
+  stopFriendListeners.push(onSnapshot(fq,snap=>{
+    const box=$('friends-list');if(!box)return;
+    box.innerHTML=snap.empty?'<p class="muted">Você ainda não adicionou amigos.</p>':snap.docs.map(d=>{
+      const f=d.data(),other=f.uids.find(uid=>uid!==currentUser.uid),name=f.names?.[other]||'Jogador';
+      return '<button class="friend-row friend-open" data-friend-open="'+safeText(other)+'" data-friend-name="'+safeText(name)+'"><span>● '+safeText(name)+'</span><small>Abrir conversa →</small></button>';
+    }).join('');
+  },e=>{console.error(e);toast('Não foi possível carregar amigos.');}));
+}
+async function searchFriend(){
+  const term=$('friend-search-input')?.value.trim(),box=$('friend-search-result');
+  if(!term||term.length<2){box.textContent='Digite o nome de exibição completo (mínimo 2 caracteres).';return;}
+  box.textContent='Buscando...';
+  try{
+    const snap=await getDocs(query(collection(db,'users'),where('displayName','==',term),limit(8)));
+    const matches=snap.docs.filter(d=>d.id!==currentUser.uid);
+    box.innerHTML=matches.length?matches.map(d=>'<div class="friend-row"><b>'+safeText(d.data().displayName||'Jogador')+'</b><button class="btn btn-primary" data-friend-add="'+d.id+'" data-friend-add-name="'+safeText(d.data().displayName||'Jogador')+'">Adicionar</button></div>').join(''):'<p class="muted">Ninguém encontrado com esse nome exato.</p>';
+  }catch(e){console.error(e);box.textContent='Falha na busca. Confira as regras do Firestore.';}
+}
+async function sendFriendRequest(uid,name){
+  if(!uid||uid===currentUser.uid)return;
+  try{
+    const existing=await getDocs(query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid)));
+    if(existing.docs.some(d=>d.data().uids.includes(uid))){toast('Vocês já são amigos.');return;}
+    await addDoc(collection(db,'friendRequests'),{fromUid:currentUser.uid,fromName:profile?.displayName||'Jogador',toUid:uid,toName:name,status:'pending',createdAt:serverTimestamp()});
+    toast('Pedido de amizade enviado!');
+  }catch(e){console.error(e);toast('Não foi possível enviar o pedido.');}
+}
+async function answerFriendRequest(requestId,accept){
+  try{
+    const ref=doc(db,'friendRequests',requestId),snap=await getDoc(ref);
+    if(!snap.exists()||snap.data().toUid!==currentUser.uid||snap.data().status!=='pending')return;
+    const r=snap.data();
+    if(accept){
+      const uids=[r.fromUid,r.toUid].sort(),names={[r.fromUid]:r.fromName,[r.toUid]:r.toName};
+      await setDoc(doc(db,'friendships',friendPairId(...uids)),{uids,names,requestId,createdAt:serverTimestamp()});
+    }
+    await updateDoc(ref,{status:accept?'accepted':'rejected'});
+    toast(accept?'Amizade adicionada!':'Pedido recusado.');
+  }catch(e){console.error(e);toast('Não foi possível responder ao pedido.');}
+}
+function openDirectMessage(uid,name){
+  activeFriendId=uid;$('dm-title').textContent='Conversa com '+name;$('dm-panel').classList.remove('hidden');
+  $('dm-messages').innerHTML='<p class="muted">Carregando mensagens...</p>';
+  if(window.stopDMListener)window.stopDMListener();
+  const path=collection(db,'conversations',friendPairId(currentUser.uid,uid),'messages');
+  window.stopDMListener=onSnapshot(query(path,orderBy('createdAt','asc'),limit(100)),snap=>{
+    $('dm-messages').innerHTML=snap.empty?'<p class="muted">Diga oi! Esta conversa é privada entre vocês.</p>':snap.docs.map(d=>{
+      const m=d.data();return '<div class="dm-bubble '+(m.uid===currentUser.uid?'own':'')+'"><b>'+safeText(m.displayName)+'</b><p>'+safeText(m.text)+'</p></div>';
+    }).join('');
+    $('dm-messages').scrollTop=$('dm-messages').scrollHeight;
+  },e=>{console.error(e);$('dm-messages').textContent='Não foi possível abrir esta conversa.';});
+}
+async function sendDirectMessage(event){
+  event.preventDefault();const input=$('dm-input'),value=input.value.trim();
+  if(!value||!activeFriendId)return;if(value.length>1000){toast('A mensagem é muito longa.');return;}
+  try{
+    await addDoc(collection(db,'conversations',friendPairId(currentUser.uid,activeFriendId),'messages'),{uid:currentUser.uid,displayName:profile?.displayName||'Jogador',text:value,createdAt:serverTimestamp()});
+    input.value='';
+  }catch(e){console.error(e);toast('Mensagem não enviada. Vocês precisam ser amigos.');}
+}
+
 function switchView(name) {
   const target = $('view-' + name);
   if (!target) {
@@ -394,6 +471,7 @@ function switchView(name) {
 
   const labels = {
     chat: 'CHAT GERAL',
+    friends: 'AMIGOS',
     calls: 'SALAS DE VOZ',
     games: 'MINIGAMES',
     arena: 'DESAFIOS',
@@ -405,6 +483,7 @@ function switchView(name) {
 
   const headings = {
     chat: 'Ponto de encontro.',
+    friends: 'Sua galera, suas conversas.',
     calls: 'Sua voz, sua galera.',
     games: 'Hora de jogar.',
     arena: 'Bora competir?',
@@ -1503,6 +1582,8 @@ function setupEvents() {
   $('site-language')?.addEventListener('change', event => { localStorage.setItem(LANGUAGE_KEY,event.target.value); location.reload(); });
   document.querySelector('.brand-lockup')?.addEventListener('click', event => { event.preventDefault(); switchView('welcome'); });
   $('chat-form')?.addEventListener('submit', sendMessage);
+  $('friend-search-form')?.addEventListener('submit', event => { event.preventDefault(); searchFriend(); });
+  $('dm-form')?.addEventListener('submit', sendDirectMessage);
   $('profile-form')?.addEventListener('submit', saveProfile);
   document.addEventListener('change', event => { if (event.target.id === 'shop-avatar-file') handleShopAvatarFile(event); });
   $('logout')?.addEventListener('click', logout);
@@ -1530,6 +1611,10 @@ function setupEvents() {
   });
 
   document.addEventListener('click', event => {
+    const addFriend = event.target.closest('[data-friend-add]'); if(addFriend)sendFriendRequest(addFriend.dataset.friendAdd,addFriend.dataset.friendAddName);
+    const acceptFriend = event.target.closest('[data-friend-accept]'); if(acceptFriend)answerFriendRequest(acceptFriend.dataset.friendAccept,true);
+    const rejectFriend = event.target.closest('[data-friend-reject]'); if(rejectFriend)answerFriendRequest(rejectFriend.dataset.friendReject,false);
+    const openFriend = event.target.closest('[data-friend-open]'); if(openFriend)openDirectMessage(openFriend.dataset.friendOpen,openFriend.dataset.friendName);
     const pick = event.target.closest('[data-pokemon-pick]');
     if (pick) addPokemonToTeam(pick.dataset.pokemonPick);
 
@@ -1615,6 +1700,8 @@ if (configured) {
         currentUser = null;
         profile = null;
         cleanupListeners();
+        stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
+        if(window.stopDMListener)window.stopDMListener();
 
         $('app-shell')?.classList.add('hidden');
         $('auth-screen')?.classList.remove('hidden');
