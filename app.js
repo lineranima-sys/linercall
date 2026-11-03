@@ -463,7 +463,7 @@ function listenChat() {
           const m = d.data();
           const date = m.createdAt?.toDate?.();
 
-          const ownAvatar = m.uid === currentUser?.uid ? (shopState?.avatarData || currentUser?.photoURL) : m.avatarData;
+          const ownAvatar = m.avatarData || (m.uid === currentUser?.uid ? (shopState?.avatarData || currentUser?.photoURL) : '');
           const avatarStyle = ownAvatar
             ? ` style="background-image:url('${ownAvatar}');background-size:cover;background-position:center;color:transparent"`
             : '';
@@ -506,6 +506,7 @@ async function sendMessage(event) {
     await addDoc(collection(db, 'messages'), {
       uid: currentUser.uid,
       displayName: profile.displayName || 'Jogador',
+      avatarData: shopState?.avatarData || currentUser?.photoURL || '',
       text,
       createdAt: serverTimestamp()
     });
@@ -1050,11 +1051,13 @@ function saveCroppedAvatar(){
  ctx.drawImage(img,x,y,w,h);
  shopState.avatarData=canvas.toDataURL('image/jpeg',.88);shopState.avatarZoom=1;shopState.avatarX=50;shopState.avatarY=50;
  shopState.avatarCredits=Math.max(0,(shopState.avatarCredits||0)-1);
- pendingAvatarImage=null;saveShopState();applyShopCosmetics();$('avatar-cropper').classList.add('hidden');renderShop();toast('Foto atualizada!');
+ pendingAvatarImage=null;saveShopState();applyShopCosmetics();$('avatar-cropper').classList.add('hidden');renderShop();
+ updateDoc(doc(db,'users',currentUser.uid),{avatarData:shopState.avatarData}).then(()=>{profile.avatarData=shopState.avatarData;toast('Foto sincronizada com seu perfil!');}).catch(error=>{console.error('Falha ao sincronizar avatar:',error);toast('Foto salva neste navegador, mas não sincronizou.');});
 }
 function saveBannerChoice(style){
  if(!shopState||!(shopState.bannerCredits>0))return toast('Compre uma alteração de banner primeiro.');
- shopState.bannerStyle=style;shopState.bannerCredits--;saveShopState();applyShopCosmetics();renderShop();toast('Banner atualizado!');
+ shopState.bannerStyle=style;shopState.bannerCredits--;saveShopState();applyShopCosmetics();renderShop();
+ updateDoc(doc(db,'users',currentUser.uid),{bannerStyle:style}).then(()=>{profile.bannerStyle=style;toast('Banner sincronizado com seu perfil!');}).catch(error=>{console.error('Falha ao sincronizar banner:',error);toast('Banner salvo localmente, mas não sincronizou.');});
 }
 function createShopPage() {
   const sidebar = document.querySelector('.sidebar');
