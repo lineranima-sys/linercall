@@ -743,11 +743,11 @@ function pokemonStorageKey() {
 function loadPokemonArena() {
   try {
     const saved = JSON.parse(localStorage.getItem(pokemonStorageKey()) || 'null');
-    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) return saved;
+    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { if (saved.coins === 300 && !saved.wins && saved.history.length === 0) saved.coins = 0; return saved; }
   } catch (error) {
     console.warn('Não foi possível carregar o progresso Pokémon:', error);
   }
-  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 300, wins: 0, history: [] };
+  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 0, wins: 0, history: [] };
 }
 
 function savePokemonArena() {
@@ -836,6 +836,7 @@ function startPokemonBattle() {
     playerActive: 0,
     enemyActive: 0,
     log: ['A batalha começou! Escolha um golpe.'],
+    turn: 'player',
     finished: false
   };
   renderPokemonArena();
@@ -849,7 +850,7 @@ function currentBattlePokemon(side) {
 
 function performPokemonMove(moveIndex) {
   const b = pokemonArena?.battle;
-  if (!b || b.finished) return;
+  if (!b || b.finished || b.turn !== 'player') return;
   const attacker = currentBattlePokemon('player');
   const defender = currentBattlePokemon('enemy');
   const move = attacker.moves[moveIndex];
@@ -857,6 +858,7 @@ function performPokemonMove(moveIndex) {
 
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
+  b.turn = 'enemy';
   defender.hpNow = Math.max(0, defender.hpNow - damage);
   b.log.unshift(`${attacker.name} usou ${move.name}! ${damage} de dano.${multiplier > 1 ? ' É super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
 
@@ -874,7 +876,7 @@ function performPokemonMove(moveIndex) {
 
 function pokemonEnemyTurn() {
   const b = pokemonArena?.battle;
-  if (!b || b.finished) return;
+  if (!b || b.finished || b.turn !== 'enemy') return;
   const attacker = currentBattlePokemon('enemy');
   const defender = currentBattlePokemon('player');
   if (!attacker || !defender) return;
@@ -891,14 +893,16 @@ function pokemonEnemyTurn() {
     b.playerActive = next;
     b.log.unshift(`Seu ${defender.name} caiu! ${b.player[next].name} entrou na batalha.`);
   }
+  b.turn = 'player';
   renderPokemonBattle();
 }
 
 function switchPokemonInBattle(index) {
   const b = pokemonArena?.battle;
-  if (!b || b.finished || !b.player[index] || b.player[index].hpNow <= 0 || index === b.playerActive) return;
+  if (!b || b.finished || b.turn !== 'player' || !b.player[index] || b.player[index].hpNow <= 0 || index === b.playerActive) return;
   const old = currentBattlePokemon('player');
   b.playerActive = index;
+  b.turn = 'enemy';
   b.log.unshift(`Você trocou ${old.name} por ${b.player[index].name}.`);
   renderPokemonBattle();
   setTimeout(pokemonEnemyTurn, 500);
@@ -951,8 +955,8 @@ function renderPokemonBattle() {
       <div class="arena-fighter arena-player"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
     </div>
     ${b.finished ? `<div class="pokemon-result">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +50 moedas.':'💤 Seus Pokémon precisam descansar.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
-      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}"><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
-      <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
+      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
+      <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
     <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
 }
 function closePokemonBattle() {
