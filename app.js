@@ -564,8 +564,7 @@ async function sendMessage(event) {
   try {
     await addDoc(collection(db, 'messages'), {
       uid: currentUser.uid,
-      displayName: profile.displayName || 'Jogador',
-      avatarData: shopState?.avatarData || currentUser?.photoURL || '',
+      displayName: profile?.displayName || currentUser.displayName || 'Jogador',
       text,
       createdAt: serverTimestamp()
     });
