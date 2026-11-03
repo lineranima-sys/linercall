@@ -676,7 +676,7 @@ function listenChallenges() {
   }, error => console.warn('Erro nos desafios:', error)));
 }
 
-async async function openMemberProfile(uid, fallbackName) {
+async function openMemberProfile(uid, fallbackName) {
   if (!uid) return;
   let member = { displayName: fallbackName || 'Jogador' };
   try {
