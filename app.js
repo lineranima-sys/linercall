@@ -164,7 +164,21 @@ async function login() {
 
   } catch (error) {
     console.error('Erro no login:', error);
-    showAuthStatus(error.message || 'Não foi possível entrar.', true);
+
+    const messages = {
+      'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.',
+      'auth/popup-closed-by-user': 'A janela do Google foi fechada antes de concluir o login.',
+      'auth/cancelled-popup-request': 'Já existe uma janela de login aberta. Conclua essa janela.',
+      'auth/unauthorized-domain': 'Este domínio ainda não está autorizado no Firebase Authentication.',
+      'auth/operation-not-allowed': 'O login com Google não está ativado no Firebase Authentication.',
+      'auth/network-request-failed': 'Falha de conexão. Confira sua internet e tente novamente.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco antes de tentar novamente.'
+    };
+
+    showAuthStatus(
+      messages[error.code] || error.message || 'Não foi possível entrar.',
+      true
+    );
   } finally {
     if (button) button.disabled = false;
   }
@@ -357,14 +371,19 @@ function createCinemaPage() {
     main.insertBefore(section, footer || null);
   }
 
-  $('cinema-explore')?.addEventListener('click', () => {
-    $('cinema-movies')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
-  });
+  // Atribuir handlers evita duplicá-los quando o catálogo é recarregado.
+  const explore = $('cinema-explore');
+  if (explore) {
+    explore.onclick = () => {
+      $('cinema-movies')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    };
+  }
 
-  $('cinema-close-player')?.addEventListener('click', closeCinemaPlayer);
+  const closePlayer = $('cinema-close-player');
+  if (closePlayer) closePlayer.onclick = closeCinemaPlayer;
 }
 
 function switchView(name) {
@@ -1083,8 +1102,10 @@ function setupEvents() {
   $('play-dice')?.addEventListener('click', showDice);
   $('play-reaction')?.addEventListener('click', showReaction);
 
-  document.querySelectorAll('.nav-item[data-view]').forEach(button => {
-    button.addEventListener('click', () => switchView(button.dataset.view));
+  // Delegação também atende ao botão NetflixLiner, criado dinamicamente.
+  document.addEventListener('click', event => {
+    const navButton = event.target.closest('.nav-item[data-view]');
+    if (navButton) switchView(navButton.dataset.view);
   });
 
   document.querySelectorAll('[data-go]').forEach(button => {
