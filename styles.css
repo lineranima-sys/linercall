@@ -271,3 +271,81 @@
 .shop-notice{font-size:10px;line-height:1.6;color:var(--muted);margin-top:15px}
 #ranking-period{display:block;margin-top:8px;color:var(--muted);font-size:9px;letter-spacing:.7px}
 @media(max-width:650px){.shop-grid{grid-template-columns:1fr}.shop-wallet{align-items:flex-start;flex-wrap:wrap}.shop-wallet>small{width:100%;margin-left:0}}
+
+
+/* =========================================
+   MINIGAMES HUB — NOVA DIREÇÃO VISUAL
+   Paleta: ameixa, coral, âmbar, jade e violeta
+========================================= */
+#view-games{
+  --mg-plum:#24172f;--mg-plum2:#382044;--mg-coral:#ff806b;
+  --mg-amber:#ffc56d;--mg-jade:#7bd6ae;--mg-violet:#b59aff;
+}
+#view-games .section-intro{
+  padding:24px 26px;margin:4px 0 22px;border:1px solid rgba(255,197,109,.18);
+  border-radius:16px;background:
+  radial-gradient(ellipse at 90% 0%,rgba(181,154,255,.18),transparent 42%),
+  linear-gradient(115deg,#2a1b37,#171b30 70%);
+}
+#view-games .section-intro .eyebrow{color:var(--mg-amber)}
+#view-games .section-intro h2{font-size:31px;letter-spacing:-1px}
+#view-games .section-intro p{color:#c4b7ce}
+#view-games .pixel-badge{color:var(--mg-amber);border-color:rgba(255,197,109,.35)}
+#view-games .pokemon-featured{
+  position:relative;overflow:hidden;margin-bottom:24px;padding:22px;
+  border:1px solid rgba(181,154,255,.28);border-radius:17px;
+  background:radial-gradient(ellipse at 100% 0%,rgba(181,154,255,.17),transparent 42%),
+  linear-gradient(145deg,#281b38,#171a2d 68%,#20283a);
+  box-shadow:0 18px 48px rgba(0,0,0,.2);
+}
+#view-games .pokemon-featured:before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--mg-violet),var(--mg-coral),var(--mg-amber));
+}
+#view-games .pokemon-featured-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+#view-games .pokemon-featured-heading h3{font-size:24px;letter-spacing:-.7px;margin:7px 0 5px}
+#view-games .pokemon-featured-heading p{margin:0;color:#bcaec9;font-size:12px}
+#view-games .pokemon-featured-heading .eyebrow{color:var(--mg-violet)}
+#view-games .featured-mark{flex:none;padding:8px 11px;border:1px solid rgba(255,197,109,.35);border-radius:30px;color:var(--mg-amber);font-size:9px;font-weight:700;letter-spacing:1px;background:rgba(255,197,109,.08)}
+#view-games .pokemon-featured-content{position:relative;z-index:1}
+#view-games .pokemon-topline h3{color:#fff}
+#view-games .pokemon-wallet{background:rgba(255,197,109,.1);border-color:rgba(255,197,109,.3);color:var(--mg-amber)}
+#view-games .pokemon-panel{background:rgba(18,20,37,.82);border-color:rgba(181,154,255,.18)}
+#view-games .pokemon-panel-title h3 small,
+#view-games .pokemon-rule b{color:var(--mg-violet)}
+#view-games .pokemon-choice{background:#211c32;border-color:rgba(181,154,255,.17)}
+#view-games .pokemon-choice:hover:not(:disabled){border-color:var(--mg-coral)}
+#view-games .pokemon-choice.selected{border-color:var(--mg-jade);background:rgba(123,214,174,.1)}
+#view-games .pokemon-pick-label{color:var(--mg-coral)}
+#view-games .pokemon-stats>div{background:#211c32}
+#view-games .pokemon-stats b{color:var(--mg-amber)}
+#view-games .pokemon-battle-stage{background:linear-gradient(145deg,#34213f,#1a1c30);border-color:rgba(255,128,107,.35)}
+#view-games .pokemon-battle-log>b{color:var(--mg-amber)}
+#view-games .pokemon-move-btn,#view-games .pokemon-switches button{
+  background:rgba(181,154,255,.09);border-color:rgba(181,154,255,.25)
+}
+#view-games .pokemon-move-btn:hover,#view-games .pokemon-switches button:hover:not(:disabled){
+  background:rgba(181,154,255,.17);border-color:var(--mg-violet)
+}
+#view-games .pokemon-result{background:rgba(123,214,174,.1);border-color:rgba(123,214,174,.28);color:var(--mg-jade)}
+#view-games .pokemon-mode-card.active{border-color:rgba(123,214,174,.55);background:linear-gradient(145deg,rgba(123,214,174,.1),#171a2d)}
+#view-games .pokemon-mode-status{color:var(--mg-jade)}
+#view-games .pokemon-mode-card.unavailable .pokemon-mode-status{color:var(--mg-amber)}
+#view-games .game-grid{gap:18px}
+#view-games .game-card{border:1px solid rgba(255,255,255,.09);border-radius:15px;background:linear-gradient(155deg,#211c32,#151a2b);transition:transform .2s,border-color .2s,box-shadow .2s}
+#view-games .game-card:hover{transform:translateY(-5px);border-color:rgba(255,197,109,.36);box-shadow:0 16px 35px rgba(0,0,0,.24)}
+#view-games .game-art{height:165px;position:relative;overflow:hidden}
+#view-games .art-dice{color:#ffe0a5;background:radial-gradient(circle at 50% 45%,rgba(255,197,109,.27),transparent 42%),linear-gradient(135deg,#68402f,#2b2034)}
+#view-games .art-reaction{color:#d5c4ff;background:radial-gradient(circle at 50% 45%,rgba(181,154,255,.3),transparent 44%),linear-gradient(135deg,#45305d,#211d39)}
+#view-games .game-info .eyebrow{color:var(--mg-coral)}
+#view-games .game-info h3{font-size:19px}
+#view-games .game-info p{color:#b8aec5;min-height:38px}
+#view-games .btn-primary{background:linear-gradient(110deg,#ff9b79,#ffc56d);color:#321c2a;box-shadow:0 5px 16px rgba(255,128,107,.14)}
+#view-games .game-stage{border-color:rgba(181,154,255,.25);background:linear-gradient(145deg,#241a34,#151b2e)}
+#view-games .game-result{color:var(--mg-jade)}
+#view-games .game-action{background:linear-gradient(110deg,#a98bff,#ff9b79);color:#24172f}
+@media(max-width:650px){
+  #view-games .pokemon-featured{padding:16px}
+  #view-games .pokemon-featured-heading{flex-direction:column}
+  #view-games .section-intro{padding:19px}
+}
