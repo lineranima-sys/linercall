@@ -691,7 +691,7 @@ const POKEMON_CATALOG = [
   { id: 'venusaur', name: 'Venusaur', type: 'Planta', emoji: '🌿', hp: 118, atk: 21, def: 19, moves: [{ name: 'Chicote de Vinha', power: 22, type: 'Planta' }, { name: 'Folha Navalha', power: 19, type: 'Planta' }] },
   { id: 'gengar', name: 'Gengar', type: 'Fantasma', emoji: '👻', hp: 88, atk: 29, def: 12, moves: [{ name: 'Bola Sombria', power: 27, type: 'Fantasma' }, { name: 'Lodo', power: 20, type: 'Veneno' }] },
   { id: 'lucario', name: 'Lucario', type: 'Lutador', emoji: '🥊', hp: 104, atk: 25, def: 17, moves: [{ name: 'Esfera de Aura', power: 26, type: 'Lutador' }, { name: 'Metal Claw', power: 18, type: 'Aço' }] },
-  { id: 'eevee', name: 'Eevee', type: 'Normal', emoji: '🦊', hp: 100, atk: 19, def: 17, moves: [{ name: ' investida', power: 18, type: 'Normal' }, { name: 'Ataque Rápido', power: 16, type: 'Normal' }] },
+  { id: 'eevee', name: 'Eevee', type: 'Normal', emoji: '🦊', hp: 100, atk: 19, def: 17, moves: [{ name: 'Investida', power: 18, type: 'Normal' }, { name: 'Ataque Rápido', power: 16, type: 'Normal' }] },
   { id: 'snorlax', name: 'Snorlax', type: 'Normal', emoji: '😴', hp: 145, atk: 22, def: 23, moves: [{ name: 'Investida', power: 22, type: 'Normal' }, { name: 'Pancada', power: 18, type: 'Normal' }] }
 ];
 
