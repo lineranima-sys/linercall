@@ -413,3 +413,12 @@
 .member-row.profile-open-trigger:hover{background:rgba(181,154,255,.09)}
 .member-profile-identity{display:flex;align-items:center;gap:14px;margin:12px 0 18px}
 .member-profile-identity h2{margin:0 0 4px}.member-profile-identity small{color:#bcb7ca}
+
+/* LinerCall bugfix: legibilidade */
+.arena-spike-band{background:repeating-linear-gradient(90deg,#f4c36c 0 13px,#2b203a 13px 25px)}
+.arena-spike-band span{position:relative;z-index:2;padding:2px 14px;background:#f4c36c;border:2px solid #2b203a;border-radius:5px}
+.pokemon-move-btn:disabled,.pokemon-switches button:disabled{opacity:.38;cursor:not-allowed}
+.pokemon-back,.minigame-subhead .btn{background:#51436e!important;color:#fff!important;border-color:#a18acb!important;opacity:1!important}
+.member-row.profile-open-trigger{color:#f7f4ff!important;background:rgba(28,24,44,.72);border-radius:10px;padding:9px 10px;margin:4px 0}
+.member-row.profile-open-trigger b{color:#fff!important}.member-row.profile-open-trigger small{color:#bdb3d2!important}
+.member-row .member-avatar{flex:0 0 34px;background-size:cover;background-position:center}
