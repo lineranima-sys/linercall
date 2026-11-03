@@ -60,7 +60,7 @@ const UI_TRANSLATIONS = {
 'Boas-Vindas ao':'Welcome to','Use o menu lateral para navegar':'Use the sidebar to navigate','Ponto de encontro.':'Your community hub.','Sua voz, sua galera.':'Your voice, your people.','Hora de jogar.':'Time to play.','Quem está no topo?':'Who is at the top?','Seu espaço.':'Your space.','Seu estilo, suas regras.':'Your style, your rules.','Seu cinema começa aqui.':'Your cinema starts here.',
 'Configurações.':'Settings.','SUA CONTA':'YOUR ACCOUNT','Personalize como você aparece na comunidade.':'Customize how you appear in the community.','Nome de exibição':'Display name','Como a galera vai te chamar?':'What should people call you?','Salvar perfil →':'Save profile →',
 'Catálogo completo':'Full catalog','Minha lista':'My list','Explorar catálogo →':'Explore catalog →','Seu próximo filme começa aqui.':'Your next movie starts here.','Descubra, explore e monte sua lista.':'Discover, explore, and build your list.',
-'BEM-VINDO AO':'WELCOME TO','Filmes e séries para descobrir. Reprodução disponível em breve.':'Movies and shows to discover. Playback coming soon.','Em destaque':'Featured','Filmes':'Movies','Séries':'TV Shows','Tudo':'All','SUA COLEÇÃO':'YOUR COLLECTION','BIBLIOTECA LIGHTYFLIX':'LIGHTYFLIX LIBRARY','Todos os filmes e séries em um só lugar.':'All movies and shows in one place.','Sua lista está vazia. Adicione conteúdos para encontrá-los aqui.':'Your list is empty. Add titles to find them here.',
+'BEM-VINDO AO':'WELCOME TO','Filmes e séries para descobrir. Reprodução disponível em breve.':'Movies and shows to discover. Playback coming soon.','Em destaque':'Featured','Filmes':'Movies','Séries':'TV Shows','Tudo':'All','SUA COLEÇÃO':'YOUR COLLECTION','BIBLIOTECA LIGHTYFLIX':'LIGHTYFLIX LIBRARY','Temporadas e episódios':'Seasons & Episodes','Títulos semelhantes':'Similar titles','episódios':'episodes','Episódio ':'Episode ','Temporada 1':'Season 1','Temporada 2':'Season 2','Temporada 3':'Season 3','Temporada 4':'Season 4','Temporada 5':'Season 5','Temporada 6':'Season 6','Todos os filmes e séries em um só lugar.':'All movies and shows in one place.','Sua lista está vazia. Adicione conteúdos para encontrá-los aqui.':'Your list is empty. Add titles to find them here.',
 'Remover da lista':'Remove from list','+ Minha lista':'+ My List','✓ Remover da lista':'✓ Remove from list','◷ Em breve':'◷ Coming soon',
 'Entre na':'Join your','sua comunidade.':'community.','Código de acesso':'Access code','Digite seu código de acesso':'Enter your access code','Continuar com Google':'Continue with Google','ACESSO PRIVADO':'PRIVATE ACCESS',
 'Idioma / Language':'Language / Idioma','Escolha o idioma de toda a interface do LinerCall.':'Choose the language for the entire LinerCall interface.','Idioma da interface':'Interface language','A alteração é salva neste dispositivo.':'This change is saved on this device.',
@@ -1367,7 +1367,7 @@ function renderSeriesDetails(item){
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
  root.innerHTML='<h3>Temporadas e episódios</h3>'+seasons.map((season,index)=>'<details class="season-accordion" '+(index===0?'open':'')+'><summary>'+safeText(season.name)+' <span>'+season.count+' episódios</span></summary><ol>'+Array.from({length:season.count},(_,n)=>'<li><span>Episódio '+(n+1)+'</span></li>').join('')+'</ol></details>').join('');
  const recommendations=item.id==='lighty-steven-universe'?['Hora de Aventura','Gravity Falls','A Casa Coruja','Amphibia']:item.id==='lighty-naruto'?['Boruto','Dragon Ball','One Piece']:['Naruto','One Piece','Yu-Gi-Oh!'];
- related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';
+ related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';applyLanguage();
 }
 
 let cinemaFilter='all';
@@ -1382,7 +1382,7 @@ function openCinemaDetails(id){
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
  const listButton=$('cinema-detail-list');listButton.dataset.itemId=id;const refresh=()=>{listButton.textContent=getMyList().includes(id)?'✓ Remover da lista':'+ Minha lista';};listButton.onclick=()=>{toggleMyList(id);refresh();};refresh();
- $('cinema-details').classList.remove('hidden');document.body.classList.add('cinema-modal-open');
+ $('cinema-details').classList.remove('hidden');document.body.classList.add('cinema-modal-open');applyLanguage();
 }
 function closeCinemaDetails(){$('cinema-details')?.classList.add('hidden');document.body.classList.remove('cinema-modal-open');}
 async function loadCinema() {
