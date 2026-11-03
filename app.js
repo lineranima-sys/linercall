@@ -672,7 +672,30 @@ function listenChallenges() {
   }, error => console.warn('Erro nos desafios:', error)));
 }
 
-async function challengePlayer(uid, name) {
+async async function openMemberProfile(uid, fallbackName) {
+  if (!uid) return;
+  let member = { displayName: fallbackName || 'Jogador' };
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (snap.exists()) member = { ...member, ...snap.data() };
+  } catch (error) { console.warn('Perfil público indisponível:', error); }
+  let modal = $('member-profile-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'member-profile-modal';
+    modal.className = 'cropper-modal hidden';
+    document.body.appendChild(modal);
+  }
+  const own = uid === currentUser?.uid;
+  modal.innerHTML = `<div class="cropper-card member-profile-card">
+    <div class="panel-head"><h3>Perfil do jogador</h3><button class="icon-btn" data-profile-close>✕</button></div>
+    <div class="profile-banner-preview" data-style="${own ? (shopState?.bannerStyle || 0) : 0}">${safeText(member.displayName || 'Jogador')}</div>
+    <div class="member-profile-identity"><div class="avatar avatar-large">${safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : 'Membro da comunidade'}</small></div></div>
+    <p class="muted">Perfil público básico. Personalizações compradas neste protótipo ainda ficam salvas apenas no navegador de quem comprou.</p>
+  </div>`;
+  modal.classList.remove('hidden');
+}
+function challengePlayer(uid, name) {
   if (!currentUser || uid === currentUser.uid) return;
 
   try {
@@ -1499,6 +1522,8 @@ function setupEvents() {
     if (event.target.closest('[data-minigame-back]')) backToMiniGames();
     if (event.target.closest('[data-crop-cancel]')) { pendingAvatarImage=null; $('avatar-cropper')?.classList.add('hidden'); }
     if (event.target.closest('[data-crop-save]')) saveCroppedAvatar();
+    if (event.target.closest('[data-profile-close]')) $('member-profile-modal')?.classList.add('hidden');
+    const profileTrigger=event.target.closest('[data-profile-open]'); if(profileTrigger) openMemberProfile(profileTrigger.dataset.profileOpen, profileTrigger.dataset.profileName);
     const bannerPick=event.target.closest('[data-banner-style]'); if(bannerPick) saveBannerChoice(Number(bannerPick.dataset.bannerStyle));
   });
 }
