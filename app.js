@@ -243,6 +243,7 @@ async function startApp(user) {
 
   $('auth-screen')?.classList.add('hidden');
   $('app-shell')?.classList.remove('hidden');
+  switchView('welcome');
 
   setUserUI();
 
