@@ -509,3 +509,20 @@ body.cinema-modal-open{overflow:hidden}
 .nav-submenu[hidden]{display:none}
 .nav-submenu .nav-item{width:100%;margin:0;padding:10px 12px;font-size:12px}
 .nav-submenu .nav-item[data-view="welcome"]{border-top:1px solid rgba(255,255,255,.12);margin-top:5px;padding-top:13px}
+
+/* LightyFlix season accordion */
+.cinema-episodes,.cinema-related{margin-top:26px;position:relative;z-index:1}
+.cinema-episodes h3,.cinema-related h3{font-size:17px;margin:0 0 12px}
+.season-accordion{border:1px solid var(--line);border-radius:10px;background:rgba(13,20,40,.72);margin:8px 0;overflow:hidden}
+.season-accordion summary{cursor:pointer;list-style:none;padding:14px 16px;font-weight:700;display:flex;justify-content:space-between;gap:10px}
+.season-accordion summary::-webkit-details-marker{display:none}
+.season-accordion summary:after{content:'＋';color:var(--cyan)}
+.season-accordion[open] summary:after{content:'−'}
+.season-accordion summary span{color:var(--muted);font-size:11px;font-weight:500}
+.season-accordion ol{margin:0;padding:0 16px 14px 42px;columns:2;column-gap:30px}
+.season-accordion li{padding:5px 0;color:#c5d1e6;font-size:12px;break-inside:avoid}
+.related-title-list{display:flex;flex-wrap:wrap;gap:8px}
+.related-title-list span{border:1px solid var(--line);border-radius:20px;padding:8px 12px;background:rgba(92,225,237,.06);font-size:12px;color:#cbd9ed}
+.language-settings{margin-top:16px}
+.language-settings select{width:100%;padding:12px;border-radius:9px;background:#080f20;color:white;border:1px solid var(--line);margin:8px 0 12px}
+@media(max-width:600px){.season-accordion ol{columns:1}}
