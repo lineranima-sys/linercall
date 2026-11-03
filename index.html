@@ -21,19 +21,21 @@
       <h1>Entre na<br><span>sua comunidade.</span></h1>
       <p class="auth-copy">Converse, jogue, desafie seus amigos e entre nas calls. Tudo em um só lugar.</p>
       <label for="invite-code">Código de acesso</label>
-      <input id="invite-code" type="password" placeholder="Digite o código do servidor" autocomplete="off" />
+      <input id="invite-code" type="password" placeholder="Digite seu código de acesso" autocomplete="off" />
       <button id="google-login" class="btn btn-google"><span class="google-g">G</span> Continuar com Google</button>
       <p id="auth-status" class="status-line">O acesso exige um código válido e uma conta Google.</p>
-      <div class="auth-foot"><span>● SERVIDOR PRIVADO</span><span>LINERCALL'S © 2026</span></div>
+      <div class="auth-foot"><span>● ACESSO PRIVADO</span><span>LINERCALL'S © 2026</span></div>
     </div>
   </section>
 
   <div id="app-shell" class="app-shell hidden">
     <aside class="sidebar">
       <a class="brand-lockup" href="#inicio"><span class="brand-cube">▣</span><span>LINER<span>CALL'S</span><small>COMMUNITY HUB</small></span></a>
-      <div class="server-pill"><span class="online-dot"></span><span>LINERCALL'S SERVER</span><span class="pill-lock">✦</span></div>
+      <div class="server-pill site-pill"><span class="online-dot"></span><span>LINERCALL · SITE</span><span class="pill-lock">✦</span></div>
+      <div class="nav-label">NAVEGAÇÃO</div>
+      <button class="nav-item active" data-view="welcome"><span>⌂</span> Início <i></i></button>
       <div class="nav-label">COMUNIDADE</div>
-      <button class="nav-item active" data-view="chat"><span>▤</span> Chat geral <i></i></button>
+      <button class="nav-item" data-view="chat"><span>▤</span> Chat geral <i></i></button>
       <button class="nav-item" data-view="calls"><span>◉</span> Salas de voz <i></i></button>
       <div class="nav-label">JOGAR</div>
       <button class="nav-item" data-view="games"><span>▣</span> Minigames <i></i></button>
@@ -45,9 +47,24 @@
     </aside>
 
     <main class="main-area">
-      <header class="topbar"><div><div class="breadcrumb">LINERCALL'S <span>/</span> <b id="crumb-current">CHAT GERAL</b></div><h2 id="page-heading">Ponto de encontro.</h2></div><div class="topbar-right"><div class="server-status"><span class="online-dot"></span> <span>Servidor conectado</span></div><button class="icon-btn notification" title="Notificações">♧<i></i></button><div id="top-avatar" class="avatar avatar-small">L</div></div></header>
+      <header class="topbar"><div><div class="breadcrumb">LINERCALL'S <span>/</span> <b id="crumb-current">CHAT GERAL</b></div><h2 id="page-heading">Ponto de encontro.</h2></div><div class="topbar-right"><div class="server-status"><span class="online-dot"></span> <span>Site conectado</span></div><button class="icon-btn notification" title="Notificações">♧<i></i></button><div id="top-avatar" class="avatar avatar-small">L</div></div></header>
 
-      <section id="view-chat" class="view active-view">
+      <section id="view-welcome" class="view active-view">
+        <div class="welcome-panel panel">
+          <span class="eyebrow">SEU ESPAÇO, SEU RITMO</span>
+          <h1>Boas-vindas ao <span>LinerCall</span>.</h1>
+          <p>Antes de entrar na conversa, escolha para onde quer ir. Explore com calma!</p>
+          <div class="welcome-actions">
+            <button class="welcome-action" data-go="chat"><span>▤</span><b>Chat geral</b><small>Veja o que a comunidade está conversando.</small><i>ABRIR →</i></button>
+            <button class="welcome-action" data-go="calls"><span>◉</span><b>Salas de voz</b><small>Encontre uma sala e converse com a galera.</small><i>EXPLORAR →</i></button>
+            <button class="welcome-action" data-go="games"><span>🎮</span><b>Minigames</b><small>Jogue, teste suas habilidades e se divirta.</small><i>JOGAR →</i></button>
+            <button class="welcome-action" data-go="ranking"><span>♛</span><b>Ranking</b><small>Confira os resultados da comunidade.</small><i>VER RANKING →</i></button>
+          </div>
+          <div class="welcome-note">✦ Você pode voltar para esta página pelo botão <b>Início</b> no menu lateral.</div>
+        </div>
+      </section>
+
+      <section id="view-chat" class="view">
         <div class="chat-layout">
           <div class="chat-main panel"><div class="panel-head"><div><span class="channel-tag"># GERAL</span><h3>Conversa da comunidade</h3><p>O que está acontecendo por aí?</p></div><span class="live-label"><i></i> AO VIVO</span></div>
             <div id="chat-messages" class="messages"><div class="empty-state">As mensagens da comunidade aparecerão aqui.</div></div>
@@ -68,7 +85,7 @@
       </section>
 
       <section id="view-games" class="view">
-        <div class="section-intro"><div><span class="eyebrow">ARCADE LINERCALL'S</span><h2>Escolha seu jogo.</h2><p>Qual vai ser a partida de agora?</p></div><span class="pixel-badge">ARCADE</span></div>
+        <div class="section-intro"><div><span class="eyebrow">ARCADE LINERCALL</span><h2>Escolha seu jogo.</h2><p>Qual vai ser a partida de agora?</p></div><span class="pixel-badge">ARCADE</span></div>
         <div id="minigame-tabs" class="minigame-tabs">
           <button id="play-pokemon" class="minigame-tab pokemon-tab"><span class="minigame-tab-art">⚡</span><b>Pokémon Arena</b><small>Monte seu time e lute</small><i>ENTRAR →</i></button>
           <button id="play-reaction" class="minigame-tab reaction-tab"><span class="minigame-tab-art">ϟ</span><b>Teste de Reflexo</b><small>Teste sua velocidade</small><i>JOGAR →</i></button>
@@ -97,7 +114,7 @@
         <div class="panel settings-panel"><div class="settings-avatar-row"><div id="settings-avatar" class="avatar avatar-large">L</div><div><h3 id="settings-email">Conta Google</h3><p class="muted">Conta autenticada</p></div></div><div id="profile-banner-preview" class="profile-banner-preview hidden" data-style="0">✦ LINERCALL ✦</div><form id="profile-form"><label for="display-name">Nome de exibição</label><input id="display-name" maxlength="24" required placeholder="Como a galera vai te chamar?"><button class="btn btn-primary" type="submit">Salvar perfil →</button><p id="profile-status" class="status-line"></p></form></div>
         <div class="security-note">🔒 Sua senha Google nunca é solicitada pelo LinerCall's. A autenticação é feita pelo próprio Google.</div>
       </section>
-      <footer class="app-footer"><span>LINERCALL'S COMMUNITY HUB</span><span>FEITO PARA JOGAR JUNTO <b>✦</b></span></footer>
+      <footer class="app-footer"><span>LINERCALL · COMUNIDADE</span><span>FEITO PARA JOGAR JUNTO <b>✦</b></span></footer>
     </main>
   </div>
   <div id="toast" class="toast" role="status"></div>
