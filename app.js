@@ -280,7 +280,7 @@ function createCinemaPage() {
     const button = document.createElement('button');
     button.className = 'nav-item';
     button.dataset.view = 'cinema';
-    button.innerHTML = '<span>🎬</span> NetflixLiner <i></i>';
+    button.innerHTML = '<span>🎬</span> LightyFlix <i></i>';
 
     const bottom = sidebar.querySelector('.sidebar-bottom');
 
@@ -301,7 +301,7 @@ function createCinemaPage() {
         <div>
           <span class="eyebrow">CINEMA DA COMUNIDADE</span>
           <h2>Seu próximo filme começa aqui.</h2>
-          <p>Filmes e séries para descobrir e assistir.</p>
+          <p>Filmes e séries para descobrir.</p>
         </div>
         <span class="pixel-badge">BETA 01</span>
       </div>
@@ -309,8 +309,8 @@ function createCinemaPage() {
       <div class="cinema-hero panel">
         <div class="cinema-hero-content">
           <span class="eyebrow">BEM-VINDO AO</span>
-          <h1>NETFLIXLINER</h1>
-          <p>Seu espaço para descobrir filmes, acompanhar séries e aproveitar histórias com seus amigos.</p>
+          <h1>LIGHTYFLIX</h1>
+          <p>Um catálogo para descobrir filmes e séries. Reprodução disponível em breve.</p>
           <button class="btn btn-primary" id="cinema-explore">
             Explorar catálogo →
           </button>
@@ -420,7 +420,7 @@ function switchView(name) {
     arena: 'DESAFIOS',
     ranking: 'RANKING',
     settings: 'CONFIGURAÇÕES',
-    cinema: 'NETFLIXLINER',
+    cinema: 'LIGHTYFLIX',
     shop: 'LOJA'
   };
 
@@ -1294,7 +1294,7 @@ function showReaction() {
 }
 
 // ========================================
-// NETFLIXLINER — CATÁLOGO
+// LIGHTYFLIX — CATÁLOGO
 // ========================================
 
 function getMyList() {
@@ -1351,7 +1351,7 @@ function cinemaCard(item) {
   return `
     <article class="cinema-card">
       <img
-        src="${poster || 'https://placehold.co/300x450/101a30/5ce1ed?text=NETFLIXLINER'}"
+        src="${poster || 'https://placehold.co/300x450/101a30/5ce1ed?text=LIGHTYFLIX'}"
         alt="${title}"
         loading="lazy"
         onerror="this.src='https://placehold.co/300x450/101a30/5ce1ed?text=SEM+CAPA'"
@@ -1360,13 +1360,13 @@ function cinemaCard(item) {
         <span class="cinema-type">${type}</span>
         <h4>${title}</h4>
         <p>${description}</p>
-        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;">
-          <button class="btn btn-primary" data-watch="${safeText(item.id)}">
-            Assistir
-          </button>
-          <button class="btn" data-mylist="${safeText(item.id)}">
-            + Minha lista
-          </button>
+        <div class="cinema-meta">
+          <span>⏱ ${safeText(item.duration || 'Duração não informada')}</span>
+          <span>📅 ${safeText(item.releaseDate || item.year || 'Data não informada')}</span>
+        </div>
+        <div class="cinema-card-actions">
+          <button class="btn cinema-coming-soon" type="button" disabled><span aria-hidden="true">◷</span> Em breve</button>
+          <button class="btn" data-mylist="${safeText(item.id)}">+ Minha lista</button>
         </div>
       </div>
     </article>
@@ -1409,10 +1409,18 @@ async function loadCinema() {
       query(collection(db, 'videos'), orderBy('createdAt', 'desc'), limit(100))
     );
 
-    cinemaItems = snapshot.docs.map(d => ({
+    const communityItems = snapshot.docs.map(d => ({
       id: d.id,
       ...d.data()
     }));
+    const builtInCatalog = [
+      {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:''},
+      {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:''},
+      {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:''},
+      {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:''}
+    ];
+    const knownIds = new Set(communityItems.map(item=>item.id));
+    cinemaItems = [...builtInCatalog.filter(item=>!knownIds.has(item.id)), ...communityItems];
 
     renderCinema();
 
@@ -1522,7 +1530,7 @@ function setupEvents() {
   $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
   document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 
-  // Delegação também atende ao botão NetflixLiner, criado dinamicamente.
+  // Delegação também atende ao botão LightyFlix, criado dinamicamente.
   document.addEventListener('click', event => {
     const navButton = event.target.closest('.nav-item[data-view]');
     if (navButton) { switchView(navButton.dataset.view); if (navButton.dataset.view === 'shop') renderShop(); }
