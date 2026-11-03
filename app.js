@@ -3,7 +3,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebas
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
   onAuthStateChanged,
   signOut
 } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
@@ -153,14 +153,11 @@ async function login() {
       throw new Error(data.error || 'Código de acesso inválido.');
     }
 
-    showAuthStatus('Código válido! Abrindo o Google...');
+    showAuthStatus('Código válido! Redirecionando para o Google...');
 
-    const result = await signInWithPopup(auth, provider);
-
-    if (!result.user.email?.toLowerCase().endsWith('@gmail.com')) {
-      await signOut(auth);
-      throw new Error('Entre com uma conta @gmail.com.');
-    }
+    // O fluxo por redirecionamento evita dependências do monitoramento
+    // de janelas popup e conclui a autenticação pelo onAuthStateChanged.
+    await signInWithRedirect(auth, provider);
 
   } catch (error) {
     console.error('Erro no login:', error);
