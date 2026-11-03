@@ -54,6 +54,29 @@ const provider = new GoogleAuthProvider();
 
 const MY_LIST_KEY = 'linercalls-my-list';
 
+const LANGUAGE_KEY = 'linercalls-language';
+const UI_TRANSLATIONS = {
+'Início':'Home','Chat geral':'General chat','Salas de voz':'Voice rooms','Minigames':'Minigames','Ranking':'Leaderboard','Loja':'Shop','Configurações':'Settings',
+'Boas-Vindas ao':'Welcome to','Use o menu lateral para navegar':'Use the sidebar to navigate','Ponto de encontro.':'Your community hub.','Sua voz, sua galera.':'Your voice, your people.','Hora de jogar.':'Time to play.','Quem está no topo?':'Who is at the top?','Seu espaço.':'Your space.','Seu estilo, suas regras.':'Your style, your rules.','Seu cinema começa aqui.':'Your cinema starts here.',
+'Configurações.':'Settings.','SUA CONTA':'YOUR ACCOUNT','Personalize como você aparece na comunidade.':'Customize how you appear in the community.','Nome de exibição':'Display name','Como a galera vai te chamar?':'What should people call you?','Salvar perfil →':'Save profile →',
+'Catálogo completo':'Full catalog','Minha lista':'My list','Explorar catálogo →':'Explore catalog →','Seu próximo filme começa aqui.':'Your next movie starts here.','Descubra, explore e monte sua lista.':'Discover, explore, and build your list.',
+'BEM-VINDO AO':'WELCOME TO','Filmes e séries para descobrir. Reprodução disponível em breve.':'Movies and shows to discover. Playback coming soon.','Em destaque':'Featured','Filmes':'Movies','Séries':'TV Shows','Tudo':'All','SUA COLEÇÃO':'YOUR COLLECTION','BIBLIOTECA LIGHTYFLIX':'LIGHTYFLIX LIBRARY','Todos os filmes e séries em um só lugar.':'All movies and shows in one place.','Sua lista está vazia. Adicione conteúdos para encontrá-los aqui.':'Your list is empty. Add titles to find them here.',
+'Remover da lista':'Remove from list','+ Minha lista':'+ My List','✓ Remover da lista':'✓ Remove from list','◷ Em breve':'◷ Coming soon',
+'Entre na':'Join your','sua comunidade.':'community.','Código de acesso':'Access code','Digite seu código de acesso':'Enter your access code','Continuar com Google':'Continue with Google','ACESSO PRIVADO':'PRIVATE ACCESS',
+'Idioma / Language':'Language / Idioma','Escolha o idioma de toda a interface do LinerCall.':'Choose the language for the entire LinerCall interface.','Idioma da interface':'Interface language','A alteração é salva neste dispositivo.':'This change is saved on this device.',
+'ENTRETENIMENTO':'ENTERTAINMENT','JOGAR':'PLAY','COMUNIDADE':'COMMUNITY','HALL DA FAMA':'HALL OF FAME','Placar de líderes.':'Leaderboard.','As vitórias registradas nesta semana, em um só lugar.':'This week’s recorded wins, all in one place.'
+};
+function getLanguage(){return localStorage.getItem(LANGUAGE_KEY)||'pt';}
+function applyLanguage(){
+ const lang=getLanguage();document.documentElement.lang=lang==='en'?'en':'pt-BR';
+ document.querySelectorAll('#site-language').forEach(s=>s.value=lang);
+ if(lang==='pt')return;
+ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+ nodes.forEach(node=>{const raw=node.nodeValue,trim=raw.trim();if(UI_TRANSLATIONS[trim])node.nodeValue=raw.replace(trim,UI_TRANSLATIONS[trim]);});
+ document.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el=>['placeholder','title','aria-label'].forEach(attr=>{const v=el.getAttribute(attr);if(UI_TRANSLATIONS[v])el.setAttribute(attr,UI_TRANSLATIONS[v]);}));
+}
+
+
 function toast(message) {
   const el = $('toast');
   if (!el) return;
@@ -293,7 +316,7 @@ function createCinemaPage() {
         <section class="cinema-section"><div class="cinema-row-head"><div><span class="eyebrow">SUA COLEÇÃO</span><h3>Minha lista</h3></div><div class="cinema-row-arrows"><button data-cinema-scroll="cinema-my-list">‹</button><button data-cinema-scroll="cinema-my-list" data-direction="next">›</button></div></div><div id="cinema-my-list" class="cinema-row"><div class="empty-state">Sua lista está vazia.</div></div></section>
       </div>
       <div id="cinema-all-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">BIBLIOTECA LIGHTYFLIX</span><h2>Catálogo completo</h2><p>Todos os filmes e séries em um só lugar.</p></div><div class="cinema-filters"><button class="active" data-cinema-filter="all">Tudo</button><button data-cinema-filter="movie">Filmes</button><button data-cinema-filter="series">Séries</button></div></div><div id="cinema-all-grid" class="cinema-all-grid"></div></div><div id="cinema-list-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">SUA COLEÇÃO</span><h2>Minha lista</h2><p>Os filmes e séries que você guardou.</p></div></div><div id="cinema-list-grid" class="cinema-all-grid"></div></div>
-      <div id="cinema-details" class="cinema-modal hidden" role="dialog" aria-modal="true" aria-label="Detalhes do conteúdo"><div class="cinema-modal-backdrop" data-cinema-close></div><article class="cinema-detail-card"><button class="cinema-detail-close" data-cinema-close aria-label="Fechar">×</button><div class="cinema-detail-backdrop" id="cinema-detail-backdrop"></div><div class="cinema-detail-content"><img id="cinema-detail-poster" class="cinema-detail-poster" alt=""><div class="cinema-detail-info"><span class="eyebrow" id="cinema-detail-type">FILME</span><h2 id="cinema-detail-title"></h2><div class="cinema-detail-meta" id="cinema-detail-meta"></div><p id="cinema-detail-description"></p><div class="cinema-detail-actions"><button class="btn cinema-coming-soon" disabled>◷ Em breve</button><button class="btn" id="cinema-detail-list">+ Minha lista</button></div></div></div></article></div>
+      <div id="cinema-details" class="cinema-modal hidden" role="dialog" aria-modal="true" aria-label="Detalhes do conteúdo"><div class="cinema-modal-backdrop" data-cinema-close></div><article class="cinema-detail-card"><button class="cinema-detail-close" data-cinema-close aria-label="Fechar">×</button><div class="cinema-detail-backdrop" id="cinema-detail-backdrop"></div><div class="cinema-detail-content"><img id="cinema-detail-poster" class="cinema-detail-poster" alt=""><div class="cinema-detail-info"><span class="eyebrow" id="cinema-detail-type">FILME</span><h2 id="cinema-detail-title"></h2><div class="cinema-detail-meta" id="cinema-detail-meta"></div><p id="cinema-detail-description"></p><div id="cinema-episodes" class="cinema-episodes"></div><div id="cinema-related" class="cinema-related"></div><div class="cinema-detail-actions"><button class="btn cinema-coming-soon" disabled>◷ Em breve</button><button class="btn" id="cinema-detail-list">+ Minha lista</button></div></div></div></article></div>
       <div id="cinema-player" class="panel hidden" style="margin-top:25px;padding:20px;"><div class="panel-head"><div><span class="eyebrow">REPRODUZINDO</span><h3 id="cinema-player-title">Conteúdo</h3></div><button class="btn btn-danger" id="cinema-close-player">Fechar</button></div><div id="cinema-player-content"></div></div>`;
     const footer=main.querySelector('.app-footer');main.insertBefore(section,footer||null);
   }
@@ -302,6 +325,8 @@ function createCinemaPage() {
 }
 
 function buildSidebarNavigation() {
+  // Navegação lateral restaurada ao formato original, sem grupos expansíveis.
+  return;
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar || sidebar.dataset.groupedNavigation === 'true') return;
 
@@ -361,6 +386,7 @@ function switchView(name) {
   });
 
   target.classList.add('active-view');
+  applyLanguage();
 
   document.querySelectorAll('.nav-item[data-view]').forEach(button => {
     button.classList.toggle('active', button.dataset.view === name);
@@ -1329,6 +1355,21 @@ function renderCinema() {
   $('cinema-total-count').textContent=cinemaItems.length;renderCinemaAll();
 }
 
+
+const SERIES_EPISODE_DATA = {
+ 'lighty-steven-universe': [{name:'Temporada 1',count:52},{name:'Temporada 2',count:26},{name:'Temporada 3',count:25},{name:'Temporada 4',count:25},{name:'Temporada 5',count:32},{name:'Temporada 6',count:20}],
+ 'lighty-naruto': [{name:'Temporada 1',count:35},{name:'Temporada 2',count:26},{name:'Temporada 3',count:28},{name:'Temporada 4',count:26},{name:'Temporada 5',count:25}],
+ 'lighty-dragon-ball': [{name:'Saga Pilaf',count:13},{name:'Saga 21º Torneio',count:15},{name:'Saga Exército Red Ribbon',count:30},{name:'Saga Piccolo',count:23},{name:'Saga 23º Torneio',count:22},{name:'Saga Piccolo Jr.',count:50}]
+};
+function renderSeriesDetails(item){
+ const root=$('cinema-episodes'),related=$('cinema-related');if(!root||!related)return;
+ const seasons=SERIES_EPISODE_DATA[item.id];
+ if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
+ root.innerHTML='<h3>Temporadas e episódios</h3>'+seasons.map((season,index)=>'<details class="season-accordion" '+(index===0?'open':'')+'><summary>'+safeText(season.name)+' <span>'+season.count+' episódios</span></summary><ol>'+Array.from({length:season.count},(_,n)=>'<li><span>Episódio '+(n+1)+'</span></li>').join('')+'</ol></details>').join('');
+ const recommendations=item.id==='lighty-steven-universe'?['Hora de Aventura','Gravity Falls','A Casa Coruja','Amphibia']:item.id==='lighty-naruto'?['Boruto','Dragon Ball','One Piece']:['Naruto','One Piece','Yu-Gi-Oh!'];
+ related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';
+}
+
 let cinemaFilter='all';
 function setCinemaTab(tab){$('cinema-home-view')?.classList.toggle('hidden',tab!=='home');$('cinema-all-view')?.classList.toggle('hidden',tab!=='all');$('cinema-list-view')?.classList.toggle('hidden',tab!=='list');document.querySelectorAll('[data-cinema-tab]').forEach(b=>b.classList.toggle('active',b.dataset.cinemaTab===tab));if(tab==='list')renderCinemaList();}
 function renderCinemaAll(){const items=cinemaFilter==='all'?cinemaItems:cinemaItems.filter(item=>item.type===cinemaFilter);if($('cinema-all-grid'))$('cinema-all-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Nenhum conteúdo nesta categoria.</div>';renderCinemaList();$('cinema-list-count').textContent=getMyList().length;}function renderCinemaList(){const ids=getMyList(),items=cinemaItems.filter(item=>ids.includes(item.id));if($('cinema-list-grid'))$('cinema-list-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Sua lista está vazia. Adicione filmes e séries pelo catálogo.</div>';if($('cinema-list-count'))$('cinema-list-count').textContent=ids.length;}
@@ -1337,6 +1378,7 @@ function openCinemaDetails(id){
  const poster=validWebUrl(item.poster||item.backdrop||'');
  $('cinema-detail-title').textContent=item.title||'Sem título';$('cinema-detail-type').textContent=item.type==='series'?'SÉRIE':'FILME';$('cinema-detail-description').textContent=item.description||'Descrição ainda não disponível.';
  $('cinema-detail-meta').innerHTML=[item.year||item.releaseDate,item.duration].filter(Boolean).map(v=>'<span>'+safeText(v)+'</span>').join('');
+ renderSeriesDetails(item);
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
  const listButton=$('cinema-detail-list');listButton.dataset.itemId=id;const refresh=()=>{listButton.textContent=getMyList().includes(id)?'✓ Remover da lista':'+ Minha lista';};listButton.onclick=()=>{toggleMyList(id);refresh();};refresh();
@@ -1359,6 +1401,7 @@ async function loadCinema() {
       ...d.data()
     }));
     const builtInCatalog = [
+      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://image.tmdb.org/t/p/w780/3DYzq1oQK7dW8Z4xw4Z8QZ0Xy7P.jpg'},
       {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
       {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
       {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
@@ -1368,6 +1411,7 @@ async function loadCinema() {
     cinemaItems = [...builtInCatalog.filter(item=>!knownIds.has(item.id)), ...communityItems];
 
     renderCinema();
+    applyLanguage();
 
   } catch (error) {
     console.warn('Catálogo indisponível:', error);
@@ -1456,6 +1500,8 @@ function toggleMyList(id) {
 
 function setupEvents() {
   $('google-login')?.addEventListener('click', login);
+  $('site-language')?.addEventListener('change', event => { localStorage.setItem(LANGUAGE_KEY,event.target.value); location.reload(); });
+  document.querySelector('.brand-lockup')?.addEventListener('click', event => { event.preventDefault(); switchView('welcome'); });
   $('chat-form')?.addEventListener('submit', sendMessage);
   $('profile-form')?.addEventListener('submit', saveProfile);
   document.addEventListener('change', event => { if (event.target.id === 'shop-avatar-file') handleShopAvatarFile(event); });
@@ -1543,6 +1589,7 @@ setupEvents();
 createCinemaPage();
 createShopPage();
 buildSidebarNavigation();
+applyLanguage();
 
 if (configured) {
   try {
