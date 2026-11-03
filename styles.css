@@ -408,3 +408,8 @@
 .profile-banner-preview[data-style="2"],.shop-banner-art[data-style="2"]{background:linear-gradient(120deg,#291d58,#6d4ba4 50%,#152a4a);color:#e7d8ff}
 .profile-banner-preview[data-style="3"],.shop-banner-art[data-style="3"]{background:linear-gradient(120deg,#582d26,#b45c37 50%,#29213e);color:#ffe1bc}
 @media(max-width:760px){.minigame-tabs{grid-template-columns:1fr}.minigame-tab{min-height:145px}.pokemon-roster-art{grid-template-columns:repeat(2,minmax(0,1fr))}.pokemon-arena-scene{min-height:220px;padding:12px 5px}.arena-fighter{gap:4px}.arena-fighter img{height:125px}.arena-fighter-meta b{font-size:12px}.pokemon-controls{grid-template-columns:1fr}.pokemon-topline{align-items:flex-start;flex-direction:column}}
+
+.member-row.profile-open-trigger{width:100%;border:0;text-align:left;cursor:pointer;color:inherit;font:inherit}
+.member-row.profile-open-trigger:hover{background:rgba(181,154,255,.09)}
+.member-profile-identity{display:flex;align-items:center;gap:14px;margin:12px 0 18px}
+.member-profile-identity h2{margin:0 0 4px}.member-profile-identity small{color:#bcb7ca}
