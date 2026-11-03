@@ -422,3 +422,10 @@
 .member-row.profile-open-trigger{color:#f7f4ff!important;background:rgba(28,24,44,.72);border-radius:10px;padding:9px 10px;margin:4px 0}
 .member-row.profile-open-trigger b{color:#fff!important}.member-row.profile-open-trigger small{color:#bdb3d2!important}
 .member-row .member-avatar{flex:0 0 34px;background-size:cover;background-position:center}
+
+
+/* LightyFlix catalog */
+.cinema-meta{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:12px;color:#c9c2d8;font-size:12px}
+.cinema-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.cinema-coming-soon,.cinema-coming-soon:disabled{background:#f5c542!important;border:1px solid #ffe18a!important;color:#30240a!important;font-weight:800!important;opacity:1!important;cursor:not-allowed!important;box-shadow:0 3px 0 #9b7413}
+.cinema-coming-soon span{font-size:17px;vertical-align:-1px;margin-right:4px}
