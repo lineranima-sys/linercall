@@ -146,13 +146,6 @@ async function login() {
     return;
   }
 
-  const code = $('invite-code')?.value.trim();
-
-  if (!code) {
-    showAuthStatus('Digite o código de acesso.', true);
-    return;
-  }
-
   const button = $('google-login');
   if (button) button.disabled = true;
 
@@ -167,28 +160,7 @@ async function login() {
       throw new Error('Entre com uma conta @gmail.com.');
     }
 
-    showAuthStatus('Google conectado! Validando o código de acesso...');
-
-    const response = await fetch('/api/validateInviteCode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
-    });
-
-    let data = {};
-    try {
-      data = await response.json();
-    } catch {
-      await signOut(auth);
-      throw new Error('O servidor retornou uma resposta inválida.');
-    }
-
-    if (!response.ok) {
-      await signOut(auth);
-      throw new Error(data.error || 'Código de acesso inválido.');
-    }
-
-    showAuthStatus('Acesso autorizado! Carregando sua comunidade...');
+    showAuthStatus('Google conectado! Carregando sua comunidade...');
 
   } catch (error) {
     console.error('Erro no login:', error);
@@ -1490,6 +1462,15 @@ function closeCinemaDetails(){$('cinema-details')?.classList.add('hidden');docum
 async function loadCinema() {
   createCinemaPage();
 
+  const builtInCatalog = [
+    {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'},
+    {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
+    {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
+    {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
+    {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
+  ];
+
+  let communityItems = [];
   $('cinema-featured').innerHTML =
     '<div class="empty-state">Carregando catálogo...</div>';
 
@@ -1498,40 +1479,23 @@ async function loadCinema() {
       query(collection(db, 'videos'), orderBy('createdAt', 'desc'), limit(100))
     );
 
-    const communityItems = snapshot.docs.map(d => ({
+    communityItems = snapshot.docs.map(d => ({
       id: d.id,
       ...d.data()
     }));
-    const builtInCatalog = [
-      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'},
-      {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
-      {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
-      {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
-      {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
-    ];
-    const knownIds = new Set(communityItems.map(item=>item.id));
-    cinemaItems = [...builtInCatalog.filter(item=>!knownIds.has(item.id)), ...communityItems];
-
-    renderCinema();
-    applyLanguage();
-
   } catch (error) {
-    console.warn('Catálogo indisponível:', error);
-
-    cinemaItems = [];
-
-    $('cinema-featured').innerHTML =
-      '<div class="empty-state">O catálogo ainda não está configurado no banco de dados.</div>';
-
-    $('cinema-movies').innerHTML =
-      '<div class="empty-state">Os conteúdos aparecerão aqui quando forem cadastrados.</div>';
-
-    $('cinema-series').innerHTML =
-      '<div class="empty-state">As séries aparecerão aqui quando forem cadastradas.</div>';
-
-    $('cinema-my-list').innerHTML =
-      '<div class="empty-state">Sua lista está vazia.</div>';
+    // O catálogo fixo continua disponível mesmo quando o Firestore falha.
+    console.warn('Não foi possível carregar os conteúdos da comunidade; exibindo catálogo base:', error);
   }
+
+  const knownIds = new Set(communityItems.map(item => item.id));
+  cinemaItems = [
+    ...builtInCatalog.filter(item => !knownIds.has(item.id)),
+    ...communityItems
+  ];
+
+  renderCinema();
+  applyLanguage();
 }
 
 function playCinemaItem(id) {
