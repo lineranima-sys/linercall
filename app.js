@@ -1465,9 +1465,7 @@ function setupEvents() {
   $('logout')?.addEventListener('click', logout);
   $('leave-call')?.addEventListener('click', leaveCall);
 
-  $('close-game')?.addEventListener('click', () => {
-    $('game-stage')?.classList.add('hidden');
-  });
+  $('close-game')?.addEventListener('click', backToMiniGames);
 
   $('play-dice')?.addEventListener('click', () => showMiniGamePage('dice'));
   $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
