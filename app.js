@@ -300,6 +300,55 @@ function createCinemaPage() {
   const explore=$('cinema-explore');if(explore)explore.onclick=()=>setCinemaTab('all');
   const closePlayer=$('cinema-close-player');if(closePlayer)closePlayer.onclick=closeCinemaPlayer;
 }
+
+function buildSidebarNavigation() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar || sidebar.dataset.groupedNavigation === 'true') return;
+
+  const bottom = sidebar.querySelector('.sidebar-bottom');
+  const get = view => sidebar.querySelector(`.nav-item[data-view="${view}"]`);
+  const home = get('welcome');
+  const chatText = get('chat');
+  const chatVoice = get('calls');
+  const games = get('games');
+  const ranking = get('ranking');
+  const shop = get('shop');
+  const cinema = get('cinema');
+  if (![home, chatText, chatVoice, games, ranking, shop, cinema].every(Boolean)) return;
+
+  sidebar.querySelectorAll(':scope > .nav-label, :scope > .nav-item').forEach(el => {
+    if (el !== home && el !== chatText && el !== chatVoice && el !== games && el !== ranking && el !== shop && el !== cinema) el.remove();
+  });
+
+  const makeGroup = (key, title, icon, items) => {
+    const group = document.createElement('div');
+    group.className = 'nav-group';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'nav-group-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.innerHTML = `<span class="nav-group-icon">${icon}</span><span>${title}</span><span class="nav-group-chevron">⌄</span>`;
+    const submenu = document.createElement('div');
+    submenu.className = 'nav-submenu';
+    submenu.hidden = true;
+    toggle.addEventListener('click', () => {
+      const opening = submenu.hidden;
+      sidebar.querySelectorAll('.nav-submenu').forEach(menu => { menu.hidden = true; menu.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
+      submenu.hidden = !opening;
+      toggle.setAttribute('aria-expanded', String(opening));
+    });
+    items.forEach(item => submenu.appendChild(item));
+    group.append(toggle, submenu);
+    return group;
+  };
+
+  const entertainment = makeGroup('entertainment', 'Entretenimento', '✦', [shop, cinema, home]);
+  const gamesGroup = makeGroup('games', 'Jogo', '▣', [ranking, games]);
+  const chatGroup = makeGroup('chat', 'Chat', '◉', [chatVoice, chatText]);
+  [entertainment, gamesGroup, chatGroup].forEach(group => sidebar.insertBefore(group, bottom));
+  sidebar.dataset.groupedNavigation = 'true';
+}
+
 function switchView(name) {
   const target = $('view-' + name);
   if (!target) {
@@ -1499,6 +1548,7 @@ function setupEvents() {
 setupEvents();
 createCinemaPage();
 createShopPage();
+buildSidebarNavigation();
 
 if (configured) {
   try {
