@@ -750,6 +750,20 @@ function renderPokemonArena() {
 
   root.innerHTML = `
     <div class="pokemon-topline"><div><span class="eyebrow">SEU PROGRESSO</span><h3>Treinador ${safeText(profile?.displayName || 'Pokémon')}</h3></div><div class="pokemon-wallet">🪙 <b>${pokemonArena.coins}</b> moedas</div></div>
+    <div class="pokemon-mode-select">
+      <div class="pokemon-mode-card active">
+        <span class="eyebrow">MODO DISPONÍVEL</span>
+        <b>🤖 Jogador vs CPU</b>
+        <small>Monte seu time e enfrente um treinador controlado pelo jogo.</small>
+        <span class="pokemon-mode-status">SELECIONADO</span>
+      </div>
+      <div class="pokemon-mode-card unavailable" aria-disabled="true">
+        <span class="eyebrow">MODO EM DESENVOLVIMENTO</span>
+        <b>👥 Jogador vs Jogador</b>
+        <small>As batalhas online precisam de sincronização segura entre os dois jogadores.</small>
+        <span class="pokemon-mode-status">EM BREVE · NÃO DISPONÍVEL</span>
+      </div>
+    </div>
     <div class="pokemon-columns">
       <div class="pokemon-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div>
         <div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus primeiros Pokémon!</p>'}</div>
