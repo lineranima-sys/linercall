@@ -763,11 +763,11 @@ function pokemonStorageKey() {
 function loadPokemonArena() {
   try {
     const saved = JSON.parse(localStorage.getItem(pokemonStorageKey()) || 'null');
-    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { if (saved.coins === 300 && !saved.wins && saved.history.length === 0) saved.coins = 0; saved.losses = Number(saved.losses) || saved.history.filter(x => !x.win).length; return saved; }
+    if (saved && Array.isArray(saved.team) && Array.isArray(saved.history)) { if (saved.coins === 300 && !saved.wins && saved.history.length === 0) saved.coins = 0; saved.losses = Number(saved.losses) || saved.history.filter(x => !x.win).length; saved.battles = Number(saved.battles) || (Number(saved.wins)||0) + saved.losses || saved.history.length; return saved; }
   } catch (error) {
     console.warn('Não foi possível carregar o progresso Pokémon:', error);
   }
-  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 0, wins: 0, losses: 0, history: [] };
+  return { team: ['pikachu', 'charizard', 'blastoise'], coins: 0, wins: 0, losses: 0, battles: 0, history: [] };
 }
 
 function savePokemonArena() {
@@ -832,7 +832,7 @@ function renderPokemonArena() {
     <div class="pokemon-team-panel"><div class="pokemon-panel-title"><div><span class="eyebrow">SUA EQUIPE</span><h3>Time Pokémon <small>${team.length}/3</small></h3></div></div><div class="pokemon-team-list">${teamMarkup || '<p class="muted">Escolha seus Pokémon abaixo.</p>'}</div></div>
     <div class="pokemon-roster-title"><b>Escolha seus Pokémon</b><small>Selecione até três para a batalha.</small></div><div class="pokemon-roster pokemon-roster-art">${roster}</div>
     <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length!==3 || pokemonArena.battle?'disabled':''}>⚔ INICIAR BATALHA</button>
-    <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.losses || 0}</b><small>DERROTAS</small></div><div><b>${pokemonArena.history.length}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
+    <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.losses || 0}</b><small>DERROTAS</small></div><div><b>${pokemonArena.battles || 0}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
     <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
     <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle?'':'hidden'}"></div>`;
   if (pokemonArena.battle) renderPokemonBattle();
@@ -943,6 +943,7 @@ async function finishPokemonBattle(won) {
   if (!b || b.finished) return;
   b.finished = true;
   const opponent = b.enemy.map(p => p.name).join(', ');
+  pokemonArena.battles = (Number(pokemonArena.battles) || 0) + 1;
   if (won) {
     pokemonArena.coins += 50;
     pokemonArena.wins = (Number(pokemonArena.wins) || 0) + 1;
