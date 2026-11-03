@@ -699,7 +699,7 @@ async function openMemberProfile(uid, fallbackName) {
   </div>`;
   modal.classList.remove('hidden');
 }
-function challengePlayer(uid, name) {
+async function challengePlayer(uid, name) {
   if (!currentUser || uid === currentUser.uid) return;
 
   try {
