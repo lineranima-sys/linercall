@@ -93,15 +93,45 @@ function listenChallenges(){const q=query(collection(db,'challenges'),where('toU
 async function challengePlayer(uid,name){try{await addDoc(collection(db,'challenges'),{fromUid:currentUser.uid,fromName:profile.displayName||'Jogador',toUid:uid,toName:name,status:'pending',createdAt:serverTimestamp()});toast('Desafio enviado para '+name+'!');}catch(e){toast('Não foi possível enviar o desafio.');}}
 async function answerChallenge(id,accept){try{const fn=httpsCallable(functions,accept?'acceptChallenge':'declineChallenge');const result=await fn({challengeId:id});if(accept)toast(result.data?.message||'Duelo resolvido!');else toast('Desafio recusado.');}catch(e){toast(e.message||'Não foi possível responder ao desafio.');}}
 
-function switchView(name){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));$('view-'+name).classList.add('active-view');document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));const labels={chat:'CHAT GERAL',calls:'SALAS DE VOZ',games:'MINIGAMES',arena:'DESAFIOS',ranking:'RANKING',settings:'CONFIGURAÇÕES'};const headings={chat:'Ponto de encontro.',calls:'Sua voz, sua galera.',games:'Hora de jogar.',arena:'Bora competir?',ranking:'Quem está no topo?',settings:'Seu espaço.'};$('crumb-current').textContent=labels[name];$('page-heading').textContent=headings[name];}
-function joinCall(room){$('call-stage').classList.remove('hidden');$('call-room-title').textContent=room==='resenha-geral'?'Resenha geral':'Partidas & desafios';$('call-stage').scrollIntoView({behavior:'smooth',block:'start'});if(jitsiApi){jitsiApi.dispose();jitsiApi=null;}$('jitsi-container').innerHTML='';const scriptUrl='https://meet.jit.si/external_api.js';const start=()=>{jitsiApi=new window.JitsiMeetExternalAPI('meet.jit.si',{roomName:'LinerCalls-Community-'+room+'-MainRoom',parentNode:$('jitsi-container'),width:'100%',height:'100%',configOverwrite:{prejoinPageEnabled:true,enableWelcomePage:false},interfaceConfigOverwrite:{SHOW_JITSI_WATERMARK:false,SHOW_BRAND_WATERMARK:false,TOOLBAR_BUTTONS:['microphone','camera','desktop','chat','raisehand','tileview','hangup','settings','fullscreen']}});};if(window.JitsiMeetExternalAPI)start();else{const s=document.createElement('script');s.src=scriptUrl;s.onload=start;s.onerror=()=>toast('Não foi possível carregar a sala de voz.');document.head.appendChild(s);}}
-function leaveCall(){if(jitsiApi){jitsiApi.dispose();jitsiApi=null;}$('call-stage').classList.add('hidden');$('jitsi-container').innerHTML='';}
-function showDice(){ $('game-title').textContent='Dados do caos';$('game-content').innerHTML='<p class="muted">Um dado de 20 lados. Um lançamento. Qual será seu resultado?</p><div class="game-big">🎲</div><div id="dice-result" class="game-result">—</div><button id="roll-dice" class="btn btn-primary game-action">Lançar dado</button>'; $('game-stage').classList.remove('hidden');$('roll-dice').onclick=()=>{const n=Math.floor(Math.random()*20)+1;$('dice-result').textContent='Você tirou '+n+'!';$('game-big')?.classList.add('roll');};$('game-stage').scrollIntoView({behavior:'smooth'});}
-function showReaction(){ $('game-title').textContent='Teste de reflexo';$('game-content').innerHTML='<p id="reaction-instructions" class="muted">Clique em começar e espere a tela ficar verde. Não se adiante!</p><button id="reaction-button" class="btn btn-primary game-action">Começar</button><div id="reaction-result" class="game-result"></div>'; $('game-stage').classList.remove('hidden');$('reaction-button').onclick=()=>{if(!reactionReady){clearTimeout(reactionTimer);reactionReady=false;$('reaction-button').disabled=true;$('reaction-button').textContent='Espere...';$('reaction-button').style.background='#b85c76';$('reaction-instructions').textContent='Aguarde o sinal verde...';reactionTimer=setTimeout(()=>{reactionReady=true;reactionStart=performance.now();$('reaction-button').disabled=false;$('reaction-button').textContent='CLIQUE AGORA!';$('reaction-button').style.background='#62e6a5';$('reaction-instructions').textContent='AGORA!';},1200+Math.random()*3500);}else{const ms=Math.round(performance.now()-reactionStart);reactionReady=false;$('reaction-button').textContent='Tentar novamente';$('reaction-button').style.background='';$('reaction-result').textContent=ms+' ms';$('reaction-instructions').textContent=ms<250?'Reflexos absurdos!':ms<400?'Boa! Dá para melhorar.':'Você consegue mais rápido.';}};}
-async function saveProfile(e){e.preventDefault();const name=$('display-name').value.trim();if(name.length<2){toast('Escolha um nome com pelo menos 2 caracteres.');return;}try{await updateDoc(doc(db,'users',currentUser.uid),{displayName:name});profile.displayName=name;setUserUI();$('profile-status').textContent='Perfil atualizado!';toast('Perfil salvo.');}catch(e){toast('Não foi possível salvar o perfil.');}}
-async function logout(){cleanupListeners();leaveCall();await signOut(auth);$('app-shell').classList.add('hidden');$('auth-screen').classList.remove('hidden');}
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));
+  $('view-'+name).classList.add('active-view');
+
+  document.querySelectorAll('.nav-item[data-view]').forEach(b=>
+    b.classList.toggle('active',b.dataset.view===name)
+  );
+
+  const labels={
+    chat:'CHAT GERAL',
+    calls:'SALAS DE VOZ',
+    games:'MINIGAMES',
+    arena:'DESAFIOS',
+    ranking:'RANKING',
+    settings:'CONFIGURAÇÕES',
+    cinema:'NETFLIXLINER'
+  };
+
+  const headings={
+    chat:'Ponto de encontro.',
+    calls:'Sua voz, sua galera.',
+    games:'Hora de jogar.',
+    arena:'Bora competir?',
+    ranking:'Quem está no topo?',
+    settings:'Seu espaço.',
+    cinema:'Seu cinema começa aqui.'
+  };
+
+  $('crumb-current').textContent=labels[name];
+  $('page-heading').textContent=headings[name];
+}
 
 $('google-login').addEventListener('click',login);$('chat-form').addEventListener('submit',sendMessage);$('profile-form').addEventListener('submit',saveProfile);$('logout').addEventListener('click',logout);$('leave-call').addEventListener('click',leaveCall);$('close-game').addEventListener('click',()=>$('game-stage').classList.add('hidden'));$('play-dice').addEventListener('click',showDice);$('play-reaction').addEventListener('click',showReaction);
+$('cinema-explore').addEventListener('click',()=>{
+  $('cinema-featured').scrollIntoView({
+    behavior:'smooth',
+    block:'start'
+  });
+});
 document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.go)));document.querySelectorAll('.join-room').forEach(b=>b.addEventListener('click',()=>joinCall(b.dataset.room)));
 document.addEventListener('click',e=>{const duel=e.target.closest('[data-challenge]');if(duel)challengePlayer(duel.dataset.challenge,duel.dataset.name);const accept=e.target.closest('[data-accept]');if(accept)answerChallenge(accept.dataset.accept,true);const reject=e.target.closest('[data-reject]');if(reject)answerChallenge(reject.dataset.reject,false);});
 
