@@ -553,3 +553,5 @@ body.cinema-modal-open{overflow:hidden}
 .arena-spike-band:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(110deg,transparent 0 12px,rgba(125,194,83,.5) 13px 16px,transparent 17px 25px);opacity:.7}
 .arena-spike-band span{position:relative;z-index:1}
 @media(max-width:760px){.sidebar-collapsed .sidebar{width:60px}.tetris-grid{width:min(100%,260px)}}
+
+.member-profile-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.member-profile-actions .btn{flex:1;min-width:140px}.member-row small{max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
