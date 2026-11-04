@@ -1,3 +1,4 @@
+import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import {
@@ -1482,22 +1483,15 @@ function renderCinema() {
 }
 
 
-const SERIES_EPISODE_DATA = {
- 'lighty-steven-universe': [{name:'Temporada 1',count:52},{name:'Temporada 2',count:26},{name:'Temporada 3',count:25},{name:'Temporada 4',count:25},{name:'Temporada 5',count:32},{name:'Temporada 6',count:20}],
- 'lighty-naruto': [{name:'Temporada 1',count:35},{name:'Temporada 2',count:48},{name:'Temporada 3',count:48},{name:'Temporada 4',count:48},{name:'Temporada 5',count:41}],
- 'lighty-dragon-ball': [{name:'Temporada 1',count:13},{name:'Temporada 2',count:15},{name:'Temporada 3',count:40},{name:'Temporada 4',count:33},{name:'Temporada 5',count:31},{name:'Temporada 6',count:21}]
-};
-const EPISODE_TITLES = {
- 'lighty-steven-universe': [[
-  'Gem Glow','Laser Light Cannon','Cheeseburger Backpack','Together Breakfast','Frybo','Cat Fingers','Bubble Buddies','Serious Steven','Tiger Millionaire',"Steven's Lion",'Arcade Mania','Giant Woman','So Many Birthdays','Lars and the Cool Kids','Onion Trade','Steven the Sword Fighter','Lion 2: The Movie','Beach Party',"Rose's Room",'Coach Steven','Joking Victim','Steven and the Stevens','Monster Buddies','An Indirect Kiss','Mirror Gem','Ocean Gem','House Guest','Space Race','Secret Team','Island Adventure','Keep Beach City Weird!','Fusion Cuisine',"Garnet's Universe",'Watermelon Steven','Lion 3: Straight to Video','Alone Together','Warp Tour','The Test','Future Vision'
- ]],
- 'lighty-naruto': [[
-  'Sanjo! Uzumaki Naruto','Konohamaru da kore!','Shukuteki!? Sasuke to Sakura','Shiren! Sabaibaru enshû','Shikkaku? Kakashi no ketsuron'
- ]],
- 'lighty-dragon-ball': [[
-  'Bulma to Son Gokuu','Arararaa! Tama ga Nai!','Kame-Sennin no Kinto-Un','Hitosarai Youkai Oolong','Tsuyokute Warui Sabaku no Yamucha','Mayonaka no Houmonsha-tachi','Frypan Yama no Gyuumaou','Kame-Sennin no Kamehameha','Usagi Oyabun no Tokui Waza','Dragon Ball Ubawareru!!','Tsui ni Dragon Arawaru!','Shenron e no Negai','Gokuu no Dai Henshin'
- ]]
-};
+// Temporadas conhecidas, incluindo Steven Universo Futuro (S6) e JoJo/Gumball/Titãs.
+const SERIES_EPISODE_DATA = Object.fromEntries(
+ Object.entries(LIGHTY_SERIES).map(([id,config])=>[
+   id,config.counts.map((count,index)=>({
+     name:id==='lighty-steven-universe'&&index===5?'Steven Universo Futuro':'Temporada '+(index+1),
+     count
+   }))
+ ])
+);
 function lightyPurchasesKey(){return 'linercall-lighty-purchases-'+(currentUser?.uid||'guest');}
 function getLightyPurchases(){try{return JSON.parse(localStorage.getItem(lightyPurchasesKey())||'{}');}catch{return {};}}
 function hasLightyPurchase(key){return !!getLightyPurchases()[key];}
@@ -1507,23 +1501,72 @@ function buyLightyContent(key,cost,label){
  if(pokemonArena.coins<cost)return toast('Moedas insuficientes.');
  pokemonArena.coins-=cost;purchases[key]={boughtAt:Date.now()};localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));savePokemonArena();renderShop();toast(label+' comprado!');
 }
+let lightyEpisodeRenderToken=0;
 function renderSeriesDetails(item,selectedSeason=0){
- const root=$('cinema-episodes'),related=$('cinema-related');if(!root||!related)return;
+ const root=$('cinema-episodes'),related=$('cinema-related');
+ if(!root||!related)return;
  const seasons=SERIES_EPISODE_DATA[item.id];
+ const token=++lightyEpisodeRenderToken;
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
  const active=Math.max(0,Math.min(selectedSeason,seasons.length-1));
- const season=seasons[active],titles=EPISODE_TITLES[item.id]?.[active]||[];
- const episodeImages={
-  'lighty-steven-universe':{'1':'https://m.media-amazon.com/images/M/MV5BZWRiZTM3MzYtNWNkMS00OGIyLWEyMjAtY2IyYzI0ZjhjNTQyXkEyXkFqcGc%40._V1_.jpg'}
- };
- const seasonCards=seasons.map((entry,index)=>'<article class="lighty-season-card '+(index===active?'active':'')+'"><button class="lighty-season-select" type="button" data-select-season="'+index+'" data-season-show="'+safeText(item.id)+'"><b>'+safeText(entry.name)+'</b><small>'+entry.count+' episódios</small></button><button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+safeText(item.id)+'" data-season-index="'+index+'">'+(hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Comprar · 1.500')+'</button></article>').join('');
- const episodeCards=Array.from({length:season.count},(_,n)=>{
-  const number=n+1,title=titles[n]||'Episódio '+number,image=episodeImages[item.id]?.[String(number)]||item.poster||item.backdrop||'';
-  return '<button class="lighty-episode-card" type="button" data-episode-number="'+number+'" title="'+safeText(title)+'"><span class="lighty-episode-thumb"><img src="'+safeText(image)+'" alt="Imagem de '+safeText(title)+'" loading="lazy"><i>▶</i></span><b>'+safeText(title)+'</b><small>Episódio '+number+'</small></button>';
- }).join('');
- root.innerHTML='<section class="lighty-season-picker"><div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>1.500 LCoins cada</span></div><div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="prev" aria-label="Temporadas anteriores">‹</button><div class="lighty-season-row">'+seasonCards+'</div><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="next" aria-label="Próximas temporadas">›</button></div></section><section class="lighty-episode-picker"><div class="lighty-section-heading"><h3>'+safeText(item.title)+' · '+safeText(season.name)+'</h3><span>Seleção de episódios</span></div><div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="prev" aria-label="Episódios anteriores">‹</button><div class="lighty-episode-row">'+episodeCards+'</div><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="next" aria-label="Próximos episódios">›</button></div></section>';
- const recommendations=item.id==='lighty-steven-universe'?['Hora de Aventura','Gravity Falls','A Casa Coruja','Amphibia']:item.id==='lighty-naruto'?['Boruto','Dragon Ball','One Piece']:['Naruto','One Piece','Yu-Gi-Oh!'];
- related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';applyLanguage();
+ const season=seasons[active];
+ const safePoster=validWebUrl(item.backdrop||item.poster||'')||
+   'https://placehold.co/480x270/17152b/e7d8ff?text=LIGHTYFLIX';
+ const seasonCards=seasons.map((entry,index)=>
+  '<article class="lighty-season-card '+(index===active?'active':'')+'">'+
+  '<button class="lighty-season-select" type="button" data-select-season="'+index+
+  '" data-season-show="'+safeText(item.id)+'"><b>'+safeText(entry.name)+
+  '</b><small>'+entry.count+' episódio'+(entry.count===1?'':'s')+'</small></button>'+
+  '<button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+
+  safeText(item.id)+'" data-season-index="'+index+'">'+
+  (hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Comprar · 1.500')+
+  '</button></article>').join('');
+ root.innerHTML='<section class="lighty-season-picker">'+
+  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>1.500 LCoins cada</span></div>'+
+  '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="prev" aria-label="Temporadas anteriores">‹</button>'+
+  '<div class="lighty-season-row">'+seasonCards+'</div>'+
+  '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="next" aria-label="Próximas temporadas">›</button></div></section>'+
+  '<section class="lighty-episode-picker"><div class="lighty-section-heading"><h3>'+
+  safeText(item.title)+' · '+safeText(season.name)+'</h3><span>'+season.count+
+  ' episódio'+(season.count===1?'':'s')+'</span></div>'+
+  '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="prev" aria-label="Episódios anteriores">‹</button>'+
+  '<div class="lighty-episode-row" aria-live="polite"></div>'+
+  '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="next" aria-label="Próximos episódios">›</button></div>'+
+  '<small class="lighty-episode-credit">Imagens e informações: <a href="https://www.tvmaze.com" target="_blank" rel="noopener noreferrer">TVmaze</a> (CC BY-SA). Títulos em português revisados quando disponíveis; traduções automáticas podem variar. Algumas imagens são capas da série quando não há imagem individual.</small>'+
+  '</section>';
+ const recommendations=item.id==='lighty-steven-universe'
+  ?['Hora de Aventura','Gravity Falls','A Casa Coruja','Amphibia']
+  :item.id==='lighty-naruto'?['Boruto','Dragon Ball','One Piece']
+  :item.id==='lighty-demon-slayer'?['Jujutsu Kaisen','Naruto','JoJo']
+  :['Naruto','One Piece','Yu-Gi-Oh!'];
+ related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+
+  recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';
+ const episodesRoot=root.querySelector('.lighty-episode-row');
+ function paintEpisodes(episodes) {
+  if(token!==lightyEpisodeRenderToken||!episodesRoot)return;
+  const previousScroll=episodesRoot.scrollLeft;
+  episodesRoot.innerHTML=episodes.map((entry,i)=>{
+    const title=entry.title||('Episódio '+(i+1));
+    const url=validWebUrl(entry.image||'')||safePoster;
+    const imageLabel=entry.isStill?'Cena do episódio':'Imagem ilustrativa da série';
+    return '<button class="lighty-episode-card" type="button" data-episode-number="'+
+      (i+1)+'" title="'+safeText(title)+'">'+
+      '<span class="lighty-episode-thumb"><img src="'+safeText(url)+
+      '" alt="'+safeText(imageLabel+': '+title)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+
+      safeText(safePoster)+'\'"><i>▶</i></span>'+
+      '<b>'+safeText(title)+'</b><small>Episódio '+(i+1)+'</small></button>';
+  }).join('');
+  episodesRoot.scrollLeft=previousScroll;
+ }
+ paintEpisodes(Array.from({length:season.count},(_,i)=>({
+  title:'Episódio '+(i+1),image:'',isStill:false
+ })));
+ getLightyEpisodes(item.id,active).then(episodes=>{
+  if(token!==lightyEpisodeRenderToken)return;
+  paintEpisodes(episodes);
+  return localizeLightyEpisodes(item.id,active,episodes,()=>paintEpisodes(episodes));
+ }).catch(error=>console.warn('LightyFlix: guia de episódios indisponível',error));
+ applyLanguage();
 }
 
 let cinemaFilter='all';
@@ -1548,6 +1591,18 @@ async function loadCinema() {
   $('cinema-featured').innerHTML =
     '<div class="empty-state">Carregando catálogo...</div>';
 
+    const builtInCatalog = [
+    {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://assets.qz.com/media/a30cb33e8ca08c00ea178c350bbfac6e.jpg'},
+    {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
+    {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
+    {id:'lighty-jojo-bizarre-adventure',title:"JoJo's Bizarre Adventure",type:'series',year:2012,releaseDate:'6 de outubro de 2012',duration:'~24 min por episódio',description:'Acompanhe as diferentes gerações da família Joestar em aventuras sobrenaturais, batalhas estratégicas e confrontos cheios de personalidade.',featured:true,poster:'https://miro.medium.com/v2/resize%3Afit%3A1400/1%2AlkzQ84Lq2LaHazcKYY4fYA.jpeg'},
+    {id:'lighty-demon-slayer',title:'Demon Slayer: Kimetsu no Yaiba',type:'series',year:2019,releaseDate:'6 de abril de 2019',duration:'~24 min por episódio',description:'Tanjiro Kamado começa sua jornada depois que sua família é atacada por demônios. No LightyFlix, apenas o episódio 1 da primeira temporada está listado.',featured:true,poster:'https://image.tmdb.org/t/p/w780/4oy1X4QDgwxmUycIxU7T2VrQkIr.jpg'},
+    {id:'lighty-gumball',title:'O Incrível Mundo de Gumball',type:'series',year:2011,releaseDate:'3 de maio de 2011',duration:'~11 min por episódio',description:'Gumball, Darwin e a família Watterson vivem confusões absurdas na cidade de Elmore, onde qualquer coisa pode acontecer.',featured:true,poster:'https://image.tmdb.org/t/p/original/VYnnyA2hyxi3VUPgCA71mMtt69.jpg'},
+    {id:'lighty-teen-titans',title:'Jovens Titãs',type:'series',year:2003,releaseDate:'19 de julho de 2003',duration:'~22 min por episódio',description:'Robin, Estelar, Ravena, Mutano e Ciborgue protegem Jump City enquanto enfrentam vilões e tentam conviver como equipe.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BOTg3NzY2MDQtMjUxNS00N2Q3LTkxODktMmU1NzdjZTNkMzQ0XkEyXkFqcGc%40._V1_.jpg'},
+    {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
+    {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
+  ];
+
   try {
     const snapshot = await getDocs(
       query(collection(db, 'videos'), orderBy('createdAt', 'desc'), limit(100))
@@ -1557,16 +1612,7 @@ async function loadCinema() {
       id: d.id,
       ...d.data()
     }));
-    const builtInCatalog = [
-      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://assets.qz.com/media/a30cb33e8ca08c00ea178c350bbfac6e.jpg'},
-      {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
-      {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
-      {id:'lighty-jojo-bizarre-adventure',title:"JoJo's Bizarre Adventure",type:'series',year:2012,releaseDate:'6 de outubro de 2012',duration:'~24 min por episódio',description:'Acompanhe as diferentes gerações da família Joestar em aventuras sobrenaturais, batalhas estratégicas e confrontos cheios de personalidade.',featured:true,poster:'https://miro.medium.com/v2/resize%3Afit%3A1400/1%2AlkzQ84Lq2LaHazcKYY4fYA.jpeg'},
-      {id:'lighty-gumball',title:'O Incrível Mundo de Gumball',type:'series',year:2011,releaseDate:'3 de maio de 2011',duration:'~11 min por episódio',description:'Gumball, Darwin e a família Watterson vivem confusões absurdas na cidade de Elmore, onde qualquer coisa pode acontecer.',featured:true,poster:'https://image.tmdb.org/t/p/original/VYnnyA2hyxi3VUPgCA71mMtt69.jpg'},
-      {id:'lighty-teen-titans',title:'Jovens Titãs',type:'series',year:2003,releaseDate:'19 de julho de 2003',duration:'~22 min por episódio',description:'Robin, Estelar, Ravena, Mutano e Ciborgue protegem Jump City enquanto enfrentam vilões e tentam conviver como equipe.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BOTg3NzY2MDQtMjUxNS00N2Q3LTkxODktMmU1NzdjZTNkMzQ0XkEyXkFqcGc%40._V1_.jpg'},
-      {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
-      {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
-    ];
+
     const knownIds = new Set(communityItems.map(item=>item.id));
     cinemaItems = [...builtInCatalog.filter(item=>!knownIds.has(item.id)), ...communityItems];
 
@@ -1576,19 +1622,10 @@ async function loadCinema() {
   } catch (error) {
     console.warn('Catálogo indisponível:', error);
 
-    cinemaItems = [];
-
-    $('cinema-featured').innerHTML =
-      '<div class="empty-state">O catálogo ainda não está configurado no banco de dados.</div>';
-
-    $('cinema-movies').innerHTML =
-      '<div class="empty-state">Os conteúdos aparecerão aqui quando forem cadastrados.</div>';
-
-    $('cinema-series').innerHTML =
-      '<div class="empty-state">As séries aparecerão aqui quando forem cadastradas.</div>';
-
-    $('cinema-my-list').innerHTML =
-      '<div class="empty-state">Sua lista está vazia.</div>';
+    // Preserve o catálogo interno quando a consulta à coleção 'videos' falhar.
+    cinemaItems = builtInCatalog;
+    renderCinema();
+    applyLanguage();
   }
 }
 

@@ -629,3 +629,8 @@ body.cinema-modal-open{overflow:hidden}
  .cinema-card-poster{min-height:0}
  .cinema-all-grid .cinema-card-poster{min-height:0}
 }
+
+/* LightyFlix · títulos completos, miniaturas e crédito das fontes de episódios */
+.lighty-episode-card>b{white-space:normal;text-overflow:clip;line-height:1.35;min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lighty-episode-credit{display:block;color:#91a0bc;line-height:1.5;padding:10px 4px 0;font-size:10px}
+.lighty-episode-credit a{color:#5ce1ed}
