@@ -35,6 +35,52 @@ const KNOWN_TITLES = {
       'O Clube da Camiseta','Uma História para Steven','A Mensagem',
       'Poder Político','O Retorno','Libertador'
     ],
+    2: [
+      'Contando Tudo','Curtindo por Aí','Diga Tio','Cartas de Amor',
+      'Reformas','Juramento à Espada','Ondas Gigantes, Céus Explosivos',
+      'Ficando Juntas','Temos que Conversar','Tempo de Relaxar','Peça Ajuda',
+      'Motel Keystone','Amigo Cebola','Fricção Histórica','Amizade',
+      'Pesadelo Hospitalar','A Canção da Sadie','Pegar e Largar',
+      'Quando Chove','De Volta ao Celeiro','Longe Demais','A Resposta',
+      'Aniversário do Steven','Poderia Ter Sido Ótimo','Mensagem Recebida',
+      'Diário de Bordo 7-15-2'
+    ],
+    3: [
+      'Super Ilha Melancia','Broca de Gems','O Mesmo Mundo',
+      'Colegas de Celeiro','Tacada Certeira','Steven Voador',
+      'Som na Caixa, Pai','Senhor Greg','Baixos Demais pra Brincar',
+      'O Novo Lars','Corrida em Beach City','Guerra de Restaurante',
+      'Entregas de Pizza da Kiki','Reencontro Monstruoso',
+      'Sozinhos no Mar','Greg Babá','Caçando Gems','Bate o Chicote',
+      'Steven contra Ametista','Bismuto — Parte 1','Bismuto — Parte 2',
+      'Beta','Terráqueas','De Volta à Lua','Na Bolha'
+    ],
+    4: [
+      'A Menina do Jardim de Infância','Conheça Sua Fusão',
+      'O Livro do Buddy','Educação de Consciência',
+      'Zoltron, Menino do Futuro','Última a Sair de Beach City',
+      'A Turma do Cebola','Colheita de Gem — Parte 1',
+      'Colheita de Gem — Parte 2','Três Gems e um Bebê',
+      'O Sonho do Steven','Aventuras com Distorção de Luz',
+      'Assalto de Gem','O Zoológico','Isso é Tudo',
+      'As Novas Crystal Gems','Tempestade no Quarto',
+      'Pedronaldo','Tigre Filantropo','Espaço pra Rubi',
+      'Leão 4: Final Alternativo','Tocaia com o Doug',
+      'O Bom Lars','Você é Meu Pai?','Eu Sou a Minha Mãe'
+    ],
+    5: [
+      'Presos Juntos','O Julgamento','Descoloridas','A Cabeça do Lars',
+      'Dewey Vence','Via-Gem','Levando o Celeiro',
+      'De Volta ao Jardim de Infância','Sadie Killer','Festa do Kevin',
+      'Lars Estelar','Lua Selva','Sua e Minha Mãe','O Grande Show',
+      'Pulando Poços','Cartas pro Lars','Não Posso Voltar',
+      'Uma Única Rosa Pálida','Agora Estamos Desmoronando',
+      'Qual é o Seu Problema?','A Pergunta','Dama de Honra',
+      'Reunidos — Parte 1','Reunidos — Parte 2',
+      'Pernas Daqui ao Planeta Natal','Familiar','Juntos Sozinhos',
+      'Escapismo','Mudar de Ideia — Parte 1','Mudar de Ideia — Parte 2',
+      'Mudar de Ideia — Parte 3','Mudar de Ideia — Parte 4'
+    ],
     6: [
       'Mini Escola Natal','Orientação','Botões de Rosa','Voleibol',
       'Bluebird','Um Episódio Muito Especial','Dia de Neve','Por Que Tão Azul?',
@@ -64,8 +110,8 @@ const KNOWN_BY_ENGLISH = {
     'final exam':'Prova Final','sisters':'Irmãs','divide and conquer':'Separar e Conquistar',
     'forces of nature':'Forças da Natureza','the sum of his parts':'Minha Melhor Parte',
     'nevermore':'Nunca Mais','switched':'A Troca','deep six':'No Fundo do Mar',
-    'masks':'Máscaras','mad mod':'A Escola','apprentice (1)':'Aprendiz — Parte 1',
-    'apprentice (2)':'Aprendiz — Parte 2','car trouble':'O Carro'
+    'masks':'Máscaras','mad mod':'A Escola','apprentice 1':'Aprendiz — Parte 1',
+    'apprentice 2':'Aprendiz — Parte 2','car trouble':'O Carro'
   }
 };
 
@@ -138,11 +184,25 @@ export async function getLightyEpisodes(showId,seasonIndex) {
   if(showId==='lighty-steven-universe'&&seasonIndex===5) {
     const future=await tvmazeEpisodes(config.future);
     source=future.filter(ep=>ep.season===1).sort((a,b)=>(a.number||0)-(b.number||0));
-  } else if(showId==='lighty-steven-universe'||showId==='lighty-jojo-bizarre-adventure'||
+  } else if(showId==='lighty-steven-universe') {
+    let bySeason=source.filter(ep=>ep.season===seasonNumber)
+      .sort((a,b)=>(a.number||0)-(b.number||0));
+    // TVmaze groups the double/quadruple episodes into one broadcast entry.
+    // The LightyFlix catalogue counts them as distinct numbered parts.
+    const parts={
+      3:{'bismuth':2},
+      4:{'gem harvest':2},
+      5:{'reunited':2,'change your mind':4}
+    }[seasonNumber]||{};
+    bySeason=bySeason.flatMap(ep=>{
+      const repetitions=parts[normalizedTitle(ep.name)]||1;
+      return Array.from({length:repetitions},()=>ep);
+    });
+    source=bySeason;
+  } else if(showId==='lighty-jojo-bizarre-adventure'||
             showId==='lighty-gumball'||showId==='lighty-teen-titans') {
     const subset=source.filter(ep=>ep.season===seasonNumber)
       .sort((a,b)=>(a.number||0)-(b.number||0));
-    // Some providers combine 2-4 short episodes into one broadcast record.
     if(subset.length>=count-2) source=subset;
     else source=source.slice(config.counts.slice(0,seasonIndex).reduce((a,b)=>a+b,0));
   } else {
