@@ -565,3 +565,34 @@ body.cinema-modal-open{overflow:hidden}
 #story-canvas{display:block;width:100%;height:auto;aspect-ratio:16/7;max-height:520px;border:3px solid #7dcf83;border-radius:8px;background:#05b9ed;image-rendering:pixelated;box-shadow:0 8px 0 #173d35}
 .story-dialogue{min-height:95px;padding:15px 17px;background:#101c2b;border:1px solid rgba(255,224,130,.35);border-radius:10px;color:#f4f2dc}.story-dialogue>b{color:#ffe28b;font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.8}.story-dialogue p{font-size:13px;line-height:1.6;color:#d1dce4;margin:8px 0}.story-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.story-actions small{margin-right:auto;color:#9bb1c0;font-size:10px}.story-controls{display:none;justify-content:center;gap:10px}.story-controls button{width:58px;height:48px;border:1px solid #77c78c;border-radius:9px;background:#183d37;color:#fff;font-size:20px;touch-action:none}
 @media(max-width:760px){.story-controls{display:flex}.story-actions small{width:100%}.story-price{text-align:left}}
+
+
+/* LightyFlix: cartões legíveis e seletores horizontais */
+.cinema-card{overflow:hidden;background:#101a30;border:1px solid rgba(164,184,224,.18);border-radius:16px}
+.cinema-card-open{background:#101a30!important;color:#f5f7ff!important}
+.cinema-card-poster{position:relative;isolation:isolate;overflow:hidden;background:#17233c}
+.cinema-card-poster:after{content:"";position:absolute;inset:30% 0 0;background:linear-gradient(180deg,transparent 0%,rgba(5,10,23,.76) 100%);pointer-events:none}
+.cinema-card-type,.cinema-card-view{z-index:2}
+.cinema-card-info{background:#101a30!important;padding:14px 16px 16px;color:#f5f7ff!important}
+.cinema-card-info h4{color:#fff!important;font-size:17px}
+.cinema-card-info p{color:#c5d0e4!important;line-height:1.5}
+.cinema-card-info .cinema-meta{color:#aebbd3!important}
+.cinema-card-actions{background:#101a30;padding:0 14px 14px}
+.cinema-episodes{min-width:0}
+.lighty-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 10px}
+.lighty-section-heading h3{margin:0;color:#f4f6ff;font-size:17px}
+.lighty-section-heading>span{font-size:11px;color:#aebbd2}
+.lighty-season-row,.lighty-episode-row{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:3px 2px 14px;scrollbar-width:thin;scrollbar-color:#52688f #172139}
+.lighty-season-card{flex:0 0 190px;scroll-snap-align:start;background:#121f38;border:1px solid #344563;border-radius:12px;padding:12px;display:grid;gap:10px}
+.lighty-season-card.active{border-color:#5ce1ed;box-shadow:0 0 0 1px rgba(92,225,237,.18)}
+.lighty-season-select{display:grid;gap:6px;text-align:left;border:0;background:transparent;color:#fff;cursor:pointer;padding:3px}
+.lighty-season-select b{font-size:14px}.lighty-season-select small{font-size:11px;color:#aebbd2}
+.lighty-season-buy{width:100%;white-space:nowrap;font-size:11px;padding:9px 10px}
+.lighty-episode-card{flex:0 0 174px;scroll-snap-align:start;display:grid;gap:7px;text-align:left;background:#121f38;border:1px solid #344563;border-radius:12px;padding:9px;color:#fff;cursor:pointer;min-width:0}
+.lighty-episode-card:hover{border-color:#5ce1ed;transform:translateY(-2px)}
+.lighty-episode-thumb{height:94px;position:relative;display:block;overflow:hidden;border-radius:7px;background:#202e49}
+.lighty-episode-thumb img{width:100%;height:100%;object-fit:cover;opacity:.86}
+.lighty-episode-thumb i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:25px;color:#fff;text-shadow:0 2px 8px #000}
+.lighty-episode-card>b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lighty-episode-card>small{font-size:10px;color:#aebbd2}
+@media(max-width:600px){.lighty-season-card{flex-basis:165px}.lighty-episode-card{flex-basis:150px}.lighty-episode-thumb{height:82px}.lighty-section-heading h3{font-size:15px}}
