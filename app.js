@@ -1514,9 +1514,7 @@ function renderSeriesDetails(item,selectedSeason=0){
  const active=Math.max(0,Math.min(selectedSeason,seasons.length-1));
  const season=seasons[active],titles=EPISODE_TITLES[item.id]?.[active]||[];
  const episodeImages={
-  'lighty-steven-universe':{'1':'https://m.media-amazon.com/images/M/MV5BZWRiZTM3MzYtNWNkMS00OGIyLWEyMjAtY2IyYzI0ZjhjNTQyXkEyXkFqcGc%40._V1_.jpg'},
-  'lighty-naruto':{'1':'https://serializd-tmdb-images.b-cdn.net/t/p/original/7xOP0rKDniTZKEaRM7seKfY9SG8.jpg'},
-  'lighty-dragon-ball':{'1':'https://grupovierci.brightspotcdn.com/dims4/default/4e55558/2147483647/strip/false/crop/1180x886%2B0%2B0/resize/1180x886%21/quality/90/?url=https%3A%2F%2Fk2-prod-grupo-vierci.s3.us-east-1.amazonaws.com%2Fbrightspot%2Fadjuntos%2F161%2Fimagenes%2F008%2F322%2F0008322297.jpg'}
+  'lighty-steven-universe':{'1':'https://m.media-amazon.com/images/M/MV5BZWRiZTM3MzYtNWNkMS00OGIyLWEyMjAtY2IyYzI0ZjhjNTQyXkEyXkFqcGc%40._V1_.jpg'}
  };
  const seasonCards=seasons.map((entry,index)=>'<article class="lighty-season-card '+(index===active?'active':'')+'"><button class="lighty-season-select" type="button" data-select-season="'+index+'" data-season-show="'+safeText(item.id)+'"><b>'+safeText(entry.name)+'</b><small>'+entry.count+' episódios</small></button><button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+safeText(item.id)+'" data-season-index="'+index+'">'+(hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Comprar · 1.500')+'</button></article>').join('');
  const episodeCards=Array.from({length:season.count},(_,n)=>{
