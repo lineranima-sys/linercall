@@ -12,9 +12,11 @@ service cloud.firestore {
         && request.resource.data.wins == 0 && request.resource.data.losses == 0
         && request.resource.data.createdAt == request.time && request.resource.data.lastSeen == request.time;
       allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','lastSeen'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','lastSeen','activity','activityLabel'])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName']) || (request.resource.data.displayName is string && request.resource.data.displayName.size() >= 2 && request.resource.data.displayName.size() <= 60))
-        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastSeen']) || request.resource.data.lastSeen == request.time);
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastSeen']) || request.resource.data.lastSeen == request.time)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['activity']) || request.resource.data.activity in ['browsing','chat','voice','friends','playing','watching','shopping','private_chat'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['activityLabel']) || (request.resource.data.activityLabel is string && request.resource.data.activityLabel.size() <= 80));
       allow delete: if false;
     }
 
