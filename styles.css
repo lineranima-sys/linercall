@@ -596,3 +596,16 @@ body.cinema-modal-open{overflow:hidden}
 .lighty-episode-card>b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lighty-episode-card>small{font-size:10px;color:#aebbd2}
 @media(max-width:600px){.lighty-season-card{flex-basis:165px}.lighty-episode-card{flex-basis:150px}.lighty-episode-thumb{height:82px}.lighty-section-heading h3{font-size:15px}}
+
+
+/* LightyFlix: carrosséis contidos, com setas e sem deslocar o modal */
+.cinema-detail-content,.cinema-detail-info,.cinema-episodes,.lighty-season-picker,.lighty-episode-picker{min-width:0;max-width:100%}
+.cinema-detail-content{overflow:hidden}
+.lighty-carousel-wrap{display:grid;grid-template-columns:34px minmax(0,1fr) 34px;align-items:center;gap:7px;width:100%;min-width:0}
+.lighty-season-row,.lighty-episode-row{width:100%;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scroll-behavior:smooth;contain:content;background:linear-gradient(180deg,rgba(12,23,43,.92),rgba(15,26,47,.98));border:1px solid rgba(139,167,207,.18);border-radius:12px;padding:12px 10px 15px;box-sizing:border-box}
+.lighty-carousel-arrow{width:34px;height:42px;border:1px solid #52698e;border-radius:10px;background:#1b2c49;color:#f4f7ff;font-size:27px;line-height:1;cursor:pointer;display:grid;place-items:center;transition:background .2s,border-color .2s,transform .2s}
+.lighty-carousel-arrow:hover{background:#29466e;border-color:#5ce1ed;transform:scale(1.04)}
+.lighty-section-heading{min-width:0}
+.lighty-section-heading h3{overflow-wrap:anywhere}
+.lighty-episode-thumb img{object-fit:cover;background:#1c2c49}
+@media(max-width:650px){.cinema-detail-content{overflow:visible}.lighty-carousel-wrap{grid-template-columns:28px minmax(0,1fr) 28px;gap:5px}.lighty-carousel-arrow{width:28px;height:38px;font-size:23px}.lighty-season-row,.lighty-episode-row{padding:9px 7px 12px}}
