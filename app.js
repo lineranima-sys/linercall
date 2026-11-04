@@ -1488,6 +1488,9 @@ const SERIES_EPISODE_DATA = {
  'lighty-dragon-ball': [{name:'Temporada 1',count:13},{name:'Temporada 2',count:15},{name:'Temporada 3',count:40},{name:'Temporada 4',count:33},{name:'Temporada 5',count:31},{name:'Temporada 6',count:21}]
 };
 const EPISODE_TITLES = {
+ 'lighty-steven-universe': [[
+  'Gem Glow','Laser Light Cannon','Cheeseburger Backpack','Together Breakfast','Frybo','Cat Fingers','Bubble Buddies','Serious Steven','Tiger Millionaire',"Steven's Lion",'Arcade Mania','Giant Woman','So Many Birthdays','Lars and the Cool Kids','Onion Trade','Steven the Sword Fighter','Lion 2: The Movie','Beach Party',"Rose's Room",'Coach Steven','Joking Victim','Steven and the Stevens','Monster Buddies','An Indirect Kiss','Mirror Gem','Ocean Gem','House Guest','Space Race','Secret Team','Island Adventure','Keep Beach City Weird!','Fusion Cuisine',"Garnet's Universe",'Watermelon Steven','Lion 3: Straight to Video','Alone Together','Warp Tour','The Test','Future Vision'
+ ]],
  'lighty-naruto': [[
   'Sanjo! Uzumaki Naruto','Konohamaru da kore!','Shukuteki!? Sasuke to Sakura','Shiren! Sabaibaru enshû','Shikkaku? Kakashi no ketsuron'
  ]],
