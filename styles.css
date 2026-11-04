@@ -555,3 +555,13 @@ body.cinema-modal-open{overflow:hidden}
 @media(max-width:760px){.sidebar-collapsed .sidebar{width:60px}.tetris-grid{width:min(100%,260px)}}
 
 .member-profile-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.member-profile-actions .btn{flex:1;min-width:140px}.member-row small{max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+
+
+/* Modo História — aventura pixel art */
+.story-tab{background:linear-gradient(145deg,rgba(73,143,82,.24),rgba(20,45,39,.85));opacity:1;cursor:pointer}
+.story-tab:hover{border-color:#8de47c;transform:translateY(-3px)}
+.story-shell{display:grid;gap:14px;padding:clamp(10px,2vw,22px);background:linear-gradient(180deg,#102b3a,#101a2a);border:1px solid rgba(120,220,160,.25);border-radius:16px}
+.story-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.story-top h2{font-family:'Press Start 2P',monospace;font-size:clamp(15px,2vw,23px);line-height:1.6;color:#f5d879;margin:9px 0}.story-top p{color:#b8c9d4;font-size:13px;margin:0}.story-price{display:grid;text-align:right;gap:3px}.story-price b{font-size:24px;color:#ffdf75}.story-price small{font-size:9px;color:#9db3c0}.story-price strong{font-size:10px;color:#83ed9b;letter-spacing:1px}.story-hud{display:flex;justify-content:space-between;color:#d4e9d8;font-size:11px;font-weight:700}
+#story-canvas{display:block;width:100%;height:auto;aspect-ratio:16/7;max-height:520px;border:3px solid #7dcf83;border-radius:8px;background:#05b9ed;image-rendering:pixelated;box-shadow:0 8px 0 #173d35}
+.story-dialogue{min-height:95px;padding:15px 17px;background:#101c2b;border:1px solid rgba(255,224,130,.35);border-radius:10px;color:#f4f2dc}.story-dialogue>b{color:#ffe28b;font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.8}.story-dialogue p{font-size:13px;line-height:1.6;color:#d1dce4;margin:8px 0}.story-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.story-actions small{margin-right:auto;color:#9bb1c0;font-size:10px}.story-controls{display:none;justify-content:center;gap:10px}.story-controls button{width:58px;height:48px;border:1px solid #77c78c;border-radius:9px;background:#183d37;color:#fff;font-size:20px;touch-action:none}
+@media(max-width:760px){.story-controls{display:flex}.story-actions small{width:100%}.story-price{text-align:left}}
