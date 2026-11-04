@@ -443,7 +443,8 @@ async function answerFriendRequest(requestId,accept){
   }catch(e){console.error(e);toast('Não foi possível responder ao pedido.');}
 }
 function openDirectMessage(uid,name){
-  activeFriendId=uid;$('dm-title').textContent='Conversa com '+name;$('dm-panel').classList.remove('hidden');
+  activeFriendId=uid;
+  setPresence('private_chat','Em chat privado com '+name);$('dm-title').textContent='Conversa com '+name;$('dm-panel').classList.remove('hidden');
   $('dm-messages').innerHTML='<p class="muted">Carregando mensagens...</p>';
   if(window.stopDMListener)window.stopDMListener();
   const path=collection(db,'conversations',friendPairId(currentUser.uid,uid),'messages');
@@ -463,7 +464,16 @@ async function sendDirectMessage(event){
   }catch(e){console.error(e);toast('Mensagem não enviada. Vocês precisam ser amigos.');}
 }
 
+function setPresence(activity,label){
+  if(!currentUser||!db)return;
+  updateDoc(doc(db,'users',currentUser.uid),{activity,activityLabel:label,lastSeen:serverTimestamp()})
+    .then(()=>{if(profile)profile={...profile,activity,activityLabel:label};})
+    .catch(error=>console.warn('Presença não atualizada:',error));
+}
 function switchView(name) {
+  const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
+  const state=activities[name]||['browsing','Navegando'];
+  setPresence(state[0],state[1]);
   const target = $('view-' + name);
   if (!target) {
     toast('Esta página ainda não está disponível.');
@@ -612,7 +622,7 @@ function listenUsers() {
           <button class="member-row profile-open-trigger" data-profile-open="${safeText(user.id)}" data-profile-name="${safeText(user.displayName || 'Jogador')}">
             <div class="avatar member-avatar" ${user.avatarData ? `style="background-image:url('${user.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${user.avatarData ? '' : safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>online</small>
+            <small>${safeText(user.activityLabel || 'online')}</small>
           </button>
         `).join('')
       : '<p class="muted">Ninguém online por enquanto.</p>';
@@ -761,10 +771,13 @@ async function openMemberProfile(uid, fallbackName) {
     document.body.appendChild(modal);
   }
   const own = uid === currentUser?.uid;
+  const isOnline = member.lastSeen?.toDate && Date.now()-member.lastSeen.toDate().getTime()<3*60*1000;
+  const activity = member.activityLabel || (isOnline ? 'online' : 'offline');
   modal.innerHTML = `<div class="cropper-card member-profile-card">
     <div class="panel-head"><h3>Perfil do jogador</h3><button class="icon-btn" data-profile-close>✕</button></div>
     <div class="profile-banner-preview ${member.bannerStyle ? '' : 'no-profile-banner'}" data-style="${member.bannerStyle || 0}">${safeText(member.displayName || 'Jogador')}</div>
-    <div class="member-profile-identity"><div class="avatar avatar-large" ${member.avatarData ? `style="background-image:url('${member.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${member.avatarData ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : 'Membro da comunidade'}</small></div></div>
+    <div class="member-profile-identity"><div class="avatar avatar-large" ${member.avatarData ? `style="background-image:url('${member.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${member.avatarData ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : safeText(activity)}</small></div></div>
+    ${!own ? `<div class="member-profile-actions"><button class="btn btn-primary" data-profile-add="${safeText(uid)}" data-profile-add-name="${safeText(member.displayName||'Jogador')}">Adicionar amizade</button><button class="btn" data-profile-message="${safeText(uid)}" data-profile-message-name="${safeText(member.displayName||'Jogador')}">Enviar mensagem</button></div>` : ''}
   </div>`;
   modal.classList.remove('hidden');
 }
@@ -1717,6 +1730,8 @@ function setupEvents() {
     if (event.target.closest('[data-crop-save]')) saveCroppedAvatar();
     if (event.target.closest('[data-profile-close]')) $('member-profile-modal')?.classList.add('hidden');
     const profileTrigger=event.target.closest('[data-profile-open]'); if(profileTrigger) openMemberProfile(profileTrigger.dataset.profileOpen, profileTrigger.dataset.profileName);
+    const profileAdd=event.target.closest('[data-profile-add]'); if(profileAdd)sendFriendRequest(profileAdd.dataset.profileAdd,profileAdd.dataset.profileAddName);
+    const profileMessage=event.target.closest('[data-profile-message]'); if(profileMessage){$('member-profile-modal')?.classList.add('hidden');openDirectMessage(profileMessage.dataset.profileMessage,profileMessage.dataset.profileMessageName);}
     const bannerPick=event.target.closest('[data-banner-style]'); if(bannerPick) saveBannerChoice(Number(bannerPick.dataset.bannerStyle));
   });
 }
