@@ -1504,11 +1504,14 @@ function buyLightyContent(key,cost,label){
  if(pokemonArena.coins<cost)return toast('Moedas insuficientes.');
  pokemonArena.coins-=cost;purchases[key]={boughtAt:Date.now()};localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));savePokemonArena();renderShop();toast(label+' comprado!');
 }
-function renderSeriesDetails(item){
+function renderSeriesDetails(item,selectedSeason=0){
  const root=$('cinema-episodes'),related=$('cinema-related');if(!root||!related)return;
  const seasons=SERIES_EPISODE_DATA[item.id];
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
- root.innerHTML='<h3>Temporadas e episódios</h3>'+seasons.map((season,index)=>{const titles=EPISODE_TITLES[item.id]?.[index]||[];return '<details class="season-accordion" '+(index===0?'open':'')+'><summary>'+safeText(season.name)+' <span>'+season.count+' episódios</span></summary><ol class="episode-list">'+Array.from({length:season.count},(_,n)=>'<li class="episode-card"><img src="'+safeText(item.poster||item.backdrop||'')+'" alt="" loading="lazy"><span><b>'+safeText(titles[n]||'Título não cadastrado')+'</b><small>Episódio '+(n+1)+'</small></span></li>').join('')+'</ol><button class="btn btn-primary" data-buy-season="'+safeText(item.id)+'" data-season-index="'+index+'">Comprar temporada · 1.500 moedas</button></details>';}).join('');
+ const active=Math.max(0,Math.min(selectedSeason,seasons.length-1));
+ const season=seasons[active];
+ const titles=EPISODE_TITLES[item.id]?.[active]||[];
+ root.innerHTML='<section class="lighty-season-picker"><div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>1.500 LCoins cada</span></div><div class="lighty-season-row">'+seasons.map((entry,index)=>'<article class="lighty-season-card '+(index===active?'active':'')+'"><button class="lighty-season-select" type="button" data-select-season="'+index+'" data-season-show="'+safeText(item.id)+'"><b>'+safeText(entry.name)+'</b><small>'+entry.count+' episódios</small></button><button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+safeText(item.id)+'" data-season-index="'+index+'">'+(hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Comprar · 1.500')+'</button></article>').join('')+'</div></section><section class="lighty-episode-picker"><div class="lighty-section-heading"><h3>'+safeText(season.name)+'</h3><span>Seleção de episódios</span></div><div class="lighty-episode-row">'+Array.from({length:season.count},(_,n)=>'<button class="lighty-episode-card" type="button" data-episode-number="'+(n+1)+'" title="Episódio '+(n+1)+'"><span class="lighty-episode-thumb"><img src="'+safeText(item.poster||item.backdrop||'')+'" alt="" loading="lazy"><i>▶</i></span><b>'+safeText(titles[n]||'Episódio '+(n+1))+'</b><small>Episódio '+(n+1)+'</small></button>').join('')+'</div></section>';
  const recommendations=item.id==='lighty-steven-universe'?['Hora de Aventura','Gravity Falls','A Casa Coruja','Amphibia']:item.id==='lighty-naruto'?['Boruto','Dragon Ball','One Piece']:['Naruto','One Piece','Yu-Gi-Oh!'];
  related.innerHTML='<h3>Títulos semelhantes</h3><div class="related-title-list">'+recommendations.map(title=>'<span>'+safeText(title)+'</span>').join('')+'</div>';applyLanguage();
 }
@@ -1521,7 +1524,7 @@ function openCinemaDetails(id){
  const poster=validWebUrl(item.poster||item.backdrop||'');
  $('cinema-detail-title').textContent=item.title||'Sem título';$('cinema-detail-type').textContent=item.type==='series'?'SÉRIE':'FILME';$('cinema-detail-description').textContent=item.description||'Descrição ainda não disponível.';
  $('cinema-detail-meta').innerHTML=[item.year||item.releaseDate,item.duration].filter(Boolean).map(v=>'<span>'+safeText(v)+'</span>').join('');
- renderSeriesDetails(item);
+ renderSeriesDetails(item,0);
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
  const purchaseButton=$('cinema-detail-buy');if(purchaseButton){const key='movie:'+id,owned=hasLightyPurchase(key);purchaseButton.textContent=owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';purchaseButton.disabled=item.type!=='movie'||owned;purchaseButton.classList.toggle('hidden',item.type!=='movie');purchaseButton.onclick=()=>buyLightyContent(key,2000,'Filme');}
@@ -1545,7 +1548,7 @@ async function loadCinema() {
       ...d.data()
     }));
     const builtInCatalog = [
-      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'},
+      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://assets.qz.com/media/a30cb33e8ca08c00ea178c350bbfac6e.jpg'},
       {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
       {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
       {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
@@ -1793,6 +1796,7 @@ function setupEvents() {
 
   document.addEventListener('click', event => {
     const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightyContent('season:'+seasonBuy.dataset.buySeason+':'+seasonBuy.dataset.seasonIndex,1500,'Temporada');
+    const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
     const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie)buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
     const addFriend = event.target.closest('[data-friend-add]'); if(addFriend)sendFriendRequest(addFriend.dataset.friendAdd,addFriend.dataset.friendAddName);
