@@ -1591,6 +1591,18 @@ async function loadCinema() {
   $('cinema-featured').innerHTML =
     '<div class="empty-state">Carregando catálogo...</div>';
 
+    const builtInCatalog = [
+    {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://assets.qz.com/media/a30cb33e8ca08c00ea178c350bbfac6e.jpg'},
+    {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
+    {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
+    {id:'lighty-jojo-bizarre-adventure',title:"JoJo's Bizarre Adventure",type:'series',year:2012,releaseDate:'6 de outubro de 2012',duration:'~24 min por episódio',description:'Acompanhe as diferentes gerações da família Joestar em aventuras sobrenaturais, batalhas estratégicas e confrontos cheios de personalidade.',featured:true,poster:'https://miro.medium.com/v2/resize%3Afit%3A1400/1%2AlkzQ84Lq2LaHazcKYY4fYA.jpeg'},
+    {id:'lighty-demon-slayer',title:'Demon Slayer: Kimetsu no Yaiba',type:'series',year:2019,releaseDate:'6 de abril de 2019',duration:'~24 min por episódio',description:'Tanjiro Kamado começa sua jornada depois que sua família é atacada por demônios. No LightyFlix, apenas o episódio 1 da primeira temporada está listado.',featured:true,poster:'https://image.tmdb.org/t/p/w780/4oy1X4QDgwxmUycIxU7T2VrQkIr.jpg'},
+    {id:'lighty-gumball',title:'O Incrível Mundo de Gumball',type:'series',year:2011,releaseDate:'3 de maio de 2011',duration:'~11 min por episódio',description:'Gumball, Darwin e a família Watterson vivem confusões absurdas na cidade de Elmore, onde qualquer coisa pode acontecer.',featured:true,poster:'https://image.tmdb.org/t/p/original/VYnnyA2hyxi3VUPgCA71mMtt69.jpg'},
+    {id:'lighty-teen-titans',title:'Jovens Titãs',type:'series',year:2003,releaseDate:'19 de julho de 2003',duration:'~22 min por episódio',description:'Robin, Estelar, Ravena, Mutano e Ciborgue protegem Jump City enquanto enfrentam vilões e tentam conviver como equipe.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BOTg3NzY2MDQtMjUxNS00N2Q3LTkxODktMmU1NzdjZTNkMzQ0XkEyXkFqcGc%40._V1_.jpg'},
+    {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
+    {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
+  ];
+
   try {
     const snapshot = await getDocs(
       query(collection(db, 'videos'), orderBy('createdAt', 'desc'), limit(100))
@@ -1600,17 +1612,7 @@ async function loadCinema() {
       id: d.id,
       ...d.data()
     }));
-    const builtInCatalog = [
-      {id:'lighty-steven-universe',title:'Steven Universo',type:'series',year:2013,releaseDate:'4 de novembro de 2013',duration:'~11 min por episódio',description:'Steven vive em Beach City ao lado das Crystal Gems, descobrindo seus poderes, sua família e o universo das Gems. A sexta temporada reúne a continuação conhecida como Steven Universo Futuro.',featured:true,poster:'https://assets.qz.com/media/a30cb33e8ca08c00ea178c350bbfac6e.jpg'},
-      {id:'lighty-naruto',title:'Naruto',type:'series',year:2002,releaseDate:'3 de outubro de 2002',duration:'~23 min por episódio',description:'Naruto Uzumaki é um jovem ninja que sonha em se tornar Hokage. Enfrentando desafios, rivais e missões perigosas, ele busca reconhecimento e cria laços que mudarão seu caminho.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BZmQ5NGFiNWEtMmMyMC00MDdiLTg4YjktOGY5Yzc2MDUxMTE1XkEyXkFqcGdeQXVyNTA4NzY1MzY%40._V1_FMjpg_UX1000_.jpg'},
-      {id:'lighty-dragon-ball',title:'Dragon Ball',type:'series',year:1986,releaseDate:'26 de fevereiro de 1986',duration:'~24 min por episódio',description:'Acompanhe Goku desde a infância em uma jornada cheia de artes marciais, amizades e aventuras em busca das lendárias Esferas do Dragão.',featured:true,poster:'https://image.tmdb.org/t/p/w780/1YIJYarVZKH3nq89n1lVAxeVktg.jpg'},
-      {id:'lighty-jojo-bizarre-adventure',title:"JoJo's Bizarre Adventure",type:'series',year:2012,releaseDate:'6 de outubro de 2012',duration:'~24 min por episódio',description:'Acompanhe as diferentes gerações da família Joestar em aventuras sobrenaturais, batalhas estratégicas e confrontos cheios de personalidade.',featured:true,poster:'https://miro.medium.com/v2/resize%3Afit%3A1400/1%2AlkzQ84Lq2LaHazcKYY4fYA.jpeg'},
-      {id:'lighty-demon-slayer',title:'Demon Slayer: Kimetsu no Yaiba',type:'series',year:2019,releaseDate:'6 de abril de 2019',duration:'~24 min por episódio',description:'Tanjiro Kamado começa sua jornada depois que sua família é atacada por demônios. No LightyFlix, apenas o episódio 1 da primeira temporada está listado.',featured:true,poster:'https://image.tmdb.org/t/p/w780/4oy1X4QDgwxmUycIxU7T2VrQkIr.jpg'},
-      {id:'lighty-gumball',title:'O Incrível Mundo de Gumball',type:'series',year:2011,releaseDate:'3 de maio de 2011',duration:'~11 min por episódio',description:'Gumball, Darwin e a família Watterson vivem confusões absurdas na cidade de Elmore, onde qualquer coisa pode acontecer.',featured:true,poster:'https://image.tmdb.org/t/p/original/VYnnyA2hyxi3VUPgCA71mMtt69.jpg'},
-      {id:'lighty-teen-titans',title:'Jovens Titãs',type:'series',year:2003,releaseDate:'19 de julho de 2003',duration:'~22 min por episódio',description:'Robin, Estelar, Ravena, Mutano e Ciborgue protegem Jump City enquanto enfrentam vilões e tentam conviver como equipe.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BOTg3NzY2MDQtMjUxNS00N2Q3LTkxODktMmU1NzdjZTNkMzQ0XkEyXkFqcGc%40._V1_.jpg'},
-      {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
-      {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
-    ];
+
     const knownIds = new Set(communityItems.map(item=>item.id));
     cinemaItems = [...builtInCatalog.filter(item=>!knownIds.has(item.id)), ...communityItems];
 
@@ -1620,19 +1622,10 @@ async function loadCinema() {
   } catch (error) {
     console.warn('Catálogo indisponível:', error);
 
-    cinemaItems = [];
-
-    $('cinema-featured').innerHTML =
-      '<div class="empty-state">O catálogo ainda não está configurado no banco de dados.</div>';
-
-    $('cinema-movies').innerHTML =
-      '<div class="empty-state">Os conteúdos aparecerão aqui quando forem cadastrados.</div>';
-
-    $('cinema-series').innerHTML =
-      '<div class="empty-state">As séries aparecerão aqui quando forem cadastradas.</div>';
-
-    $('cinema-my-list').innerHTML =
-      '<div class="empty-state">Sua lista está vazia.</div>';
+    // Preserve o catálogo interno quando a consulta à coleção 'videos' falhar.
+    cinemaItems = builtInCatalog;
+    renderCinema();
+    applyLanguage();
   }
 }
 
