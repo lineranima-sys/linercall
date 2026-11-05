@@ -391,6 +391,7 @@ let stopFriendListeners = [];
 let notificationCenter = null;
 let socialControls = null;
 let latestFriendDocs = [];
+let latestFriendRequests = [];
 let dmWasCollapsed = false;
 let dmFocus = false;
 function dmFocusOff(){
@@ -430,6 +431,7 @@ function memberAvatarHTML(user){
 function socialDisplayName(id,real){return socialControls?.label(id,real)||real||'Jogador';}
 function refreshSocialUI(){
  notificationCenter?.setPreferences(socialControls);
+ renderFriendRequests();
  renderFriendList();
  renderOnlineMembers(latestOnlinePlayers);
 }
@@ -477,16 +479,21 @@ function renderOnlineMembers(active=latestOnlinePlayers){
 }
 
 function friendPairId(a,b){return [a,b].sort().join('_');}
+function renderFriendRequests(){
+  const box=$('friend-requests');if(!box)return;
+  const pending=latestFriendRequests.filter(d=>d.data().status==='pending'&&!socialControls?.hasBlocked(d.data().fromUid));
+  notificationCenter?.setRequests(pending.map(d=>({id:d.id,uid:d.data().fromUid,name:d.data().fromName})));
+  box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
+    const req=d.data();
+    return '<div class="friend-row"><b>'+safeText(req.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
+  }).join('');
+}
 function listenFriends(){
   stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
   const rq=query(collection(db,'friendRequests'),where('toUid','==',currentUser.uid));
   stopFriendListeners.push(onSnapshot(rq,snap=>{
-    const box=$('friend-requests'); if(!box)return;
-    const pending=snap.docs.filter(d=>d.data().status==='pending');
-    notificationCenter?.setRequests(pending.map(d=>({id:d.id,uid:d.data().fromUid,name:d.data().fromName})));
-    box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
-      const r=d.data();return '<div class="friend-row"><b>'+safeText(r.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
-    }).join('');
+    latestFriendRequests=snap.docs;
+    renderFriendRequests();
   },e=>{console.error(e);toast('Não foi possível carregar pedidos.');}));
   const fq=query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid));
   stopFriendListeners.push(onSnapshot(fq,snap=>{
@@ -2100,7 +2107,7 @@ if (configured) {
 
       } else {
         pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
-        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;socialControls?.destroy();socialControls=null;latestFriendDocs=[];
+        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;socialControls?.destroy();socialControls=null;latestFriendDocs=[];latestFriendRequests=[];
         currentUser = null;
         profile = null;
         cleanupListeners();
