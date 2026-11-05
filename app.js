@@ -670,7 +670,7 @@ function listenUsers() {
   const q = query(
     collection(db, 'users'),
     orderBy('lastSeen', 'desc'),
-    limit(50)
+    // Sem limite: mostrar todos os membros online, não apenas 50.
   );
 
   stopListeners.push(onSnapshot(q, snap => {
@@ -683,10 +683,11 @@ function listenUsers() {
 
     latestOnlinePlayers=active;
     pokemonOnline?.setPlayers(active);
+    if(rankingPlayers.length)renderGlobalRanking();
     $('online-count').textContent = active.length;
 
     $('online-members').innerHTML = active.length
-      ? active.slice(0, 9).map(user => `
+      ? active.map(user => `
           <button class="member-row profile-open-trigger" data-profile-open="${safeText(user.id)}" data-profile-name="${safeText(user.displayName || 'Jogador')}">
             <div class="avatar member-avatar" ${user.avatarData ? `style="background-image:url('${user.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${user.avatarData ? '' : safeText(initials(user.displayName))}</div>
             <b>${safeText(user.displayName || 'Jogador')}</b>
@@ -721,7 +722,11 @@ function listenUsers() {
 // ========================================
 
 function currentIsoWeekKey(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  // Uma semana inicia segunda-feira à meia-noite em Brasília.
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{
+    timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(date).map(p=>[p.type,p.value]));
+  const d = new Date(Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day)));
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -741,49 +746,91 @@ function renderLocalBattleRecord() {
   record.innerHTML='<b>Seu registro local da semana</b><p>'+wins+' vitórias · '+losses+' derrotas</p>'+
   '<small>Salvo neste navegador. O ranking global requer validação pelo servidor para evitar resultados falsos.</small>';
 }
-function listenRanking() {
-  const weekKey = currentIsoWeekKey();
-  stopListeners.push(onSnapshot(collection(db, 'users'), snap => {
-    const users = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(user => user.weekKey === weekKey && Number(user.weeklyWins) > 0)
-      .sort((a, b) => (Number(b.weeklyWins) || 0) - (Number(a.weeklyWins) || 0)
-        || (Number(a.weeklyLosses) || 0) - (Number(b.weeklyLosses) || 0)
-        || String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'));
-
-    const top = users.slice(0, 3);
-    $('podium').innerHTML = top.length
-      ? top.map((user, i) => `
-          <div class="podium-place ${i === 0 ? 'first' : i === 1 ? 'second' : 'third'}">
-            <div class="avatar">${safeText(initials(user.displayName))}</div>
-            <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>${Number(user.weeklyWins) || 0} vitórias na semana</small>
-            <div class="podium-block">${i + 1}º</div>
-          </div>
-        `).join('')
-      : '<div class="podium-empty">Ainda não há resultados semanais registrados.</div>';
-
-    $('ranking-list').innerHTML = users.map((user, i) => `
-      <div class="ranking-row">
-        <span>${i + 1}</span>
-        <span class="rank-name">
-          <span class="avatar">${safeText(initials(user.displayName))}</span>
-          ${safeText(user.displayName || 'Jogador')}
-          ${user.id === currentUser.uid ? ' (você)' : ''}
-        </span>
-        <span class="wins">${Number(user.weeklyWins) || 0}</span>
-        <span class="losses">${Number(user.weeklyLosses) || 0}</span>
-      </div>
-    `).join('') || '<p class="muted">O ranking semanal começa a aparecer quando resultados validados forem registrados.</p>';
-
-    renderLocalBattleRecord();
-    const period = $('ranking-period');
-    if (period) period.textContent = `SEMANA ${weekKey} · ZERA AUTOMATICAMENTE NA PRÓXIMA SEMANA`;
-  }, error => {
-    console.error(error);
-    toast('Erro ao carregar ranking semanal.');
-  }));
+// Classificação comunitária: todos os usuários, incluindo quem ainda tem 0 vitória.
+// Apenas as vitórias/derrotas PvP confirmadas pelo servidor entram no placar GLOBAL.
+let rankingPlayers=[],rankingScores=new Map(),rankingLoaded=false;
+function rankingPortrait(user){
+ const url=String(user.avatarData||user.photoURL||'');
+ const valid=/^https:\/\//i.test(url)||/^data:image\/(?:png|jpeg|webp);base64,/i.test(url);
+ return valid?'<img src="'+safeText(url)+'" alt="Foto de '+safeText(user.displayName||'Jogador')+'" loading="lazy" referrerpolicy="no-referrer">':safeText(initials(user.displayName||'Jogador'));
 }
+function rankingOnline(user){
+ const last=user.lastSeen?.toMillis?.()||user.lastSeen?.toDate?.()?.getTime()||0;
+ return last>0&&Date.now()-last<3*60*1000;
+}
+function rankingUserStats(user){
+ const score=rankingScores.get(user.id)||{};
+ return {...user,wins:Math.max(0,Number(score.wins)||0),
+  losses:Math.max(0,Number(score.losses)||0),points:Math.max(0,Number(score.points)||0),
+  online:rankingOnline(user)};
+}
+function renderGlobalRanking(){
+ const leaderboard=$('ranking-list'),onlineContainer=$('ranking-online-list'),podium=$('podium');
+ if(!leaderboard||!podium||!onlineContainer)return;
+ const players=rankingPlayers.map(rankingUserStats)
+  .sort((a,b)=>b.wins-a.wins || b.points-a.points || a.losses-b.losses
+   || String(a.displayName||'').localeCompare(String(b.displayName||''),'pt-BR'));
+ const online=players.filter(p=>p.online)
+  .sort((a,b)=>String(a.displayName||'').localeCompare(String(b.displayName||''),'pt-BR'));
+ const badge=$('ranking-online-count');if(badge)badge.textContent=String(online.length);
+ const checkAvatar=u=>'<span class="avatar rank-avatar">'+rankingPortrait(u)+'</span>';
+ const label=p=>p.id===currentUser?.uid?' <span class="rank-you">(você)</span>':'';
+ onlineContainer.innerHTML=online.length?online.map(p=>
+  '<button type="button" class="ranking-live-user" data-profile-open="'+safeText(p.id)+
+   '" data-profile-name="'+safeText(p.displayName||'Jogador')+'">'+
+   checkAvatar(p)+'<span><b>'+safeText(p.displayName||'Jogador')+'</b>'+
+   '<small>● Online · '+p.wins+' V · '+p.losses+' D · '+p.points+' pts</small></span></button>'
+ ).join(''):'<p class="muted">Nenhum jogador online neste momento.</p>';
+ const ranked=players.filter(p=>p.wins>0);
+ podium.innerHTML=ranked.length?ranked.slice(0,3).map((p,i)=>
+  '<div class="podium-place '+(i===0?'first':i===1?'second':'third')+'">'+
+   checkAvatar(p)+'<b>'+safeText(p.displayName||'Jogador')+'</b>'+
+   '<small>'+p.wins+' vitória'+(p.wins===1?'':'s')+' · '+p.points+' pts</small>'+
+   '<div class="podium-block">'+(i+1)+'º</div></div>'
+ ).join(''):'<div class="podium-empty">O pódio começa com a primeira vitória online validada.</div>';
+ leaderboard.innerHTML=players.length?players.map((p,i)=>
+  '<button type="button" class="ranking-row ranking-player-row '+(p.id===currentUser?.uid?'ranking-me ':'')+
+   '" data-profile-open="'+safeText(p.id)+'" data-profile-name="'+safeText(p.displayName||'Jogador')+'">'+
+   '<span class="rank-position">'+(i+1)+'º</span>'+
+   '<span class="rank-name">'+checkAvatar(p)+'<span class="rank-player-name"><b>'+
+    safeText(p.displayName||'Jogador')+'</b><small>'+(p.online?'● Online':'Offline')+label(p)+'</small></span></span>'+
+   '<span class="wins">'+p.wins+'</span><span class="losses">'+p.losses+'</span>'+
+   '<span class="rank-points">'+p.points+'</span></button>'
+ ).join(''):'<p class="muted">Nenhum jogador cadastrado no momento.</p>';
+ const period=$('ranking-period');
+ if(period)period.textContent='SEMANA '+currentIsoWeekKey()+' · REINICIA TODA SEGUNDA ÀS 00:00 (BRASÍLIA)';
+ const status=$('ranking-status');
+ if(status)status.textContent=rankingLoaded?'Pontuação global: 100 por vitória e 10 por derrota PvP validada.':'Buscando resultados globais da semana...';
+ renderLocalBattleRecord();
+}
+function listenRanking(){
+ let weekKey='',stopWeek=null;
+ stopListeners.push(onSnapshot(collection(db,'users'),snap=>{
+  rankingPlayers=snap.docs.map(d=>({id:d.id,...d.data()}));renderGlobalRanking();
+ },err=>{console.error('Erro no ranking de jogadores',err);toast('Não foi possível listar os jogadores.');}));
+ const watchWeek=()=>{
+  const current=currentIsoWeekKey();
+  if(current!==weekKey){
+   if(stopWeek)stopWeek();
+   weekKey=current;rankingLoaded=false;rankingScores=new Map();renderGlobalRanking();
+   stopWeek=onSnapshot(collection(db,'weeklyRankings',weekKey,'players'),snap=>{
+    rankingScores=new Map(snap.docs.map(d=>[d.id,d.data()]));rankingLoaded=true;
+    renderGlobalRanking();
+   },err=>{
+    rankingLoaded=false;console.error('Ranking global inacessível:',err);
+    const status=$('ranking-status');
+    if(status)status.textContent='Ranking global indisponível. Confira as regras publicadas no Firebase.';
+   });
+  }
+  renderGlobalRanking();
+ };
+ watchWeek();
+ const timer=setInterval(watchWeek,60*1000);
+ const onVisible=()=>{if(!document.hidden)watchWeek();};
+ document.addEventListener('visibilitychange',onVisible);
+ stopListeners.push(()=>{clearInterval(timer);stopWeek?.();document.removeEventListener('visibilitychange',onVisible);});
+}
+
 // ========================================
 // DESAFIOS
 // ========================================
