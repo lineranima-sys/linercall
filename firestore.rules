@@ -184,6 +184,13 @@ service cloud.firestore {
       }
     }
 
+    // Ofertas são publicadas somente pelo administrador do Firebase.
+    // Usuários autenticados só enxergam ofertas ativas.
+    match /offers/{offerId} {
+      allow read: if signedIn() && resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
     match /videos/{videoId} {
       allow read: if signedIn();
       allow create, update, delete: if false;
