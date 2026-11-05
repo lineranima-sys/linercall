@@ -57,6 +57,7 @@ export function calculateOnlineBattle(match,turns,catalogue){
 }
 export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt,notify}){
  let players=[],matches=new Map(),selected=null,turns=[],unsubs=[],roomUnsubs=[];
+ let warnedRules=false;
  const root=() => document.getElementById('pokemon-online-panel');
  const message=s=>notify?.(s);
  const mine=()=>getTeam().filter(id=>catalogue.some(p=>p.id===id)).slice(0,3);
@@ -182,7 +183,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
    unsubs.push(onSnapshot(q,snap=>{
     for(const d of snap.docs)matches.set(d.id,{id:d.id,...d.data()});
     render();
-   },error=>{console.error(error);message('Falha nas partidas online: '+(error.code||error.message));}));
+   },error=>{console.error(error);if(error.code==='permission-denied'){if(!warnedRules){warnedRules=true;message('Pokémon Online: falta publicar as regras do Firestore. Consulte docs/POKEMON-ONLINE.md.');}}else message('Falha nas partidas online: '+(error.code||error.message));}));
   };
   listen('hostUid');listen('guestUid');
  }
