@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges">
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#14adf2"/><stop offset=".72" stop-color="#9ee8f8"/><stop offset="1" stop-color="#b7edbb"/></linearGradient>
+<pattern id="grass" width="22" height="14" patternUnits="userSpaceOnUse"><rect width="22" height="14" fill="#439559"/><path d="M0 2h8v3H0zm10 5h8v3h-8z" fill="#60ba65"/><path d="M9 0h2v6H9zm11 6h2v4h-2z" fill="#2b7249"/></pattern>
+<pattern id="ground" width="48" height="32" patternUnits="userSpaceOnUse"><rect width="48" height="32" fill="#7b543f"/><path d="M0 0h22v4H0zm24 13h18v4H24zm5 15h15v4H29Z" fill="#92694c"/><path d="M12 20h5v5h-5zM33 3h6v6h-6zM0 26h8v5H0z" fill="#4e3d45"/></pattern>
+</defs>
+<rect width="480" height="260" fill="url(#sky)"/>
+<!-- Sun and soft pixel rays -->
+<path d="M331 0h8v16h-8zm-24 24h12v8h-12zm61 3h13v8h-13zM351 67h8v11h-8z" fill="#fff8cb" opacity=".7"/>
+<path d="M330 29h7V15h31v14h10v31h-10v11h-31V60h-7z" fill="#fff9cf"/>
+<rect x="343" y="25" width="24" height="35" fill="#fffce4"/>
+<!-- Cloud clusters -->
+<g fill="#69d9ef"><path d="M10 56h17V45h24V33h31v12h25v13h21v14H10Z"/><path d="M250 49h22V32h38V19h23v13h30v19h23v11H250Z"/></g>
+<g fill="#e1ffff"><path d="M0 50h23V40h22V29h23v-8h19v13h26v14h15v14H0Z"/><path d="M245 45h26V28h30V13h26v14h26v18h28v13H245Z"/></g>
+<g fill="#fff"><rect x="43" y="25" width="27" height="12"/><rect x="302" y="15" width="20" height="15"/></g>
+<!-- Distant mountains -->
+<path d="M0 152h37v-20h16v-18h14V98h19v16h15v18h14v20h28v-27h18v-20h17V87h17v18h16v20h19v27h34v-22h20v-15h15V99h20v16h16v15h19v22h43V260H0Z" fill="#79c3c6"/>
+<path d="M0 179h21v-17h16v-18h15v-16h18v16h16v18h24v17h19v-17h12v-19h18v-19h17v19h18v19h14v17h28v-17h20v-20h20v-15h18v15h20v20h10v17h28v-21h17v-18h15v-17h22v17h18v18h11v22H0Z" fill="#4da69e"/>
+<!-- Forest silhouette -->
+<g fill="#236b65"><path d="M18 186h9v-17h7v-15h9v15h8v17h10v28H18zm87 0h10v-20h9v-18h8v18h9v20h10v28h-46zm194 0h12v-20h8v-17h10v17h8v20h13v28h-51zm101 0h14v-18h8v-16h10v16h8v18h15v28h-55z"/></g>
+<path d="M0 202h32v-4h19v4h23v-7h30v7h21v-5h30v5h24v-5h25v5h35v-5h29v5h30v-5h27v5h31v-6h26v6h30v-6h24v6h37v58H0Z" fill="#29764f"/>
+<rect y="209" width="480" height="15" fill="url(#grass)"/>
+<rect y="223" width="480" height="37" fill="url(#ground)"/>
+<path d="M0 217h480v4H0Z" fill="#a4e566"/>
+<!-- Bright tiny meadow flowers -->
+<g fill="#ffe384"><path d="M39 196h4v6h-4zm2-2h3v2h-3zm149 1h5v7h-5zm2-2h3v3h-3zm178 2h5v7h-5zm2-2h3v3h-3z"/></g>
+<g fill="#ff9cc6"><rect x="260" y="195" width="6" height="4"/><rect x="265" y="192" width="3" height="3"/><rect x="462" y="196" width="4" height="5"/></g>
+</svg>

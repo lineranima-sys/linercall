@@ -82,6 +82,108 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Pokémon Online: somente dois participantes; turnos registrados em transações.
+    // Os clientes NÃO podem conceder moedas nem editar o ranking com essas partidas.
+    match /pokemonMatches/{matchId} {
+      function participant() {
+        return signedIn() && (resource.data.hostUid == request.auth.uid
+          || resource.data.guestUid == request.auth.uid);
+      }
+      function validTeam(team) {
+        return team is list && team.size() == 3
+          && team.hasOnly(['pikachu','charizard','blastoise','venusaur','gengar','lucario','eevee','snorlax'])
+          && team[0] != team[1] && team[0] != team[2] && team[1] != team[2];
+      }
+      allow read: if participant();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'hostUid','guestUid','hostName','guestName','hostTeam','guestTeam',
+          'status','turnUid','turnNo','lastTurnId','createdAt','updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'hostUid','guestUid','hostName','guestName','hostTeam','guestTeam',
+          'status','turnUid','turnNo','lastTurnId','createdAt','updatedAt'
+        ])
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid is string
+        && request.resource.data.guestUid != request.auth.uid
+        && request.resource.data.hostName is string
+        && request.resource.data.hostName.size() <= 60
+        && request.resource.data.guestName is string
+        && request.resource.data.guestName.size() <= 60
+        && validTeam(request.resource.data.hostTeam)
+        && request.resource.data.guestTeam == []
+        && request.resource.data.status == 'invited'
+        && request.resource.data.turnUid == ''
+        && request.resource.data.turnNo == 0
+        && request.resource.data.lastTurnId == ''
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if participant() && (
+        // Apenas o convidado pode aceitar ou recusar o desafio.
+        (resource.data.status == 'invited'
+          && request.auth.uid == resource.data.guestUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status','guestTeam','turnUid','updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && (
+            (request.resource.data.status == 'declined'
+              && request.resource.data.guestTeam == resource.data.guestTeam
+              && request.resource.data.turnUid == resource.data.turnUid)
+            ||
+            (request.resource.data.status == 'active'
+              && validTeam(request.resource.data.guestTeam)
+              && request.resource.data.turnUid == resource.data.hostUid)
+          ))
+        ||
+        // Cada turno requer uma ação no mesmo commit/transação.
+        (resource.data.status == 'active'
+          && request.resource.data.status == 'active'
+          && request.auth.uid == resource.data.turnUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['turnUid','turnNo','lastTurnId','updatedAt'])
+          && request.resource.data.turnNo == resource.data.turnNo + 1
+          && request.resource.data.turnNo <= 300
+          && request.resource.data.turnUid ==
+             (request.auth.uid == resource.data.hostUid
+               ? resource.data.guestUid : resource.data.hostUid)
+          && request.resource.data.lastTurnId is string
+          && request.resource.data.lastTurnId != resource.data.lastTurnId
+          && request.resource.data.updatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/pokemonMatches/$(matchId)/turns/$(request.resource.data.lastTurnId))
+          && getAfter(/databases/$(database)/documents/pokemonMatches/$(matchId)/turns/$(request.resource.data.lastTurnId)).data.uid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/pokemonMatches/$(matchId)/turns/$(request.resource.data.lastTurnId)).data.turnNo == request.resource.data.turnNo)
+      );
+      allow delete: if false;
+
+      match /turns/{turnId} {
+        function room() {
+          return get(/databases/$(database)/documents/pokemonMatches/$(matchId)).data;
+        }
+        function roomAfter() {
+          return getAfter(/databases/$(database)/documents/pokemonMatches/$(matchId)).data;
+        }
+        allow read: if signedIn() && (room().hostUid == request.auth.uid
+          || room().guestUid == request.auth.uid);
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['uid','turnNo','type','index','createdAt'])
+          && request.resource.data.keys().hasAll(['uid','turnNo','type','index','createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && room().status == 'active'
+          && room().turnUid == request.auth.uid
+          && request.resource.data.turnNo is int
+          && request.resource.data.turnNo == room().turnNo + 1
+          && request.resource.data.turnNo <= 300
+          && request.resource.data.type in ['attack','rest','switch']
+          && request.resource.data.index is int
+          && request.resource.data.index >= 0 && request.resource.data.index <= 2
+          && request.resource.data.createdAt == request.time
+          && roomAfter().turnNo == request.resource.data.turnNo
+          && roomAfter().lastTurnId == turnId;
+        allow update, delete: if false;
+      }
+    }
+
     match /videos/{videoId} {
       allow read: if signedIn();
       allow create, update, delete: if false;

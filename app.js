@@ -1,4 +1,6 @@
-import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104';
+import { createPokemonOnline } from './pokemon-online.js?v=20261104-pvp-rules';
+import { mountStory } from './story-game.js?v=20261104-chapter1';
+import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import {
@@ -472,6 +474,7 @@ function setPresence(activity,label){
     .catch(error=>console.warn('Presença não atualizada:',error));
 }
 function switchView(name) {
+  if (name !== 'games' && miniGamePage === 'story') backToMiniGames();
   const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
   const state=activities[name]||['browsing','Navegando'];
   setPresence(state[0],state[1]);
@@ -616,6 +619,8 @@ function listenUsers() {
         Date.now() - user.lastSeen.toDate().getTime() < 3 * 60 * 1000
       );
 
+    latestOnlinePlayers=active;
+    pokemonOnline?.setPlayers(active);
     $('online-count').textContent = active.length;
 
     $('online-members').innerHTML = active.length
@@ -662,6 +667,18 @@ function currentIsoWeekKey(date = new Date()) {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+function renderLocalBattleRecord() {
+  const container=$('ranking-list');
+  if(!container)return;
+  let record=$('ranking-local-record');
+  if(!record){record=document.createElement('div');record.id='ranking-local-record';record.className='ranking-local-record';container.parentNode?.appendChild(record);}
+  const history=pokemonArena?.history||[];
+  const week=currentIsoWeekKey();
+  const local=history.filter(h=>h.date && currentIsoWeekKey(new Date(h.date))===week);
+  const wins=local.filter(h=>h.win).length,losses=local.filter(h=>!h.win).length;
+  record.innerHTML='<b>Seu registro local da semana</b><p>'+wins+' vitórias · '+losses+' derrotas</p>'+
+  '<small>Salvo neste navegador. O ranking global requer validação pelo servidor para evitar resultados falsos.</small>';
+}
 function listenRanking() {
   const weekKey = currentIsoWeekKey();
   stopListeners.push(onSnapshot(collection(db, 'users'), snap => {
@@ -697,6 +714,7 @@ function listenRanking() {
       </div>
     `).join('') || '<p class="muted">O ranking semanal começa a aparecer quando resultados validados forem registrados.</p>';
 
+    renderLocalBattleRecord();
     const period = $('ranking-period');
     if (period) period.textContent = `SEMANA ${weekKey} · ZERA AUTOMATICAMENTE NA PRÓXIMA SEMANA`;
   }, error => {
@@ -833,6 +851,8 @@ const POKEMON_CATALOG = [
 ];
 
 let pokemonArena = null;
+let pokemonOnline = null;
+let latestOnlinePlayers = [];
 
 function pokemonStorageKey() {
   return 'linercall-pokemon-v1-' + (currentUser?.uid || 'guest');
@@ -863,6 +883,10 @@ function pokemonById(id) {
 function initPokemonArena() {
   if (!currentUser) return;
   pokemonArena = loadPokemonArena();
+  if (pokemonOnline) pokemonOnline.destroy();
+  pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast});
+  pokemonOnline.start();
+  pokemonOnline.setPlayers(latestOnlinePlayers);
   if (String(profile?.displayName||'').trim().toLocaleLowerCase('pt-BR') === 'tom' && !localStorage.getItem('linercall-tom-coins-reset-v1')) { pokemonArena.coins=0; localStorage.setItem('linercall-tom-coins-reset-v1','1'); savePokemonArena(); }
   renderPokemonArena();
 }
@@ -881,7 +905,7 @@ function showMiniGamePage(page) {
   const pokemonContent = $('pokemon-arena-content');
   const gameStage = $('game-stage');
   if (pokemonContent) pokemonContent.classList.toggle('hidden', page !== 'pokemon');
-  if (gameStage) { if (gameStage.parentElement !== root) root?.appendChild(gameStage); gameStage.classList.toggle('hidden', page === 'home' || page === 'pokemon'); }
+  if (gameStage) { if (gameStage.parentElement !== root) root?.appendChild(gameStage); gameStage.classList.toggle('hidden', page === 'home' || page === 'pokemon' || page === 'story'); }
   if (page === 'pokemon') renderPokemonArena();
   if (page === 'dice') showDice();
   if (page === 'reaction') showReaction();
@@ -918,7 +942,9 @@ function renderPokemonArena() {
     <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length!==3 || pokemonArena.battle?'disabled':''}>⚔ INICIAR BATALHA</button>
     <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.losses || 0}</b><small>DERROTAS</small></div><div><b>${pokemonArena.battles || 0}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
     <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
+    <div id="pokemon-online-panel" class="pokemon-online-panel panel"></div>
     <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle?'':'hidden'}"></div>`;
+  pokemonOnline?.render();
   if (pokemonArena.battle) renderPokemonBattle();
 }
 function pokemonTypeMultiplier(moveType, targetType) {
@@ -931,9 +957,9 @@ function pokemonTypeMultiplier(moveType, targetType) {
 
 function createBattlePokemon(id) {
   const base = pokemonById(id);
-  const isEnemy = ['gengar','venusaur','lucario','snorlax','charizard','blastoise'].includes(id);
+  const isEnemy = arguments[1] === true;
   const hp = isEnemy ? Math.round(base.hp * 1.5) : base.hp;
-  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.35) : base.atk, def: isEnemy ? Math.round(base.def * 1.2) : base.def, hpNow: hp };
+  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.35) : base.atk, def: isEnemy ? Math.round(base.def * 1.2) : base.def, hpNow: hp, pe: 70, maxPE: 100 };
 }
 
 function startPokemonBattle() {
@@ -943,7 +969,7 @@ function startPokemonBattle() {
   const enemyIds = shuffled.slice(0, 3);
   pokemonArena.battle = {
     player: pokemonArena.team.map(createBattlePokemon),
-    enemy: enemyIds.map(createBattlePokemon),
+    enemy: enemyIds.map(id => createBattlePokemon(id, true)),
     playerActive: 0,
     enemyActive: 0,
     log: ['A batalha começou! Escolha um golpe.'],
@@ -960,6 +986,16 @@ function currentBattlePokemon(side) {
   return side === 'player' ? battle.player[battle.playerActive] : battle.enemy[battle.enemyActive];
 }
 
+function pokemonMoveCost(move) { return Number(move?.power) >= 22 ? 48 : 20; }
+function restPokemonInBattle() {
+  const b=pokemonArena?.battle;
+  if(!b||b.finished||b.turn!=='player')return;
+  const p=currentBattlePokemon('player');
+  p.pe=Math.min(p.maxPE||100,(p.pe||0)+45);
+  b.log.unshift(`${p.name} descansou e recuperou 45 PE. O turno passou ao rival.`);
+  b.turn='enemy';renderPokemonBattle();
+  setTimeout(pokemonEnemyTurn,650);
+}
 function performPokemonMove(moveIndex) {
   const b = pokemonArena?.battle;
   if (!b || b.finished || b.turn !== 'player') return;
@@ -968,6 +1004,9 @@ function performPokemonMove(moveIndex) {
   const move = attacker.moves[moveIndex];
   if (!attacker || !defender || !move || attacker.hpNow <= 0) return;
 
+  const cost = pokemonMoveCost(move);
+  if (attacker.pe < cost) { toast('PE insuficiente! Use Descansar ou escolha outro golpe.'); return; }
+  attacker.pe -= cost;
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
@@ -994,8 +1033,16 @@ function pokemonEnemyTurn() {
   const attacker = currentBattlePokemon('enemy');
   const defender = currentBattlePokemon('player');
   if (!attacker || !defender) return;
-  const livingMoves = attacker.moves;
+  const livingMoves = attacker.moves.filter(m => pokemonMoveCost(m) <= attacker.pe);
+  if (!livingMoves.length) {
+    attacker.pe = Math.min(attacker.maxPE, attacker.pe + 45);
+    b.log.unshift(`${attacker.name} descansou e recuperou 45 PE!`);
+    b.turn = 'player';
+    renderPokemonBattle();
+    return;
+  }
   const move = [...livingMoves].sort((x,y)=>pokemonTypeMultiplier(y.type,defender.type)-pokemonTypeMultiplier(x.type,defender.type) || y.power-x.power)[0];
+  attacker.pe -= pokemonMoveCost(move);
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
@@ -1034,7 +1081,6 @@ async function finishPokemonBattle(won) {
     pokemonArena.coins += 21;
     pokemonArena.wins = (Number(pokemonArena.wins) || 0) + 1;
   } else {
-    pokemonArena.coins += 21;
     pokemonArena.losses = (Number(pokemonArena.losses) || 0) + 1;
   }
   b.result = won ? 'win' : 'loss';
@@ -1043,24 +1089,11 @@ async function finishPokemonBattle(won) {
   savePokemonArena();
   renderPokemonBattle();
 
-  // Registra o resultado semanal no perfil Firestore para alimentar o ranking.
-  if (currentUser && db) {
-    const weekKey = currentIsoWeekKey();
-    const previous = profile?.weekKey === weekKey ? profile : {};
-    const update = {
-      weekKey,
-      weeklyWins: (Number(previous.weeklyWins) || 0) + (won ? 1 : 0),
-      weeklyLosses: (Number(previous.weeklyLosses) || 0) + (won ? 0 : 1)
-    };
-    try {
-      await updateDoc(doc(db, 'users', currentUser.uid), update);
-      profile = { ...profile, ...update };
-      toast(won ? 'Vitória registrada no ranking semanal!' : 'Derrota registrada. Continue tentando!');
-    } catch (error) {
-      console.error('Não foi possível registrar resultado semanal:', error);
-      toast('A batalha foi salva, mas o ranking recusou o registro.');
-    }
-  }
+  // O resultado é salvo uma única vez no histórico local. Não alteramos ranking
+  // público pelo navegador: isso permitiria falsificar vitórias e moedas.
+  renderLocalBattleRecord();
+  toast(won ? 'Vitória! +21 LCoins. Resultado salvo neste navegador.' : 'Derrota registrada no histórico. +0 LCoins.');
+
 }
 
 function renderPokemonBattle() {
@@ -1068,17 +1101,18 @@ function renderPokemonBattle() {
   if (!root || !b) return;
   const player = currentBattlePokemon('player'), enemy = currentBattlePokemon('enemy');
   const bar = p => Math.max(0,Math.round(p.hpNow/p.hp*100));
+  const pe = p => Math.max(0,Math.round((p.pe||0)/(p.maxPE||100)*100));
   root.innerHTML = `
     <div class="pokemon-battle-heading"><div><span class="eyebrow">ARENA · BATALHA POR TURNOS</span><h2>${b.finished ? (b.result === 'win' ? 'VITÓRIA!' : 'DERROTA') : 'A BATALHA COMEÇOU!'}</h2><p class="battle-turn-label">${b.finished ? 'Resultado final' : (b.turn === 'player' ? 'Sua vez: escolha um ataque.' : 'Turno do adversário…')}</p></div><span class="pixel-badge">PVE</span></div>
     <div class="pokemon-arena-scene ${b.finished ? (b.result === 'win' ? 'arena-victory' : 'arena-defeat') : ''}">
-      <div class="arena-fighter arena-enemy ${enemy.hpNow <= 0 ? 'pokemon-fainted' : ''}"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
+      <div class="arena-fighter arena-enemy ${enemy.hpNow <= 0 ? 'pokemon-fainted' : ''}"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp" role="progressbar" aria-valuenow="${enemy.hpNow}" aria-valuemax="${enemy.hp}"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small><div class="pokemon-pe"><i style="width:${pe(enemy)}%"></i></div><small>PE ${enemy.pe||0}/${enemy.maxPE||100}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
       <div class="arena-spike-band"><span>VS</span></div>
-      <div class="arena-fighter arena-player ${player.hpNow <= 0 ? 'pokemon-fainted' : ''}"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+      <div class="arena-fighter arena-player ${player.hpNow <= 0 ? 'pokemon-fainted' : ''}"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp" role="progressbar" aria-valuenow="${player.hpNow}" aria-valuemax="${player.hp}"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small><div class="pokemon-pe"><i style="width:${pe(player)}%"></i></div><small>PE ${player.pe||0}/${player.maxPE||100}</small></div></div>
       ${b.finished ? `<div class="arena-result-stamp ${b.result}">${b.result === 'win' ? 'VITÓRIA!' : 'DERROTA'}</div>` : ''}
     </div>
     ${b.faintNotice && !b.finished ? `<div class="pokemon-faint-notice">${safeText(b.faintNotice)}</div>` : ''}
-    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +21 moedas.':'💤 Seus Pokémon foram derrotados. +21 moedas pela batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
-      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
+    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +21 moedas.':'💤 Seus Pokémon foram derrotados. Nenhuma moeda nesta batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' || (player.pe||0)<pokemonMoveCost(m) ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power} · ${pokemonMoveCost(m)} PE</small></button>`).join('')}</div><button class="pokemon-rest-btn" data-pokemon-rest ${b.turn!=='player'?'disabled':''}>🌿 Descansar — recuperar 45 PE (gasta 1 turno)</button></div>
       <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
     <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
 }
@@ -1340,17 +1374,18 @@ function showDice() {
 }
 
 
-let tetrisTimer=null,tetrisBoard=[],tetrisPiece=null,tetrisScore=0,tetrisOver=false;
+let tetrisTimer=null,tetrisBoard=[],tetrisPiece=null,tetrisScore=0,tetrisOver=false,tetrisEarned=0;
 const TETRIS_SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]]];
 function stopTetris(){if(tetrisTimer)clearInterval(tetrisTimer);tetrisTimer=null;document.removeEventListener('keydown',tetrisKeyHandler);}
 function newTetrisPiece(){const shape=TETRIS_SHAPES[Math.floor(Math.random()*TETRIS_SHAPES.length)].map(row=>row.slice());return {shape,x:Math.floor((10-shape[0].length)/2),y:0};}
 function tetrisCollides(piece,x=piece.x,y=piece.y,shape=piece.shape){return shape.some((row,dy)=>row.some((v,dx)=>v&&(x+dx<0||x+dx>=10||y+dy>=20||(y+dy>=0&&tetrisBoard[y+dy][x+dx]))));}
 function drawTetris(){const root=$('game-content');if(!root)return;const cells=tetrisBoard.map(row=>row.slice());if(tetrisPiece) tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0&&tetrisPiece.y+dy<20)cells[tetrisPiece.y+dy][tetrisPiece.x+dx]=2;}));root.querySelector('#tetris-grid').innerHTML=cells.flat().map(v=>'<i class="tetris-cell '+(v===2?'falling':v===1?'filled':'')+'"></i>').join('');root.querySelector('#tetris-score').textContent=tetrisScore;}
-function lockTetris(){tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0)tetrisBoard[tetrisPiece.y+dy][tetrisPiece.x+dx]=1;}));let cleared=0;tetrisBoard=tetrisBoard.filter(row=>{if(row.every(Boolean)){cleared++;return false;}return true;});while(tetrisBoard.length<20)tetrisBoard.unshift(Array(10).fill(0));tetrisScore+=cleared*[0,100,300,500,800][cleared];tetrisPiece=newTetrisPiece();if(tetrisCollides(tetrisPiece)){tetrisOver=true;stopTetris();$('game-content').insertAdjacentHTML('beforeend','<p class="tetris-over">Fim de jogo · Pontuação: '+tetrisScore+'</p><button class="btn btn-primary" id="tetris-restart">Jogar novamente</button>');}}
+function lockTetris(){tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0)tetrisBoard[tetrisPiece.y+dy][tetrisPiece.x+dx]=1;}));let cleared=0;tetrisBoard=tetrisBoard.filter(row=>{if(row.every(Boolean)){cleared++;return false;}return true;});while(tetrisBoard.length<20)tetrisBoard.unshift(Array(10).fill(0));tetrisScore+=cleared*[0,100,300,500,800][cleared];if(cleared&&pokemonArena){const reward=cleared*23;pokemonArena.coins=(Number(pokemonArena.coins)||0)+reward;tetrisEarned+=reward;savePokemonArena();toast('+'+reward+' LCoins por '+cleared+' linha'+(cleared>1?'s':'')+'!');}tetrisPiece=newTetrisPiece();if(tetrisCollides(tetrisPiece)){tetrisOver=true;stopTetris();$('game-content').insertAdjacentHTML('beforeend','<p class="tetris-over">Fim de jogo · Pontuação: '+tetrisScore+'</p><button class="btn btn-primary" id="tetris-restart">Jogar novamente</button>');}}
 function moveTetris(dx,dy){if(!tetrisPiece||tetrisOver)return;if(!tetrisCollides(tetrisPiece,tetrisPiece.x+dx,tetrisPiece.y+dy)){tetrisPiece.x+=dx;tetrisPiece.y+=dy;}else if(dy>0)lockTetris();drawTetris();}
 function rotateTetris(){if(!tetrisPiece||tetrisOver)return;const shape=tetrisPiece.shape[0].map((_,i)=>tetrisPiece.shape.map(row=>row[i]).reverse());if(!tetrisCollides(tetrisPiece,tetrisPiece.x,tetrisPiece.y,shape))tetrisPiece.shape=shape;drawTetris();}
 function tetrisKeyHandler(e){if(!['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key))return;e.preventDefault();if(e.key==='ArrowLeft')moveTetris(-1,0);else if(e.key==='ArrowRight')moveTetris(1,0);else if(e.key==='ArrowDown')moveTetris(0,1);else if(e.key==='ArrowUp')rotateTetris();else if(e.key===' ')while(!tetrisCollides(tetrisPiece,tetrisPiece.x,tetrisPiece.y+1))tetrisPiece.y++;if(e.key===' ')lockTetris();drawTetris();}
-function showTetris(){stopTetris();tetrisBoard=Array.from({length:20},()=>Array(10).fill(0));tetrisPiece=newTetrisPiece();tetrisScore=0;tetrisOver=false;$('game-stage').classList.remove('hidden');$('game-title').textContent='Tetris';$('game-content').innerHTML='<div class="tetris-wrap"><div class="tetris-info">Pontos: <b id="tetris-score">0</b><p>← → mover · ↑ girar · ↓ descer · Espaço: queda</p></div><div id="tetris-grid" class="tetris-grid" role="grid"></div><div class="tetris-mobile"><button data-tetris="left">←</button><button data-tetris="rotate">↻</button><button data-tetris="right">→</button><button data-tetris="down">↓</button></div><button class="btn" data-minigame-back>Voltar aos minigames</button></div>';document.addEventListener('keydown',tetrisKeyHandler);$('game-content').addEventListener('click',e=>{const b=e.target.closest('[data-tetris]');if(!b)return;({left:()=>moveTetris(-1,0),right:()=>moveTetris(1,0),down:()=>moveTetris(0,1),rotate:rotateTetris})[b.dataset.tetris]?.();});$('game-content').addEventListener('click',e=>{if(e.target.id==='tetris-restart')showTetris();});drawTetris();tetrisTimer=setInterval(()=>moveTetris(0,1),650);}
+let tetrisHandlersBound=false;
+function showTetris(){stopTetris();tetrisBoard=Array.from({length:20},()=>Array(10).fill(0));tetrisPiece=newTetrisPiece();tetrisScore=0;tetrisEarned=0;tetrisOver=false;$('game-stage').classList.remove('hidden');$('game-title').textContent='Tetris';$('game-content').innerHTML='<div class="tetris-wrap"><div class="tetris-info">Pontos: <b id="tetris-score">0</b><p>23 LCoins por linha completa · as moedas são salvas na carteira.</p><p>← → mover · ↑ girar · ↓ descer · Espaço: queda</p></div><div id="tetris-grid" class="tetris-grid" role="grid"></div><div class="tetris-mobile"><button data-tetris="left">←</button><button data-tetris="rotate">↻</button><button data-tetris="right">→</button><button data-tetris="down">↓</button></div><button class="btn" data-minigame-back>Voltar aos minigames</button></div>';document.addEventListener('keydown',tetrisKeyHandler);if(!tetrisHandlersBound){tetrisHandlersBound=true;$('game-content').addEventListener('click',e=>{const b=e.target.closest('[data-tetris]');if(!b)return;({left:()=>moveTetris(-1,0),right:()=>moveTetris(1,0),down:()=>moveTetris(0,1),rotate:rotateTetris})[b.dataset.tetris]?.();});$('game-content').addEventListener('click',e=>{if(e.target.id==='tetris-restart')showTetris();});}drawTetris();tetrisTimer=setInterval(()=>moveTetris(0,1),650);}
 
 // ========================================
 // MINIGAME: REFLEXO
@@ -1510,6 +1545,7 @@ function renderSeriesDetails(item,selectedSeason=0){
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
  const active=Math.max(0,Math.min(selectedSeason,seasons.length-1));
  const season=seasons[active];
+ const isUnreleased=item.id!=='lighty-demon-slayer';
  const safePoster=validWebUrl(item.backdrop||item.poster||'')||
    'https://placehold.co/480x270/17152b/e7d8ff?text=LIGHTYFLIX';
  const seasonCards=seasons.map((entry,index)=>
@@ -1519,16 +1555,17 @@ function renderSeriesDetails(item,selectedSeason=0){
   '</b><small>'+entry.count+' episódio'+(entry.count===1?'':'s')+'</small></button>'+
   '<button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+
   safeText(item.id)+'" data-season-index="'+index+'">'+
-  (hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Comprar · 1.500')+
+  (isUnreleased?'🔒 Ainda não lançado':(hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Em preparação'))+
   '</button></article>').join('');
  root.innerHTML='<section class="lighty-season-picker">'+
-  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>1.500 LCoins cada</span></div>'+
+  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>'+(isUnreleased?'🔒 Lançamento pendente':'Em preparação')+'</span></div>'+
   '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="prev" aria-label="Temporadas anteriores">‹</button>'+
   '<div class="lighty-season-row">'+seasonCards+'</div>'+
   '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="next" aria-label="Próximas temporadas">›</button></div></section>'+
   '<section class="lighty-episode-picker"><div class="lighty-section-heading"><h3>'+
   safeText(item.title)+' · '+safeText(season.name)+'</h3><span>'+season.count+
   ' episódio'+(season.count===1?'':'s')+'</span></div>'+
+  '<p class="lighty-unreleased-label">'+(isUnreleased?'🔒 Episódios ainda não lançados no LightyFlix.':'Episódio 1 cadastrado. O vídeo ainda não foi publicado.')+'</p>'+ 
   '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="prev" aria-label="Episódios anteriores">‹</button>'+
   '<div class="lighty-episode-row" aria-live="polite"></div>'+
   '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="next" aria-label="Próximos episódios">›</button></div>'+
@@ -1549,12 +1586,12 @@ function renderSeriesDetails(item,selectedSeason=0){
     const title=entry.title||('Episódio '+(i+1));
     const url=validWebUrl(entry.image||'')||safePoster;
     const imageLabel=entry.isStill?'Cena do episódio':'Imagem ilustrativa da série';
-    return '<button class="lighty-episode-card" type="button" data-episode-number="'+
+    return '<button class="lighty-episode-card '+(isUnreleased?'is-locked':'')+'" type="button" data-episode-number="'+
       (i+1)+'" title="'+safeText(title)+'">'+
-      '<span class="lighty-episode-thumb"><img src="'+safeText(url)+
+      '<span class="lighty-episode-thumb">'+(isUnreleased?'<span class="lighty-episode-lock">🔒 EM BREVE</span>':'')+'<img src="'+safeText(url)+
       '" alt="'+safeText(imageLabel+': '+title)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+
       safeText(safePoster)+'\'"><i>▶</i></span>'+
-      '<b>'+safeText(title)+'</b><small>Episódio '+(i+1)+'</small></button>';
+      '<b>'+safeText(title)+'</b><small>Episódio '+(i+1)+(isUnreleased?' · Não lançado':' · Em preparação')+'</small></button>';
   }).join('');
   episodesRoot.scrollLeft=previousScroll;
  }
@@ -1693,109 +1730,20 @@ function toggleMyList(id) {
 }
 
 
-/* ========================================
-   MODO HISTÓRIA — CAPÍTULO 1
-   ======================================== */
-let storyGame=null, storyFrame=0, storyLoop=0;
-const STORY_BEATS=[
- ['A CARTA DO BARDO','O herói sem nome está longe de sua vila quando uma carta chega: “A princesa foi capturada. Malacord tomou o castelo. Preciso de você. — seu velho amigo, o Bardo”.'],
- ['A LONGA ESTRADA','A jornada começa. Criaturas do Malacord ocupam as estradas, florestas e pontes. O herói terá de atravessar todo o caminho até o reino.'],
- ['O CASTELO FECHADO','Estátuas e fontes do herói enfeitam a cidade. Mas os guardas não o deixam passar: dizem que o verdadeiro herói já está lá dentro — e que este é um impostor.'],
- ['O PLANO DO BARDO','O Bardo explica que subiu a Montanha Sagrada. No topo existe um dragão antigo. Talvez possam entrar no castelo pelo alto.'],
- ['A CHAVE E O PEIXE','Perto do caminho, o Bardo é surpreendido por um peixe monstruoso. Derrote-o! No fim, o Bardo toca uma canção que o faz dormir. A chave aparece dentro dele.'],
- ['A MONTANHA SAGRADA','Goblins de Malacord guardam a subida. No topo, um dragão protege uma pilha de moedas e ameaça devorar os dois.'],
- ['MOEDAS DE CHOCOLATE','O herói desliza pela montanha e revela a embalagem aberta: as moedas eram de chocolate! Malacord enganou o dragão. Envergonhado, ele aceita ajudar — desde que ninguém conte.'],
- ['O CASTELO POR CIMA','O dragão os leva ao topo do castelo. Eles prometem recompensá-lo com moedas verdadeiras e pedem que espere encostado à árvore da montanha.'],
- ['O CASAMENTO','Uma escada leva à torre. Lá embaixo, Malacord veste roupa de casamento: pretende se casar com a princesa. O herói e o Bardo se separam para procurá-la.'],
- ['A POÇÃO','O herói encontra um baú com o mapa do casamento e uma poção. Sem saber o que faz, derrama o líquido na espada. Ela se transforma em uma espada flamejante!'],
- ['A PRINCESA SABE','No calabouço, o Bardo encontra a princesa. Ela percebe o perigo: “Não é isso que o Malacord quer! Que ele derrame uma poção os caramba!”'],
- ['A ESPADA EXPLODE','O herói chega ao salão. A espada pisca — e explode. A névoa toma o lugar. A princesa é acorrentada e surge uma cópia nebulosa do herói.'],
- ['O HERÓI CONTRA SI MESMO','A cada golpe do herói, a névoa imita o ataque. A solução é parar de lutar. Quando o herói abaixa a espada e não ataca, a cópia se desfaz em pó.'],
- ['O ÚLTIMO GOLPE','Malacord voa com uma pancada de alaúde do Bardo — que luta mesmo com a mão machucada. O vilão cai desacordado.'],
- ['UM RESGATE IMPROVÁVEL','A chave está presa ao braço da princesa. As grades vão pegar fogo em 1 minuto. O herói pensa em cortar o braço… mas percebe que pode cortar as cordas que prendem as grades!'],
- ['FIM DO CAPÍTULO 1','A princesa está livre. Malacord é levado ao calabouço. Ao acordar, ele se autointitula… GANONDORF!']
-];
-function storyMarkup(){
- return `<div class="story-shell"><div class="story-top"><div><span class="eyebrow">LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>O HERÓI SEM NOME</h2><p>Uma aventura de plataforma, monstros, mistérios e decisões duvidosas.</p></div><div class="story-price"><b>2.500</b><small> LCoins · PREÇO FUTURO</small><strong>GRÁTIS PARA TESTAR</strong></div></div>
- <div class="story-hud"><span id="story-status">A caminho da vila…</span><span id="story-progress">0%</span></div>
- <canvas id="story-canvas" width="960" height="420" aria-label="Jogo de plataforma pixel art"></canvas>
- <div class="story-controls"><button data-story-left>◀</button><button data-story-jump>▲</button><button data-story-attack>⚔</button><button data-story-right>▶</button></div>
- <div class="story-dialogue" id="story-dialogue"><b>Uma carta chegou.</b><p>Use ← → para andar, Espaço para pular e X para atacar. Atravesse a estrada e enfrente os monstros de Malacord.</p></div>
- <div class="story-actions"><small>Controles: ← → mover · Espaço pular · X atacar</small><button class="btn btn-primary" data-story-next>Começar aventura →</button><button class="btn" data-story-exit>Voltar aos minigames</button></div></div>`;
+/* Modo história: engine 2D separada, com controles e limpeza próprios. */
+let stopStorySession = null;
+function startStory() {
+  if (miniGamePage !== 'story') { showMiniGamePage('story'); return; }
+  stopStory();
+  const stage=$('minigame-stage');
+  if(!stage)return;
+  let root=$('story-game-content');
+  if(!root){root=document.createElement('div');root.id='story-game-content';stage.appendChild(root);}
+  stopStorySession=mountStory(root,backToMiniGames);
 }
-function startStory(){
- showMiniGamePage('story');
- const stage=$('minigame-stage'); if(!stage)return;
- let root=$('story-game-content'); if(!root){root=document.createElement('div');root.id='story-game-content';stage.appendChild(root);}
- root.innerHTML=storyMarkup();
- storyGame={x:60,y:300,vx:0,vy:0,ground:true,world:0,hp:5,score:0,scene:0,dialogue:true,keys:{},attack:0,enemy:[],finished:false};
- for(let i=0;i<26;i++)storyGame.enemy.push({x:480+i*205,y:326,alive:true,type:i%3});
- storyGame.enemy.push({x:5350,y:326,alive:true,boss:true});
- storyRender();
- if(storyLoop)cancelAnimationFrame(storyLoop);
- storyTick();
+function stopStory() {
+  if(stopStorySession){stopStorySession();stopStorySession=null;}
 }
-function storySay(title,body,button='Continuar →'){
- const box=$('story-dialogue');if(!box)return;
- box.innerHTML='<b>'+safeText(title)+'</b><p>'+safeText(body)+'</p><button class="btn btn-primary" data-story-resume>'+button+'</button>';
- storyGame.dialogue=true;storyGame.keys={};
-}
-function storyRender(){
- const canvas=$('story-canvas');if(!canvas||!storyGame)return;
- const c=canvas.getContext('2d'),g=storyGame,w=canvas.width,h=canvas.height,cam=Math.max(0,g.x-250);
- c.imageSmoothingEnabled=false;
- const sky=c.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#04b9f3');sky.addColorStop(1,'#8beaff');c.fillStyle=sky;c.fillRect(0,0,w,h);
- c.fillStyle='#fff7b0';c.beginPath();c.arc(770,65,47,0,Math.PI*2);c.fill();
- for(let i=0;i<9;i++){let x=((i*210-cam*.22)%(w+180)+w+180)%(w+180)-80;c.fillStyle='#d7fbff';c.fillRect(x,100+(i%3)*22,95,18);c.fillRect(x+18,86+(i%3)*22,42,25);}
- c.fillStyle='#4b9a4b';c.fillRect(0,340,w,80);c.fillStyle='#80d84c';for(let x=0;x<w;x+=13)c.fillRect(x,334+(x%3)*2,8,9);
- c.fillStyle='#805334';c.fillRect(0,370,w,50);c.fillStyle='#b9874e';for(let x=0;x<w;x+=28)c.fillRect(x,379,14,4);
- // árvores e flores
- for(let i=0;i<20;i++){let x=((i*170-cam*.65)%(w+100)+w+100)%(w+100)-30;c.fillStyle='#76502f';c.fillRect(x+15,275,14,65);c.fillStyle='#278b42';c.fillRect(x,240,45,42);c.fillStyle='#46bb4c';c.fillRect(x+8,225,28,28);}
- // marco distante
- if(g.world>850){c.fillStyle='#7b7b9e';c.fillRect(760,235,130,105);c.fillStyle='#e2c47a';c.fillRect(790,205,70,35);}
- // inimigos
- g.enemy.forEach(e=>{if(!e.alive)return;let x=e.x-cam;if(x<-40||x>w+40)return;c.fillStyle=e.boss?'#702b83':'#527b37';c.fillRect(x,300,e.boss?52:30,38);c.fillStyle='#f2d7a0';c.fillRect(x+6,310,7,7);c.fillRect(x+19,310,7,7);c.fillStyle='#301d30';c.fillRect(x+8,312,3,3);c.fillRect(x+21,312,3,3);});
- // herói
- let px=g.x-cam;c.fillStyle='#874c31';c.fillRect(px+4,g.y-12,24,24);c.fillStyle='#e6a16b';c.fillRect(px+7,g.y-8,19,17);c.fillStyle='#5c3927';c.fillRect(px+5,g.y-15,22,8);c.fillStyle='#f6d75e';c.fillRect(px+7,g.y+8,20,7);c.fillStyle='#3565a4';c.fillRect(px+4,g.y+17,9,15);c.fillRect(px+18,g.y+17,9,15);c.fillStyle='#fff';c.fillRect(px+18,g.y-4,4,4);
- if(g.attack>0){c.fillStyle='#fff1a1';c.fillRect(px+27,g.y+1,28,5);c.fillRect(px+45,g.y-5,5,18);}
- c.fillStyle='#17304a';c.fillRect(18,18,180,14);c.fillStyle='#f15e67';c.fillRect(20,20,g.hp*32,10);c.fillStyle='#fff';c.font='14px monospace';c.fillText('♥ '+g.hp+'   ✦ '+g.score,20,53);
- c.fillStyle='rgba(8,20,36,.7)';c.fillRect(0,398,w,22);c.fillStyle='#fff';c.font='12px monospace';c.fillText('ESTRADA DE MALACORD  ·  '+Math.min(100,Math.floor(g.world/55))+'%',12,414);
- const prog=$('story-progress');if(prog)prog.textContent=Math.min(100,Math.floor(g.world/55))+'%';
-}
-function storyTick(){
- if(!storyGame||storyGame.finished)return;
- const g=storyGame;
- if(!g.dialogue){
-  let dir=(g.keys.right?1:0)-(g.keys.left?1:0);g.vx=dir*3.3;g.x=Math.max(0,g.x+g.vx);g.world=g.x;g.vy+=.55;g.y+=g.vy;
-  if(g.y>=300){g.y=300;g.vy=0;g.ground=true;}
-  if(g.attack>0){g.attack--;g.enemy.forEach(e=>{if(e.alive&&Math.abs(e.x-g.x)<72){e.alive=false;g.score+=e.boss?500:25;}});}
-  g.enemy.forEach(e=>{if(e.alive&&Math.abs(e.x-g.x)<28&&g.y>=295){if(!g.hitLock){g.hp--;g.hitLock=50;if(g.hp<=0){g.hp=5;g.x=Math.max(0,g.x-220);storySay('Recuar não é desistir!','O herói recupera o fôlego em um ponto seguro. Tente novamente.');}}}});
-  if(g.hitLock)g.hitLock--;
-  const milestones=[900,1800,2650,3500,4300,5100];
-  const next=milestones[g.scene];
-  if(next&&g.x>=next){g.scene++;g.dialogue=true;const lines=[
-   ['A VILA DO HERÓI','As fontes e estátuas mostram o rosto do herói. Os guardas, porém, juram que ele é uma fraude. O Bardo aparece e conta seu plano.'],
-   ['O PEIXE MONSTRUOSO','O Bardo é agarrado por um peixe enorme! Acerte-o três vezes. O Bardo tocará uma canção para fazê-lo dormir.'],
-   ['A MONTANHA','Goblins cercam a trilha. O dragão do topo está guardando moedas que Malacord lhe deu.'],
-   ['CHOCOLATE?!','A embalagem aberta entrega o truque. O dragão aceita ajudar, mas exige segredo.'],
-   ['O CASTELO','Vocês entram pelo alto. Malacord planeja se casar com a princesa. Procurem a torre e o calabouço.'],
-   ['O SALÃO FINAL','A espada flamejante explode e a névoa cria um clone. Não ataque: a névoa copia cada golpe!']
-  ][g.scene-1];storySay(lines[0],lines[1]);}
-  if(g.x>5400){g.finished=true;storySay('CAPÍTULO CONCLUÍDO','A princesa foi salva, Malacord está no calabouço e o vilão acorda se autointitulando… GANONDORF!','Jogar novamente');}
- }
- storyRender();storyLoop=requestAnimationFrame(storyTick);
-}
-function storyKeyDown(e){
- if(!storyGame)return;
- const k=e.key.toLowerCase();if(['arrowleft','arrowright',' ','x'].includes(k))e.preventDefault();
- if(k==='arrowleft'||k==='a')storyGame.keys.left=true;
- if(k==='arrowright'||k==='d')storyGame.keys.right=true;
- if(k===' '||k==='arrowup'||k==='w'){if(storyGame.ground&&!storyGame.dialogue){storyGame.vy=-10;storyGame.ground=false;}}
- if(k==='x'||k==='z'){if(!storyGame.dialogue)storyGame.attack=12;}
-}
-function storyKeyUp(e){if(!storyGame)return;const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')storyGame.keys.left=false;if(k==='arrowright'||k==='d')storyGame.keys.right=false;}
-window.addEventListener('keydown',storyKeyDown);window.addEventListener('keyup',storyKeyUp);
-function stopStory(){if(storyLoop)cancelAnimationFrame(storyLoop);storyLoop=0;storyGame=null;}
 
 // ========================================
 // EVENTOS
@@ -1824,14 +1772,7 @@ function setupEvents() {
 
   // Delegação também atende ao botão LightyFlix, criado dinamicamente.
   document.addEventListener('click', event => {
-    const storyStart=event.target.closest('#play-story'); if(storyStart)startStory();
-    if(event.target.closest('[data-story-exit]'))backToMiniGames();
-    if(event.target.closest('[data-story-next]')){const box=$('story-dialogue');if(box){box.innerHTML='<b>A aventura começa!</b><p>Avance pela estrada. Pule obstáculos e use X para atacar os monstros.</p>';storyGame.dialogue=false;}}
-    if(event.target.closest('[data-story-resume]')){if(storyGame?.finished){startStory();}else if(storyGame){storyGame.dialogue=false;const box=$('story-dialogue');if(box)box.innerHTML='<b>Continue!</b><p>← → mover · Espaço pular · X atacar.</p>';}}
-    if(event.target.closest('[data-story-left]')&&storyGame)storyGame.keys.left=true;
-    if(event.target.closest('[data-story-right]')&&storyGame)storyGame.keys.right=true;
-    if(event.target.closest('[data-story-jump]')&&storyGame&&!storyGame.dialogue&&storyGame.ground){storyGame.vy=-10;storyGame.ground=false;}
-    if(event.target.closest('[data-story-attack]')&&storyGame&&!storyGame.dialogue)storyGame.attack=12;
+    const storyStart=event.target.closest('#play-story'); if(storyStart)showMiniGamePage('story');
     const navButton = event.target.closest('.nav-item[data-view]');
     if (navButton) { switchView(navButton.dataset.view); if (navButton.dataset.view === 'shop') renderShop(); }
   });
@@ -1846,7 +1787,7 @@ function setupEvents() {
 
   document.addEventListener('click', event => {
     const lightyScroll=event.target.closest('[data-lighty-scroll]');if(lightyScroll){const row=lightyScroll.parentElement?.querySelector(lightyScroll.dataset.lightyScroll==='episodes'?'.lighty-episode-row':'.lighty-season-row');if(row)row.scrollBy({left:(lightyScroll.dataset.direction==='next'?1:-1)*Math.max(220,row.clientWidth*.78),behavior:'smooth'});}
-    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightyContent('season:'+seasonBuy.dataset.buySeason+':'+seasonBuy.dataset.seasonIndex,1500,'Temporada');
+    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)toast(seasonBuy.dataset.buySeason==='lighty-demon-slayer'?'Este episódio ainda não tem reprodução publicada.':'🔒 Temporada ainda não lançada no LightyFlix.');
     const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
     const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie)buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
@@ -1866,6 +1807,7 @@ function setupEvents() {
     const move = event.target.closest('[data-pokemon-move]');
     if (move) performPokemonMove(Number(move.dataset.pokemonMove));
 
+    if (event.target.closest('[data-pokemon-rest]')) restPokemonInBattle();
     const swap = event.target.closest('[data-pokemon-switch]');
     if (swap) switchPokemonInBattle(Number(swap.dataset.pokemonSwitch));
 
@@ -1887,6 +1829,8 @@ function setupEvents() {
     const cinemaScroll=event.target.closest('[data-cinema-scroll]');if(cinemaScroll){const row=$(cinemaScroll.dataset.cinemaScroll);if(row)row.scrollBy({left:(cinemaScroll.dataset.direction==='next'?1:-1)*Math.max(260,row.clientWidth*.8),behavior:'smooth'});}
     const cinemaOpen=event.target.closest('[data-cinema-open]');if(cinemaOpen)openCinemaDetails(cinemaOpen.dataset.cinemaOpen);
     if(event.target.closest('[data-cinema-close]'))closeCinemaDetails();
+    const epClicked=event.target.closest('.lighty-episode-card');
+    if(epClicked) toast(epClicked.classList.contains('is-locked')?'🔒 Este episódio ainda não foi lançado no LightyFlix.':'O episódio 1 está cadastrado; o vídeo ainda não está disponível para reprodução.');
     const watch = event.target.closest('[data-watch]');
     if (watch) playCinemaItem(watch.dataset.watch);
 
@@ -1938,6 +1882,7 @@ if (configured) {
         });
 
       } else {
+        pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
         currentUser = null;
         profile = null;
         cleanupListeners();
