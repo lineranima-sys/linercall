@@ -1,5 +1,5 @@
 import { createNotifications } from './social-notifications.js?v=20261105';
-import { createPokemonOnline } from './pokemon-online.js?v=20261105-pvp-rewards-100-10';
+import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
 import { mountStory } from './story-game.js?v=20261105-moedas-fire-dodge';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 
@@ -669,8 +669,7 @@ async function sendMessage(event) {
 function listenUsers() {
   const q = query(
     collection(db, 'users'),
-    orderBy('lastSeen', 'desc'),
-    // Sem limite: mostrar todos os membros online, não apenas 50.
+    orderBy('lastSeen', 'desc')
   );
 
   stopListeners.push(onSnapshot(q, snap => {
@@ -987,6 +986,31 @@ function savePokemonArena() {
 
 // PvP: crédito local único por partida concluída. O saldo atual do LinerCall
 // ainda usa localStorage; para economia anti-fraude é necessário backend.
+let rankBackendWarningSent=false;
+async function settleOnlineRanking(matchId){
+ if(!currentUser||!matchId)return;
+ const token=await currentUser.getIdToken();
+ try{
+  const response=await fetch('/api/settlePokemonMatch',{
+   method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+   body:JSON.stringify({matchId})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+   if(!rankBackendWarningSent){
+    rankBackendWarningSent=true;
+    toast(response.status===503?'Ranking global: falta configurar as credenciais no servidor.':'Ranking global: '+(data.error||'não foi possível registrar a partida.'));
+   }
+   throw new Error(data.error||'Falha ao validar resultado.');
+  }
+  rankBackendWarningSent=false;
+  return data;
+ }catch(error){
+  console.warn('Registro de resultado semanal pendente:',error);
+  throw error;
+ }
+}
+
 function creditPokemonOnlineReward({matchId,winnerUid,hostUid,guestUid}) {
   if(!currentUser||!pokemonArena||!matchId||typeof matchId!=='string')return;
   const uid=currentUser.uid;
@@ -1015,7 +1039,7 @@ function initPokemonArena() {
   if (!currentUser) return;
   pokemonArena = loadPokemonArena();
   if (pokemonOnline) pokemonOnline.destroy();
-  pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast,onReward:creditPokemonOnlineReward});
+  pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast,onReward:creditPokemonOnlineReward,onMatchSettled:settleOnlineRanking});
   pokemonOnline.start();
   pokemonOnline.setPlayers(latestOnlinePlayers);
   if (String(profile?.displayName||'').trim().toLocaleLowerCase('pt-BR') === 'tom' && !localStorage.getItem('linercall-tom-coins-reset-v1')) { pokemonArena.coins=0; localStorage.setItem('linercall-tom-coins-reset-v1','1'); savePokemonArena(); }
