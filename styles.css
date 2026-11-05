@@ -731,3 +731,7 @@ body.cinema-modal-open{overflow:hidden}
  image-rendering:pixelated;
 }
 .pokemon-arena-scene::before,.pokemon-arena-scene::after{display:none}
+
+/* Registro honesto de batalhas: só resultados locais até validação por servidor */
+.ranking-local-record{margin-top:17px;padding:16px;border:1px dashed #5a819b;border-radius:12px;background:#142b3e;color:#eef7ff}
+.ranking-local-record b{font-size:14px}.ranking-local-record p{margin:7px 0;color:#81e4b3;font-weight:800}.ranking-local-record small{line-height:1.6;color:#a1b6cd;display:block}
