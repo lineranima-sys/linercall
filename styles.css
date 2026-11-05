@@ -949,3 +949,61 @@ body > #toast.show{opacity:1;transform:translate(-50%,0)}
 .lighty-episode-card.is-owned .lighty-episode-lock{border-color:#6ed5b4;color:#a8ffde}
 .lighty-unreleased-label{padding:10px 12px;border-left:3px solid #efc987;background:#382d23;color:#ffdfa3;line-height:1.55;border-radius:5px}
 @media(max-width:600px){.lighty-episode-unit{flex-basis:160px}.lighty-season-card{flex-basis:185px}.lighty-episode-unit .lighty-episode-card{min-height:166px}.lighty-balance{align-items:flex-start}}
+
+
+/* ARCADE LINERCALL: TERMO, Detetive, SHOOT'E R! e Adivinhe a Música */
+.termo-tab{background:radial-gradient(circle at 90% 10%,#7fdf9570,transparent 50%),linear-gradient(135deg,#133d39,#11263e)}
+.detective-tab{background:radial-gradient(circle at 85% 10%,#f5d38b55,transparent 50%),linear-gradient(135deg,#3b2c4a,#17233e)}
+.shooter-tab{background:radial-gradient(circle at 85% 10%,#f8975060,transparent 50%),linear-gradient(135deg,#553328,#192238)}
+.music-tab{background:radial-gradient(circle at 85% 10%,#d77efa6c,transparent 50%),linear-gradient(135deg,#40245e,#1e2550)}
+.game-content:has(.arcade-game){padding:20px;text-align:left;overflow-wrap:anywhere}
+.arcade-game{width:100%;max-width:1050px;margin:0 auto;color:#edf4ff;line-height:1.55}
+.arcade-game-heading h2,.arcade-game h2{font-size:clamp(24px,4vw,42px);margin:6px 0 8px;font-weight:800;line-height:1.13}
+.arcade-game-heading h2 em{font-style:normal;color:#81ffab}
+.arcade-game>p,.arcade-game-heading>p{font-size:13px;color:#bdcde0;max-width:730px}
+.arcade-prize,.arcade-note{margin:14px 0;padding:12px 14px;border:1px solid #334b63;border-radius:10px;background:#152337;color:#c6ddec;font-size:12px}
+.arcade-prize b{color:#ffe08d}
+.termo-board{display:grid;gap:7px;justify-content:center;margin:20px auto 15px}
+.termo-row{display:grid;grid-template-columns:repeat(5,52px);gap:7px}
+.termo-cell{width:52px;height:53px;display:grid;place-items:center;border:2px solid #354960;border-radius:7px;background:#172438;color:#fff;font-size:25px;font-weight:800;letter-spacing:1px;box-shadow:0 4px 9px #0003}
+.termo-correct{background:#3d935f;border-color:#75c28a}
+.termo-present{background:#b18e38;border-color:#e6c25d}
+.termo-absent{background:#465066;border-color:#65708a}
+.termo-form{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px;margin:15px 0}
+.termo-form input{width:168px;padding:13px 15px;text-transform:uppercase;letter-spacing:4px;font-size:18px;text-align:center;color:#edf4ff;background:#15253e;border:1px solid #587793;border-radius:10px}
+.termo-help{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;font-size:11px;color:#b6cadb}
+.arcade-online-score{margin-top:21px;padding:16px 18px;border-radius:12px;background:#111f33;border:1px solid #344962}
+.arcade-online-score h3{margin:0 0 11px;font-size:16px}
+.termo-rank-row{display:flex;justify-content:space-between;gap:15px;padding:10px 3px;border-top:1px solid #304054;font-size:12px}
+.termo-rank-row span{color:#92f9c6}
+.detective-case-picker,.music-genres{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}
+.detective-case-picker button{font-size:10px}
+.arcade-case-panel{padding:21px;border:1px solid #3b506f;background:linear-gradient(145deg,#172640,#101a2c);border-radius:15px;box-shadow:inset 0 1px 0 #ffffff0b}
+.arcade-case-panel h3{font-size:22px;margin:5px 0}
+.arcade-case-panel h4{font-size:15px;margin:17px 0 8px;color:#f2dfab}
+.arcade-case-panel p{font-size:12px;color:#d0deec}
+.detective-evidence{display:grid;gap:8px}
+.detective-evidence p{margin:0;padding:11px 13px;border-left:3px solid #d8bb76;background:#1e3046;border-radius:4px}
+.detective-suspects,.music-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.detective-suspects button,.music-choices button{min-height:43px;white-space:normal;font-size:12px}
+.music-choices{margin:17px 0}
+.music-right-answer{border:1px solid #70ddaa!important;background:#255244!important;color:white!important}
+.shooter-game{overflow:hidden}
+.shooter-logo{font-size:clamp(38px,7vw,84px)!important;line-height:1.1!important;letter-spacing:-3px;transform:rotate(-2deg);transform-origin:left center;display:inline-block;color:#ffe673;background:linear-gradient(180deg,#fff5af 12%,#ffd33f 38%,#f5a32d 72%,#e66e32 95%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(3px 5px 0 #683b41);font-family:'Press Start 2P','Space Grotesk',sans-serif;text-transform:uppercase}
+.shooter-logo span{font-size:.65em;letter-spacing:-4px}
+.shooter-hud{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:14px 0;padding:10px;background:#141d2d;border:1px solid #52617b;border-radius:11px;color:#ffe1a5;font-size:11px;font-weight:700}
+#shoot-canvas{display:block;width:100%;height:auto;max-height:70vh;aspect-ratio:780 / 450;cursor:crosshair;outline:1px solid #526b83;background:#101b29;border:3px solid #394d64;border-radius:12px;touch-action:none}
+.shooter-keys{margin:12px 0;font-size:11px;color:#b4c6d5}
+.shooter-keys b{color:#ffe4ac}
+.shooter-actions{display:flex;flex-wrap:wrap;gap:9px}
+.shooter-game .arcade-note{border-left:3px solid #ebaa65}
+@media(max-width:620px){
+ .minigame-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .minigame-tab{padding:12px;min-height:165px}
+ .minigame-tab b{font-size:15px}
+ .termo-row{grid-template-columns:repeat(5,43px);gap:6px}
+ .termo-cell{width:43px;height:45px;font-size:21px}
+ .detective-suspects,.music-choices{grid-template-columns:1fr}
+ .game-content:has(.arcade-game){padding:10px}
+ .arcade-case-panel{padding:13px}
+}
