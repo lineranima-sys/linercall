@@ -50,27 +50,30 @@ function castRay(x,y,angle){
  '<div class="shoot-fps-screen"><canvas id="shoot-canvas" width="900" height="520" tabindex="0" aria-label="Visão em primeira pessoa do SHOOT’E R!"></canvas>'+
  '<div class="shoot-fps-paused" id="shoot-overlay"><b>SHOOT’E R!</b><span>FPS EM PRIMEIRA PESSOA</span><small>Clique em Iniciar para controlar o personagem.</small></div></div>'+
  '<div class="shooter-keys"><b>WASD</b> mover · <b>Mouse</b> olhar · <b>Esquerdo</b> atirar · <b>Direito</b> mira do fuzil · <b>1–4</b> armas · <b>R</b> recarregar · <b>Esc</b> solta mouse</div>'+
- '<p id="shoot-message" class="arcade-note">Elimine 12 drones antes do fim do tempo para ganhar 45 LCoins (uma vez por dia).</p>'+
+ '<p id="shoot-message" class="arcade-note">'+(isOnline?'Duelo online: sobreviva e vença o rival. Premiação do servidor: 90 LCoins para quem vence, 15 para quem perde (até três por dia).':'Elimine 12 drones antes do fim do tempo para ganhar 45 LCoins (uma vez por dia).')+'</p>'+
  '<div class="shooter-actions"><button type="button" class="btn btn-primary" data-shoot-start>▶ Iniciar partida</button>'+
  '<button type="button" class="btn" data-shoot-reload>Recarregar (R)</button>'+
  '<button type="button" class="btn" data-shoot-scope>🔭 Zoom do fuzil</button>'+
- '<button type="button" class="btn" data-shoot-mouse>🎯 Capturar mouse</button></div>'+
+ '<button type="button" class="btn" data-shoot-mouse>🎯 Capturar mouse</button><button type="button" class="btn" data-shoot-back-hub>← Menu SHOOT’E R!</button></div>'+
  '<div class="shoot-touch-controls"><div class="shoot-touch-weaponbar"><button type="button" data-shoot-weapon="0">Pistola</button><button type="button" data-shoot-weapon="1">SMG</button><button type="button" data-shoot-weapon="2">Sniper</button><button type="button" data-shoot-weapon="3">Faca</button></div><div class="shoot-touch-nav"><button type="button" data-hold-key="w">▲</button><div><button type="button" data-hold-key="a">◀</button><button type="button" data-hold-key="s">▼</button><button type="button" data-hold-key="d">▶</button></div></div><div class="shoot-touch-actions"><button type="button" data-hold-fire>🎯 ATIRAR</button><button type="button" data-hold-scope>🔭 ZOOM</button></div><small>Arraste a visão com o dedo na arena para virar. Toque nas armas acima para trocar (1–4 no teclado).</small></div>';
  root.replaceChildren(el);
  const $=s=>el.querySelector(s),canvas=$('#shoot-canvas'),ctx=canvas.getContext('2d',{alpha:false}),hud=$('#shoot-weapon'),message=$('#shoot-message'),overlay=$('#shoot-overlay');
  const W=canvas.width,H=canvas.height;
  let px=9,py=8,look=0,kills=0,life=100,pressed=new Set(),enemies=[],particles=[];
  let playing=false,done=false,shooting=false,scope=false,shotAt=-1e4,flashAt=0,hitAt=0,spawnAt=0,reloadEnds=0;
- let current=0,startTime=0,lastFrame=0,raf=0,dragX=null,frame=0,rewarded=false;
+ let current=0,startTime=0,lastFrame=0,raf=0,dragX=null,frame=0,rewarded=false,lastOnlineStatus=0;
  const day=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const todayKey=()=> 'linercall-arcade-earned-'+user.uid+'-shooter-'+day();
  function gun(){return guns[current];}
  function setHint(text){message.textContent=text;}
  function updateHud(time=DURATION){
   const g=gun();
+  if(isOnline)life=online.getSelfHp();
   $('#shoot-hp').textContent='❤️ '+Math.ceil(life)+' HP';
-  $('#shoot-weapon').textContent=g.name+' · '+(current===3?'∞':g.ammo+'/'+g.reserve)+(reloadEnds?' · RECARREGANDO':'');
-  $('#shoot-score').textContent='🤖 '+kills+'/'+TARGET+' drones';
+  const a=isOnline?online.getSelfAmmo(current):g.ammo,res=isOnline?online.getSelfReserve(current):g.reserve;
+  $('#shoot-weapon').textContent=g.name+' · '+(current===3?'∞':(a??g.ammo)+'/'+(res??g.reserve))+
+   ((isOnline?online.isReloading(current):reloadEnds)?' · RECARREGANDO':'');
+  $('#shoot-score').textContent=isOnline?'⚔ '+(online.getOpponent()?.hp??online.getRoom()?.[online.side()==='host'?'guestHp':'hostHp']??0)+' HP rival':'🤖 '+kills+'/'+TARGET+' drones';
   $('#shoot-timer').textContent=Math.max(0,Math.ceil(time))+' s';
  }
  function start(){
@@ -81,7 +84,7 @@ function castRay(x,y,angle){
   enemies=[];particles=[];reloadEnds=0;current=0;pressed.clear();
   guns.forEach((g,i)=>{g.ammo=GUNS[i].ammo;g.reserve=GUNS[i].reserve;});
   overlay.classList.add('hidden');
-  setHint('Treinamento iniciado! Elimine '+TARGET+' drones antes do fim do tempo.');
+  setHint(isOnline?'1v1 iniciado no mapa '+arena.name+'. Acerte o adversário!':'Treinamento iniciado! Elimine '+TARGET+' drones antes do fim do tempo.');
   canvas.focus({preventScroll:true});
   if(canvas.requestPointerLock)canvas.requestPointerLock().catch(()=>setHint('Clique na tela para controlar a câmera. Você também pode usar ← →.'));
   updateHud();
@@ -99,7 +102,8 @@ function castRay(x,y,angle){
  }
  function startReload(now=performance.now()){
   const g=gun();
-  if(!playing||current===3||reloadEnds||g.ammo===g.mag||g.reserve<=0)return;
+  if(!playing||current===3||reloadEnds||(isOnline?online.getSelfAmmo(current)>=g.mag: g.ammo===g.mag)||(isOnline?online.getSelfReserve(current)<=0:g.reserve<=0))return;
+  if(isOnline)online.reload(current).catch(error=>setHint(error.message));
   reloadEnds=now+g.reload;
   setHint('Recarregando '+g.name+'...');
   updateHud();
@@ -107,21 +111,30 @@ function castRay(x,y,angle){
  function finish(success){
   if(done)return;
   done=true;playing=false;shooting=false;scope=false;
-  const won=success&&kills>=TARGET;
-  if(won&&!localStorage.getItem(todayKey())){
+  const won=isOnline?online.getRoom()?.winnerUid===user.uid:success&&kills>=TARGET;
+  if(!isOnline&&won&&!localStorage.getItem(todayKey())){
    localStorage.setItem(todayKey(),'1');
    addCoins(45);rewarded=true;
   }
-  const result=won?'🏆 Missão concluída! '+(rewarded?'+45 LCoins!':'Você já coletou as moedas de hoje.'):
+  const result=isOnline?won?'🏆 Você venceu o duelo online!':online.getRoom()?.winnerUid?'O rival venceu o duelo.':'Empate na arena!':
+   won?'🏆 Missão concluída! '+(rewarded?'+45 LCoins!':'Você já coletou as moedas de hoje.'):
    'Treinamento encerrado. '+kills+'/'+TARGET+' drones eliminados. Tente de novo!';
   setHint(result);
   overlay.classList.remove('hidden');
-  overlay.innerHTML='<b>'+(won?'VITÓRIA!':'FIM DE PARTIDA')+'</b><span>'+kills+'/'+TARGET+' drones</span><small>Use Iniciar partida para tentar novamente.</small>';
+  overlay.innerHTML='<b>'+(won?'VITÓRIA!':'FIM DE PARTIDA')+'</b><span>'+(isOnline?'Duelo '+arena.name:kills+'/'+TARGET+' drones')+'</span><small>Volte ao menu para jogar outra partida.</small>';
   if(document.pointerLockElement===canvas)document.exitPointerLock?.();
  }
  function fire(now=performance.now()){
   if(!playing||reloadEnds||now-shotAt<gun().delay)return;
   const g=gun();
+  if(isOnline){
+   if(current!==3&&online.getSelfAmmo(current)<=0){startReload(now);return;}
+   shotAt=now;flashAt=now;
+   online.shoot(current,{x:px,y:py,angle:look,weapon:current}).then(result=>{
+    if(result.hit){hitAt=performance.now();setHint('Acertou! '+result.damage+' de dano.');}
+   }).catch(error=>{if(!/intervalo|recarreg|Aguarde/i.test(error.message))setHint(error.message);});
+   return;
+  }
   if(g.ammo<=0){startReload(now);return;}
   shotAt=now;flashAt=now;
   if(current!==3)g.ammo--;
