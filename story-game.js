@@ -1,6 +1,6 @@
 // Herói em um mundo Luminoso · Capítulo 1 — aventura 2D original em Canvas.
 // A arte é desenhada no próprio jogo: não exige imagens externas.
-const CW=480, CH=270, FLOOR=220;
+const CW=480, CH=270, FLOOR=220, HERO_H=36, HERO_W=30;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const r01=n=>{const f=Math.sin(n*13.713+7.19)*43758.5453;return f-Math.floor(f);};
 const levels=[
@@ -9,21 +9,47 @@ const levels=[
  {name:'Montanha Sagrada',length:2400,kind:'mountain',ground:[[0,820],[895,1260],[1335,1710],[1785,2440]],platforms:[[815,178,90],[1255,169,90],[1703,178,90]],mobs:[990,1160,1430,1650,1890,2010]},
  {name:'O castelo de Malacord',length:2380,kind:'castle',ground:[[0,2420]],platforms:[],mobs:[]}
 ];
-const heroPixels=['...HHHH....','..HHHHHH...','..HSSSSH...','..HSESSH...','...SSSS....','..CCCCC....','..CCCCCC...','..CCYCCC...','..CCCCC....','...BB.BB...','...BB.BB...','..BBB.BBB..'];
-const bardoPixels=['..PPPPP...','..PSSSP...','...SSS....','..GGGGG...','..GGGGG.O.','..GGGGG/O.','...DDDDD..','...DD.DD..','...DD.DD..'];
-const goblinPixels=['..GGGGG..','.GGGGGGG.','GGEGGEGGG','GGGGGGGGG','.GTTTTTG.','..RRRRR..','..RR.RR..'];
-const colors={H:'#6e3b35',S:'#f7c69b',E:'#182b4c',C:'#4677bc',Y:'#f7ca63',B:'#40324e',P:'#76543b',G:'#4eb77a',D:'#60416e',O:'#f3be6a',R:'#674461',T:'#e1bc93'};
-export function mountStory(root,onExit){
- let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0;
+// Sprites originais de 2px, agora com poses distintas e silhuetas legíveis.
+const heroIdle=[
+ '.....PPPP......','....PHHHHP.....','...PHHHHHHP....','...HSSSSSSH....',
+ '...HSESESHH....','...HSSSSSSH....','....HHHSS......','...CCAAACC.....',
+ '..CCCAALACC....','..CCCAALACC....','...CAAAACC.....','...CAYYACC.....',
+ '....AAAAC......','....ADDAA......','....DBBDB......','....DBBDB......',
+ '...DBBBDBB.....','...DBB.DBB.....'
+];
+const heroWalkA=heroIdle.map((row,i)=>i>=14?['....DBBD.......','...DBBBDB......','..DBB..DBB.....','..BB....BB.....'][i-14]:row);
+const heroWalkB=heroIdle.map((row,i)=>i>=14?['.....DBBDB.....','.....DBBDB.....','.....DBBBDB....','.....BB.BB.....'][i-14]:row);
+const heroJump=heroIdle.map((row,i)=>i>=14?['....DBBDBB.....','...DBB...DB....','..BB.....BB....','..B.......B....'][i-14]:row);
+const heroAttack=heroIdle.map((row,i)=>i>=7&&i<=11?['..CCAAALAAAA...','..CCAAALAAAA...','..CCAAALAAAA...','...CAAAA......','....CAYY......'][i-7]:row);
+const bardIdle=[
+ '....PPPPPP.....','...PPPPPPPP....','...PPTTPPPP....','....PSSSSP.....',
+ '....PSEESP.....','.....SSSS......','...GGBGGGG.....','..GGGBGGGGG....',
+ '..GGGBGGGGG....','...GGGBGGGG....','....GGBGG......','....DGDDD......',
+ '....DDDDD......','....DDD.DD.....','....DD...DD....','....DD...DD....',
+ '...DDD...DDD...','...DDD...DDD...'
+];
+const bardWalk=bardIdle.map((row,i)=>i>=14?['...DDD....DD...','..DDD.....DDD..','..DD.......DD..','..DD.......DD..'][i-14]:row);
+const goblinIdle=[
+ '...GGGGGG......','..GGGGGGGG.....','.GGEGGEGGG.....','.GGGGGGGGG.....',
+ '..GGTTTTGG.....','...RRRRRR......','..RRRYYRRR.....','..RRRRRRRR.....',
+ '...RR..RR......','..BBB..BBB.....','..BBB..BBB.....','..BB....BB.....'
+];
+const colors={H:'#684336',P:'#c75864',S:'#f8cda4',E:'#252842',C:'#263a67',A:'#4486a3',L:'#8ce6e0',Y:'#f5d277',D:'#4b354f',B:'#272f46',G:'#39795e',R:'#526947',T:'#eddd9c'};
+export function mountStory(root,onExit,uid='guest'){
+ let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0,menu=true,intro=false,lastSave=0,bardX=0,bardY=FLOOR-36;
  const key={left:false,right:false};
  const flags={guards:false,fishNotice:false,fish:false,key:false,dragon:false,wedding:false,potion:false,princess:false,explosion:false,clone:false,bardo:false,rescue:false,win:false};
- const player={x:40,y:FLOOR-24,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
+ const player={x:40,y:FLOOR-HERO_H,vx:0,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
+ const dragonImage=new Image();dragonImage.src='./assets/dragon-pixel.svg';
+ const saveKey='linercall-luminous-save-v2-'+uid;
  let mobs=[];
  function build(){
   root.innerHTML='<div class="luminous-shell"><header class="luminous-header"><div><span>LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>Herói em um mundo Luminoso</h2><p>Capítulo 1 · Uma aventura de plataforma 2D pixel art</p></div><button class="btn" data-story-exit-new>← Minigames</button></header>'+
    '<div class="luminous-hud"><b id="luminous-zone">A longa estrada</b><span id="luminous-hp">♥ ♥ ♥ ♥ ♥</span><b id="luminous-distance">0%</b></div>'+
+   '<div class="luminous-objective" id="luminous-objective">Objetivo: Começar uma nova aventura</div>'+
    '<div class="luminous-screen"><canvas id="luminous-canvas" width="480" height="270" aria-label="Jogo de plataforma 2D em pixel art"></canvas>'+
-   '<div class="luminous-dialog" id="luminous-dialog"><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
+   '<div id="luminous-menu" class="luminous-menu"><div class="luminous-menu-card"><span class="eyebrow">LINERCALL APRESENTA</span><h2>HERÓI EM UM MUNDO <em>LUMINOSO</em></h2><span class="luminous-chapter">CAPÍTULO 1 · A CARTA DO BARDO</span><div class="luminous-menu-actions"><button type="button" data-story-continue class="btn btn-primary">▶ Continuar aventura</button><button type="button" data-story-new class="btn">✦ Novo jogo</button><button type="button" data-story-controls class="btn">⌨ Como jogar</button></div><small>Seu progresso fica salvo neste dispositivo.</small></div></div>'+
+   '<div class="luminous-dialog hidden" id="luminous-dialog" role="dialog" aria-live="polite"><div class="luminous-dialog-head"><span class="luminous-portrait" id="luminous-portrait">✦</span><div><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3></div></div><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
    '<div class="luminous-touch"><div><button data-story-hold="left">◀</button><button data-story-hold="right">▶</button></div><div><button data-story-act="jump">▲ PULAR</button><button data-story-act="attack">⚔ ATACAR</button></div></div>'+
    '<p class="luminous-instructions">A / D ou ← → mover · Espaço pular · X atacar ou interagir · O jogo é gratuito durante os testes.</p></div>';
  }
@@ -34,17 +60,59 @@ export function mountStory(root,onExit){
  function dialogue(who,title,body,next){
   paused=true;key.left=false;key.right=false;pending=next||null;
   root.querySelector('#luminous-speaker').textContent=who;
+  root.querySelector('#luminous-portrait').textContent=({BARDO:'♫',HERÓI:'⚔',DRAGÃO:'🐉',MALACORD:'♛',GUARDA:'♜','CÓPIA DE NÉVOA':'◈','FIM DO CAPÍTULO 1':'✦'})[who]||'✧';
   root.querySelector('#luminous-dialog-title').textContent=title;
   root.querySelector('#luminous-dialog-body').textContent=body;
   modal.classList.remove('hidden');
  }
- function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();}
+ function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();saveGame();}
+ function saveGame(){
+  if(menu||intro||dead)return;
+  const save={version:2,scene,x:Math.round(player.x),hp:player.hp,flags:{...flags},
+   fishHP:player.fishHP,deadMobs:mobs.filter(m=>!m.alive).map(m=>m.seed),timestamp:Date.now()};
+  try{localStorage.setItem(saveKey,JSON.stringify(save));}catch{}
+  lastSave=ticks;
+ }
+ function readSave(){try{const value=JSON.parse(localStorage.getItem(saveKey)||'null');return value?.version===2&&Number.isInteger(value.scene)&&value.scene>=0&&value.scene<levels.length?value:null;}catch{return null;}}
+ function resetFlags(){for(const k of Object.keys(flags))flags[k]=false;flags.fishSong=false;}
+ function newGame(){
+  try{localStorage.removeItem(saveKey);}catch{}
+  resetFlags();scene=0;initActors();menu=false;intro=true;paused=true;
+  root.querySelector('#luminous-menu').classList.add('hidden');objective();
+  dialogue('NARRADOR','Uma manhã longe de casa...','Em uma cabana distante da vila, o herói sem nome descansava. Até que um mensageiro deixou uma carta do seu melhor amigo.',()=>{
+   dialogue('HERÓI','Uma carta do Bardo','O herói senta à mesa, rompe o selo e lê a carta. A caligrafia é familiar e parece apressada.',()=>{
+    dialogue('BARDO','A princesa foi capturada!','“Malacord se disfarçou de você e tomou o castelo! A princesa está presa. Preciso de sua ajuda, velho amigo. — Bardo”',()=>{
+     dialogue('HERÓI','A jornada começa agora','O herói guarda a carta, pega sua espada e deixa a cabana. Uma estrada longa e cheia de monstros o espera.',()=>{intro=false;saveGame();});
+    });
+   });
+  });
+ }
+ function continueGame(){
+  const save=readSave();if(!save){newGame();return;}
+  resetFlags();Object.assign(flags,save.flags||{});
+  scene=save.scene;initActors();
+  player.x=clamp(save.x||35,0,levels[scene].length-20);player.hp=clamp(save.hp||5,1,5);player.fishHP=clamp(save.fishHP??3,0,3);
+  for(const mob of mobs)if((save.deadMobs||[]).includes(mob.seed))mob.alive=false;
+  bardX=player.x-40;menu=false;intro=false;paused=false;
+  root.querySelector('#luminous-menu').classList.add('hidden');objective();
+  dialogue('CAPÍTULO 1','Progresso restaurado','Você voltou ao ponto em que parou. Boa aventura!');
+ }
+ function objective(){
+  const descriptions=[
+   'Atravesse a longa estrada e derrote os monstros de Malacord',
+   flags.guards?'Encontre o Bardo e siga para a Montanha Sagrada':'Descubra por que os guardas não deixam você entrar',
+   flags.fish?'Suba até o dragão que descansa sob a árvore':'Resgate o Bardo do peixe e encontre a chave',
+   flags.rescue?'Liberte a princesa: X nas cordas, antes de 1:00!':flags.explosion&&!flags.clone?'Não ataque a cópia de névoa':flags.potion?'Siga pelo salão e descubra a armadilha':'Explore o castelo e procure o baú'
+  ];
+  const el=root.querySelector('#luminous-objective');if(el)el.textContent='OBJETIVO · '+descriptions[scene];
+ }
+
  function initActors(){
-  player.x=35;player.y=FLOOR-24;player.vy=0;player.hp=5;player.iframes=0;player.peace=0;
-  mobs=levels[scene].mobs.map((x,i)=>({x,hp:2,alive:true,seed:i+scene*13}));
+  player.x=35;player.y=FLOOR-HERO_H;player.vy=0;player.hp=5;player.iframes=0;player.peace=0;bardX=player.x-48;bardY=player.y;
+  mobs=levels[scene].mobs.map((x,i)=>({x,home:x,hp:2,alive:true,dir:i%2?1:-1,aware:false,seed:i+scene*13}));
  }
  function nextLevel(who,title,body){
-  scene++;initActors();dialogue(who,title,body);
+  saveGame();scene++;initActors();objective();dialogue(who,title,body);
  }
  const box=(x,y,w,h,fill)=>{c.fillStyle=fill;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
  function sprite(rows,x,y,s=2,palette=colors){
@@ -88,6 +156,7 @@ export function mountStory(root,onExit){
  }
  function decorations(){
   const at=x=>x-camera;
+  if(scene===0&&player.x<140){const cabin=80-camera;box(cabin-73,143,66,69,'#9e6545');box(cabin-79,140,78,10,'#654152');box(cabin-61,160,27,34,'#e7b67b');box(cabin-52,169,9,25,'#54353f');box(cabin-22,162,10,12,'#c8f3ed');box(cabin-80,132,80,9,'#b97557');}
   if(scene===0)for(let i=0;i<35;i++){const x=at(i*108+45);if(x<0||x>480)continue;
    if(i%4===0){box(x,209,4,9,'#36a66a');box(x-3,206,10,5,'#f9d560');}
    if(i%7===0){box(x,194,19,22,'#b17b38');box(x+4,199,10,10,'#f9d75a');}
@@ -98,7 +167,7 @@ export function mountStory(root,onExit){
    t=at(1030);box(t-110,69,205,150,'#a7a0b9');box(t-87,43,53,175,'#8f89aa');box(t+40,42,53,176,'#8f89aa');
    box(t-25,141,52,78,'#463b65');box(t-13,155,25,64,'#2c2449');
    for(let i=0;i<6;i++)box(t-85+i*30,97,14,18,'#514c70');
-   sprite(bardoPixels,at(1175),FLOOR-22);
+   sprite(bardIdle,at(1175),FLOOR-HERO_H);
   }
   if(scene===2){
    for(let i=0;i<10;i++){const x=at(i*245+170);box(x,167,22,51,'#81707b');box(x-7,161,36,9,'#c9ae9a');}
@@ -107,28 +176,42 @@ export function mountStory(root,onExit){
     box(x+45,85,14,130,'#765047');
     for(let i=0;i<5;i++)box(x+i*17,59+(i%3)*8,47,37,i%2?'#3ab883':'#288e72');
     for(let i=0;i<34;i++)box(x-14+i%10*13,201-Math.floor(i/10)*7,12,8,'#f8cc64');
-    box(x+9,166,98,39,'#367b98');box(x+26,145,50,26,'#62bda5');box(x+84,146,33,25,'#57a99e');box(x+95,150,6,6,'#122e41');
+    if(dragonImage.complete&&dragonImage.naturalWidth)c.drawImage(dragonImage,Math.round(x-42),112,183,105);
+    else{box(x+9,166,98,39,'#367b98');box(x+26,145,50,26,'#62bda5');box(x+84,146,33,25,'#57a99e');}
     box(x+5,201,29,12,'#b78060');box(x+9,205,21,7,'#fce0a4');
    }
   }
   if(scene===3){
    for(let i=0;i<18;i++){const x=at(i*152+100);box(x,66,19,155,'#6c577d');box(x-9,53,37,17,'#aa93ae');box(x+33,104,12,49,'#d36573');box(x+37,104,4,49,'#ffe0a8');}
    if(!flags.potion){const x=at(850);box(x-15,189,38,30,'#9a653b');box(x-17,182,42,8,'#e0a05b');box(x,194,8,12,'#fdd74b');}
-   if(flags.explosion&&!flags.clone){const x=at(1680);sprite(heroPixels,x,FLOOR-24,2,{...colors,C:'#a6b4c6',H:'#b8d8dd',S:'#bad5df'});}
-   if(flags.clone){const x=at(2000);sprite(bardoPixels,x,FLOOR-22);}
+   if(flags.explosion&&!flags.clone){const x=at(1680);sprite(heroIdle,x,FLOOR-HERO_H,2,{...colors,C:'#a6b4c6',H:'#b8d8dd',S:'#bad5df'});}
+   if(flags.clone){const x=at(2000);sprite(bardIdle,x,FLOOR-HERO_H);}
    if(flags.rescue){const x=at(2240);box(x-33,129,81,89,'#5e516e');for(let i=0;i<9;i++)box(x-30+i*9,131,3,85,'#dec4cf');box(x+5,173,21,30,'#eeb8b9');box(x+8,163,15,11,'#ffd2a8');box(x+43,144,9,60,'#e4c28d');}
   }
  }
  function draw(){
   camera=clamp(player.x-145,0,levels[scene].length-CW+30);
   backdrop();
+  if(intro){drawCabinCutscene();return;}
   levels[scene].ground.forEach(g=>land(g[0],FLOOR,g[1]-g[0]));
   levels[scene].platforms.forEach(p=>land(p[0],p[1],p[2],10));
   decorations();
-  for(const m of mobs){if(!m.alive)continue;const x=m.x-camera;if(x>-35&&x<500)sprite(goblinPixels,x,FLOOR-18+Math.sin(ticks*.07+m.seed)*2,2);}
+  for(const m of mobs){if(!m.alive)continue;const x=m.x-camera;if(x>-35&&x<500)sprite(goblinIdle,x,FLOOR-24+Math.sin(ticks*.07+m.seed)*2,2);}
   const px=player.x-camera;
-  if(player.swing>0){box(px+player.face*19,player.y+12,player.face*17,5,'#fff5ac');box(px+player.face*28,player.y+2,player.face*5,19,'#fafff0');}
-  if(player.iframes<=0||Math.floor(player.iframes/6)%2===1)sprite(heroPixels,px,player.y);
+  if(scene===1&&flags.guards||scene===2||scene===3&&!flags.wedding){
+   const bx=bardX-camera,walking=Math.abs(player.x-bardX)>7;
+   sprite(walking&&Math.floor(ticks/9)%2?bardWalk:bardIdle,bx,bardY);
+   box(bx+4,bardY-9,22,3,'#f3d88c');
+  }
+  if(player.iframes<=0||Math.floor(player.iframes/6)%2===1){
+   const pose=player.swing>0?heroAttack:!player.ground?heroJump:Math.abs(player.vx)>.1?(Math.floor(ticks/6)%2?heroWalkA:heroWalkB):heroIdle;
+   c.save();if(player.face<0){c.translate(Math.round(px)+30,0);c.scale(-1,1);sprite(pose,0,player.y);}else sprite(pose,px,player.y);c.restore();
+  }
+  if(player.swing>0){
+   c.save();c.translate(Math.round(px)+(player.face>0?27:0),player.y+17);if(player.face<0)c.scale(-1,1);
+   box(0,-3,8,6,'#785c38');box(8,-8,4,16,'#d9a75a');box(12,-3,23,6,'#dbeeff');box(35,-2,7,4,'#fffbee');box(13,-8,22,2,'#b6f5f7');
+   c.restore();
+  }
   box(7,7,116,19,'#233b57');box(10,10,player.hp*22,12,'#f17480');
   c.font='bold 11px monospace';c.fillStyle='#fff';c.fillText('♥ '+player.hp+'    ✦',13,40);
   if(scene===2&&flags.fishNotice&&!flags.fish){box(146,7,192,25,'#21445a');box(150,12,Math.max(0,player.fishHP)*60,10,'#65d3f4');c.fillStyle='white';c.fillText('PEIXE MONSTRUOSO',170,29);}
@@ -138,13 +221,24 @@ export function mountStory(root,onExit){
   root.querySelector('#luminous-hp').textContent='♥ '.repeat(player.hp).trim();
   root.querySelector('#luminous-distance').textContent=Math.floor(clamp(player.x/levels[scene].length,0,1)*100)+'%';
  }
+ function drawCabinCutscene(){
+   box(0,0,CW,CH,'#61465f');box(0,0,CW,33,'#423650');box(0,220,CW,50,'#876448');
+   for(let i=0;i<8;i++)box(i*66,218,3,52,'#684c3f');
+   box(52,44,133,118,'#9b745e');box(61,52,115,101,'#4b6170');
+   box(68,60,98,84,'#83d4ed');box(82,80,65,34,'#d8ffff');box(62,96,111,4,'#fff7dd');
+   box(308,87,43,96,'#80513e');box(298,81,63,12,'#e6ad66');box(319,97,21,13,'#f6e5a6');
+   box(105,178,269,12,'#ad7b53');box(118,190,14,46,'#604154');box(343,190,14,46,'#604154');
+   box(205,166,65,8,'#eedcb4');box(214,154,49,16,'#fff4d5');box(218,157,40,2,'#658494');
+   sprite(heroIdle,137,141,3);box(290,165,10,14,'#d8bd8f');box(294,153,4,11,'#ffcd71');
+   c.fillStyle='#fff3c5';c.font='bold 12px monospace';c.fillText('UMA CARTA DO BARDO...',120,45);
+ }
  function damage(){
   if(player.iframes>0)return;
   player.hp--;player.iframes=65;
   if(player.hp<=0){player.hp=5;player.x=Math.max(25,player.x-240);dialogue('NARRADOR','Você ainda não foi derrotado','O herói retorna a um ponto seguro e recupera o fôlego. Continue tentando!');}
  }
  function attack(){
-  if(paused||player.cooldown>0)return;
+  if(paused||menu||player.cooldown>0)return;
   player.swing=13;player.cooldown=28;
   for(const m of mobs){if(!m.alive)continue;if(Math.abs(m.x-player.x)<48){m.hp--;if(m.hp<=0)m.alive=false;}}
   if(scene===2&&!flags.fish&&Math.abs(485-player.x)<70){
@@ -199,30 +293,44 @@ export function mountStory(root,onExit){
   }
  }
  function step(dt){
-  if(paused)return;
+  if(paused||menu)return;
   ticks+=dt;player.swing=Math.max(0,player.swing-dt);player.cooldown=Math.max(0,player.cooldown-dt);player.iframes=Math.max(0,player.iframes-dt);
   const speed=((key.right?1:0)-(key.left?1:0))*2.7*dt;
   if(speed)player.face=Math.sign(speed);
-  player.x=clamp(player.x+speed,0,levels[scene].length);
-  const oldBottom=player.y+24;
+  player.vx=speed;player.x=clamp(player.x+speed,0,levels[scene].length);
+  if(scene===1||scene===2||scene===3){
+   const target=player.x-player.face*46;
+   bardX+=clamp(target-bardX,-2.2*dt,2.2*dt);
+   bardY+=(player.y-bardY)*Math.min(1,.17*dt);
+  }
+  for(const m of mobs){
+   if(!m.alive)continue;
+   const diff=player.x-m.x;
+   if(Math.abs(diff)<125)m.aware=true;else if(Math.abs(diff)>180)m.aware=false;
+   if(m.aware)m.dir=Math.sign(diff)||m.dir;else if(Math.abs(m.x-m.home)>36)m.dir=Math.sign(m.home-m.x);
+   const candidate=m.x+m.dir*(m.aware?1.05:.42)*dt;
+   if(levels[scene].ground.some(([a,b])=>candidate>=a+5&&candidate<=b-18))m.x=candidate;else m.dir*=-1;
+  }
+  const oldBottom=player.y+HERO_H;
   player.vy=Math.min(10,player.vy+.37*dt);player.y+=player.vy*dt;player.ground=false;
   for(const [a,b] of levels[scene].ground){
-   if(player.x+12>a&&player.x+7<b&&player.vy>=0&&oldBottom<=FLOOR+3&&player.y+24>=FLOOR){player.y=FLOOR-24;player.vy=0;player.ground=true;}
+   if(player.x+12>a&&player.x+7<b&&player.vy>=0&&oldBottom<=FLOOR+3&&player.y+HERO_H>=FLOOR){player.y=FLOOR-HERO_H;player.vy=0;player.ground=true;}
   }
   for(const [x,y,w] of levels[scene].platforms){
-   if(player.x+12>x&&player.x<x+w&&player.vy>=0&&oldBottom<=y+3&&player.y+24>=y){player.y=y-24;player.vy=0;player.ground=true;}
+   if(player.x+12>x&&player.x<x+w&&player.vy>=0&&oldBottom<=y+3&&player.y+HERO_H>=y){player.y=y-HERO_H;player.vy=0;player.ground=true;}
   }
-  if(player.y>CH+35){damage();player.x=Math.max(20,player.x-175);player.y=FLOOR-24;player.vy=0;}
-  for(const mob of mobs)if(mob.alive&&Math.abs(mob.x-player.x)<18&&Math.abs((FLOOR-18)-player.y)<24)damage();
+  if(player.y>CH+35){damage();player.x=Math.max(20,player.x-175);player.y=FLOOR-HERO_H;player.vy=0;}
+  for(const mob of mobs)if(mob.alive&&Math.abs(mob.x-player.x)<18&&Math.abs((FLOOR-HERO_H)-player.y)<28)damage();
   if(scene===2&&flags.fishNotice&&!flags.fish&&!flags.fishSong && Math.abs(485-player.x)<65 && Math.floor(ticks)%105<2)damage();
   events(dt);
+  if(ticks-lastSave>330)saveGame();
  }
  function loop(t){
   if(dead)return;
   const dt=clamp((t-(last||t))/16.667,.35,2);last=t;
   step(dt);draw();raf=requestAnimationFrame(loop);
  }
- function jump(){if(!paused&&player.ground){player.ground=false;player.vy=-8.7;}}
+ function jump(){if(!paused&&!menu&&player.ground){player.ground=false;player.vy=-8.7;}}
  function onKeyDown(e){
   if(dead||e.target?.matches('input, textarea, select'))return;
   const k=e.key.toLowerCase();
@@ -236,7 +344,10 @@ export function mountStory(root,onExit){
  function onKeyUp(e){const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')key.left=false;if(k==='arrowright'||k==='d')key.right=false;}
  function onBlur(){key.left=false;key.right=false;}
  function onClick(e){
-  if(e.target.closest('[data-story-next-new]'))resume();
+  if(e.target.closest('[data-story-new]')){newGame();return;}
+  if(e.target.closest('[data-story-continue]')){continueGame();return;}
+  if(e.target.closest('[data-story-controls]')){root.querySelector('#luminous-menu').classList.add('hidden');menu=false;dialogue('COMO JOGAR','Controles','A / D ou as setas movem o herói. Espaço pula, X ataca ou interage. Na montanha, o Bardo ajuda. O progresso é salvo automaticamente.',()=>{menu=true;root.querySelector('#luminous-menu').classList.remove('hidden');});return;}
+  if(e.target.closest('[data-story-next-new]')){resume();return;}
   if(e.target.closest('[data-story-exit-new]')){destroy();onExit();}
   const action=e.target.closest('[data-story-act]')?.dataset.storyAct;
   if(action==='jump')jump();if(action==='attack')attack();
@@ -246,13 +357,14 @@ export function mountStory(root,onExit){
  root.addEventListener('click',onClick);root.addEventListener('pointerdown',onHold);root.addEventListener('pointerup',onRelease);root.addEventListener('pointercancel',onRelease);
  window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);window.addEventListener('blur',onBlur);
  function destroy(){
-  dead=true;cancelAnimationFrame(raf);root.removeEventListener('click',onClick);
+  saveGame();dead=true;cancelAnimationFrame(raf);root.removeEventListener('click',onClick);
   root.removeEventListener('pointerdown',onHold);root.removeEventListener('pointerup',onRelease);root.removeEventListener('pointercancel',onRelease);
   window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('blur',onBlur);
   root.innerHTML='';
  }
- initActors();
- dialogue('CARTA DO BARDO','A princesa foi capturada!','O herói sem nome está longe da vila. Seu amigo Bardo envia uma carta: Malacord tomou o castelo disfarçado de herói e capturou a princesa. Uma longa viagem começa.');
+ initActors();objective();
+ const canContinue=readSave(),btn=root.querySelector('[data-story-continue]');
+ if(btn){btn.disabled=!canContinue;btn.title=canContinue?'Continuar da última fase':'Nenhum save encontrado';}
  raf=requestAnimationFrame(loop);
  return destroy;
 }

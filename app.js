@@ -1,3 +1,4 @@
+import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261104-pvp-rules';
 import { mountStory } from './story-game.js?v=20261104-chapter1';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
@@ -223,6 +224,7 @@ async function logout() {
     if (jitsiApi) leaveCall();
 
     cleanupListeners();
+    notificationCenter?.destroy();notificationCenter=null;dmFocusOff();
     await signOut(auth);
 
     currentUser = null;
@@ -274,6 +276,7 @@ async function startApp(user) {
   setUserUI();
   if(localStorage.getItem('linercall-sidebar-collapsed')==='1')$('app-shell')?.classList.add('sidebar-collapsed');
 
+  initNotifications();
   listenChat();
   listenFriends();
   listenUsers();
@@ -383,6 +386,33 @@ function buildSidebarNavigation() {
 /* AMIGOS E MENSAGENS PRIVADAS */
 let activeFriendId = null;
 let stopFriendListeners = [];
+let notificationCenter = null;
+let dmWasCollapsed = false;
+let dmFocus = false;
+function dmFocusOff(){
+ if(!dmFocus)return;
+ dmFocus=false;document.body.classList.remove('dm-focus');
+ const shell=$('app-shell');if(shell&&!dmWasCollapsed)shell.classList.remove('sidebar-collapsed');
+ notificationCenter?.setActive(null);
+}
+function dmFocusOn(){
+ const shell=$('app-shell');if(!dmFocus)dmWasCollapsed=!!shell?.classList.contains('sidebar-collapsed');
+ dmFocus=true;document.body.classList.add('dm-focus');shell?.classList.add('sidebar-collapsed');
+ const key='linercall-dm-help-v2-'+currentUser?.uid;
+ if(!localStorage.getItem(key))$('dm-first-tip')?.classList.remove('hidden');
+}
+function initNotifications(){
+ notificationCenter?.destroy();
+ notificationCenter=createNotifications({
+  db,uid:currentUser.uid,
+  openDM:(uid,name)=>openDirectMessage(uid,name),
+  openArena:()=>{switchView('games');showMiniGamePage('pokemon');},
+  openFriends:()=>switchView('friends'),
+  openOffer:()=>{switchView('shop');renderShop();}
+ });
+ notificationCenter.start();
+}
+
 function friendPairId(a,b){return [a,b].sort().join('_');}
 function listenFriends(){
   stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
@@ -390,6 +420,7 @@ function listenFriends(){
   stopFriendListeners.push(onSnapshot(rq,snap=>{
     const box=$('friend-requests'); if(!box)return;
     const pending=snap.docs.filter(d=>d.data().status==='pending');
+    notificationCenter?.setRequests(pending.map(d=>({id:d.id,name:d.data().fromName})));
     box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
       const r=d.data();return '<div class="friend-row"><b>'+safeText(r.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
     }).join('');
@@ -397,10 +428,15 @@ function listenFriends(){
   const fq=query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid));
   stopFriendListeners.push(onSnapshot(fq,snap=>{
     const box=$('friends-list');if(!box)return;
+    notificationCenter?.setFriends(snap.docs.map(d=>{
+      const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid);
+      return {uid:other,name:f.names?.[other]||'Jogador'};
+    }));
     box.innerHTML=snap.empty?'<p class="muted">Você ainda não adicionou amigos.</p>':snap.docs.map(d=>{
       const f=d.data(),other=f.uids.find(uid=>uid!==currentUser.uid),name=f.names?.[other]||'Jogador';
       return '<button class="friend-row friend-open" data-friend-open="'+safeText(other)+'" data-friend-name="'+safeText(name)+'"><span>● '+safeText(name)+'</span><small>Abrir conversa →</small></button>';
     }).join('');
+    notificationCenter?.render();
   },e=>{console.error(e);toast('Não foi possível carregar amigos.');}));
 }
 async function searchFriend(){
@@ -445,25 +481,49 @@ async function answerFriendRequest(requestId,accept){
     } else toast('Pedido recusado.');
   }catch(e){console.error(e);toast('Não foi possível responder ao pedido.');}
 }
+async function loadDMContact(uid,name){
+ const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
+ set('dm-contact-name',name);
+ const avatar=$('dm-contact-avatar');if(avatar){avatar.textContent=initials(name);avatar.style.backgroundImage='';}
+ set('dm-contact-activity','Buscando presença...');
+ try{
+  const snapshot=await getDoc(doc(db,'users',uid));
+  if(uid!==activeFriendId||!snapshot.exists())return;
+  const other=snapshot.data(),isOnline=Date.now()-(other.lastSeen?.toMillis?.()||0)<180000;
+  set('dm-contact-name',other.displayName||name);
+  set('dm-contact-activity',isOnline?(other.activityLabel||'● Online'):'Offline');
+  if(other.avatarData&&avatar){avatar.style.backgroundImage='url("'+String(other.avatarData).replace(/"/g,'%22')+'")';avatar.textContent='';}
+ }catch(e){if(uid===activeFriendId)set('dm-contact-activity','Status indisponível');}
+}
 function openDirectMessage(uid,name){
-  activeFriendId=uid;
-  setPresence('private_chat','Em chat privado com '+name);$('dm-title').textContent='Conversa com '+name;$('dm-panel').classList.remove('hidden');
-  $('dm-messages').innerHTML='<p class="muted">Carregando mensagens...</p>';
-  if(window.stopDMListener)window.stopDMListener();
-  const path=collection(db,'conversations',friendPairId(currentUser.uid,uid),'messages');
-  window.stopDMListener=onSnapshot(query(path,orderBy('createdAt','asc'),limit(100)),snap=>{
-    $('dm-messages').innerHTML=snap.empty?'<p class="muted">Diga oi! Esta conversa é privada entre vocês.</p>':snap.docs.map(d=>{
-      const m=d.data();return '<div class="dm-bubble '+(m.uid===currentUser.uid?'own':'')+'"><b>'+safeText(m.displayName)+'</b><p>'+safeText(m.text)+'</p></div>';
-    }).join('');
-    $('dm-messages').scrollTop=$('dm-messages').scrollHeight;
-  },e=>{console.error(e);$('dm-messages').textContent='Não foi possível abrir esta conversa.';});
+ if(!currentUser||!uid)return;
+ if(!$('view-friends')?.classList.contains('active-view'))switchView('friends');
+ activeFriendId=uid;
+ setPresence('private_chat','Em chat privado com '+name);
+ $('dm-title').textContent=name;
+ $('dm-panel')?.classList.remove('hidden');
+ $('dm-messages').innerHTML='<p class="muted">Carregando mensagens...</p>';
+ dmFocusOn();notificationCenter?.setActive(uid);
+ loadDMContact(uid,name);$('dm-input')?.focus();
+ if(window.stopDMListener)window.stopDMListener();
+ const path=collection(db,'conversations',friendPairId(currentUser.uid,uid),'messages');
+ window.stopDMListener=onSnapshot(query(path,orderBy('createdAt','asc'),limit(100)),snap=>{
+   if(activeFriendId!==uid)return;
+   $('dm-messages').innerHTML=snap.empty?'<div class="dm-empty">✦<h4>Uma conversa começa aqui.</h4><p>Mande uma mensagem para '+safeText(name)+'!</p></div>':snap.docs.map(d=>{
+    const m=d.data(),own=m.uid===currentUser.uid,time=m.createdAt?.toDate?.();
+    const hour=time?new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(time):'';
+    return '<article class="dm-bubble '+(own?'own':'')+'"><header><b>'+safeText(m.displayName||'Jogador')+'</b><time>'+safeText(hour)+'</time></header><p>'+safeText(m.text)+'</p></article>';
+   }).join('');
+   $('dm-messages').scrollTop=$('dm-messages').scrollHeight;
+   notificationCenter?.markRead(uid);
+ },e=>{console.error(e);$('dm-messages').textContent='Não foi possível abrir esta conversa.';});
 }
 async function sendDirectMessage(event){
   event.preventDefault();const input=$('dm-input'),value=input.value.trim();
   if(!value||!activeFriendId)return;if(value.length>1000){toast('A mensagem é muito longa.');return;}
   try{
     await addDoc(collection(db,'conversations',friendPairId(currentUser.uid,activeFriendId),'messages'),{uid:currentUser.uid,displayName:profile?.displayName||'Jogador',text:value,createdAt:serverTimestamp()});
-    input.value='';
+    input.value='';input.style.height='auto';
   }catch(e){console.error(e);toast('Mensagem não enviada. Vocês precisam ser amigos.');}
 }
 
@@ -474,6 +534,8 @@ function setPresence(activity,label){
     .catch(error=>console.warn('Presença não atualizada:',error));
 }
 function switchView(name) {
+  if(name==='friends')notificationCenter?.markCategory('friend');
+  if(name!=='friends')dmFocusOff();
   if (name !== 'games' && miniGamePage === 'story') backToMiniGames();
   const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
   const state=activities[name]||['browsing','Navegando'];
@@ -897,6 +959,7 @@ function pokemonArt(p) {
 }
 let miniGamePage = 'home';
 function showMiniGamePage(page) {
+  if(page==='pokemon') notificationCenter?.markCategory('battle');
   miniGamePage = page;
   const root = $('minigame-stage');
   const tabs = $('minigame-tabs');
@@ -1739,7 +1802,7 @@ function startStory() {
   if(!stage)return;
   let root=$('story-game-content');
   if(!root){root=document.createElement('div');root.id='story-game-content';stage.appendChild(root);}
-  stopStorySession=mountStory(root,backToMiniGames);
+  stopStorySession=mountStory(root,backToMiniGames,currentUser?.uid||'visitante');
 }
 function stopStory() {
   if(stopStorySession){stopStorySession();stopStorySession=null;}
@@ -1756,6 +1819,8 @@ function setupEvents() {
   $('chat-form')?.addEventListener('submit', sendMessage);
   $('friend-search-form')?.addEventListener('submit', event => { event.preventDefault(); searchFriend(); });
   $('dm-form')?.addEventListener('submit', sendDirectMessage);
+  $('dm-input')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}});
+  $('dm-input')?.addEventListener('input',e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,150)+'px';});
   $('profile-form')?.addEventListener('submit', saveProfile);
   document.addEventListener('change', event => { if (event.target.id === 'shop-avatar-file') handleShopAvatarFile(event); });
   $('logout')?.addEventListener('click', logout);
@@ -1772,6 +1837,9 @@ function setupEvents() {
 
   // Delegação também atende ao botão LightyFlix, criado dinamicamente.
   document.addEventListener('click', event => {
+    if(event.target.closest('[data-dm-close-focus]'))dmFocusOff();
+    if(event.target.closest('[data-dm-help-done]')){$('dm-first-tip')?.classList.add('hidden');localStorage.setItem('linercall-dm-help-v2-'+currentUser?.uid,'1');}
+    if(event.target.closest('[data-dm-profile]')&&activeFriendId)openMemberProfile(activeFriendId,$('dm-contact-name')?.textContent||'Amigo');
     const storyStart=event.target.closest('#play-story'); if(storyStart)showMiniGamePage('story');
     const navButton = event.target.closest('.nav-item[data-view]');
     if (navButton) { switchView(navButton.dataset.view); if (navButton.dataset.view === 'shop') renderShop(); }
@@ -1883,6 +1951,7 @@ if (configured) {
 
       } else {
         pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
+        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;
         currentUser = null;
         profile = null;
         cleanupListeners();

@@ -127,7 +127,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
     hostTeam:mine(),guestTeam:[],status:'invited',turnUid:'',turnNo:0,lastTurnId:'',
     createdAt:serverTimestamp(),updatedAt:serverTimestamp()
    });message('Convite Pokémon enviado para '+opponentName+'.');
-  }catch(error){console.error(error);message('Erro ao enviar convite: '+(error.code||error.message));}
+  }catch(error){console.error(error);message(error.code==='permission-denied'?'Acesso negado no Pokémon Online: publique as regras firestore.rules no Firebase Console (não basta atualizar a Vercel).':'Erro ao enviar convite: '+(error.code||error.message));}
  }
  async function answer(id,accept){
   if(mine().length!==3&&accept)return message('Monte um time de três Pokémon.');
@@ -138,7 +138,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
    await updateDoc(doc(db,'pokemonMatches',id),update);
    message(accept?'Partida aceita!': 'Convite recusado.');
    if(accept)openRoom(id);
-  }catch(error){console.error(error);message('Não foi possível responder: '+(error.code||error.message));}
+  }catch(error){console.error(error);message(error.code==='permission-denied'?'Não foi possível aceitar: é preciso publicar as novas regras do Firestore.':'Não foi possível responder: '+(error.code||error.message));}
  }
  async function act(type,index=0){
   if(!selected)return;
