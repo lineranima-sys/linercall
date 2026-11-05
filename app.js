@@ -2,7 +2,7 @@ import { soloBattleEffect, RARE_SUPER_MULTIPLIER } from './pokemon-battle-effect
 import { mountTermo } from './termo-game.js';
 import { mountDetective } from './arcade-extras.js?v=20261105';
 import { mountMusic } from './music-trivia.js?v=20261105-famous-covers';
-import { mountShooter } from './shooter-fps.js?v=20261105-first-person';
+import { mountShooter } from './shooter-hub.js?v=20261105-mapas-voto-1v1';
 import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
@@ -1109,7 +1109,7 @@ function awardArcadeLocal(coins){
 function showArcadeExtra(page){
  const root=$('game-content');
  if(!root||!currentUser)return;
- const common={root,user:currentUser,addCoins:awardArcadeLocal};
+ const common={root,user:currentUser,addCoins:awardArcadeLocal,db};
  $('game-stage')?.classList.remove('hidden');
  if(page==='termo'){
   $('game-title').textContent='TERMO · ONLINE';
