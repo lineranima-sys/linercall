@@ -115,6 +115,65 @@ const KNOWN_BY_ENGLISH = {
   }
 };
 
+// Ordem de exibição brasileira, que NÃO corresponde à numeração do TVmaze.
+// A busca por título original corrige especialmente o ep. 52 (Libertador/Jailbreak).
+const STEVEN_ORIGINAL_ORDER = {
+ 1: [
+  'Gem Glow','Laser Light Cannon','Cheeseburger Backpack','Together Breakfast',
+  'Frybo','Cat Fingers','Bubble Buddies','Serious Steven','Tiger Millionaire',
+  "Steven's Lion",'Arcade Mania','Giant Woman','So Many Birthdays',
+  'Lars and the Cool Kids','Onion Trade','Steven the Sword Fighter',
+  'Lion 2: The Movie','Beach Party',"Rose's Room",'Coach Steven',
+  'Joking Victim','Steven and the Stevens','Monster Buddies','An Indirect Kiss',
+  'Mirror Gem','Ocean Gem','House Guest','Space Race','Secret Team',
+  'Island Adventure','Keep Beach City Weird!','Fusion Cuisine',
+  "Garnet's Universe",'Watermelon Steven','Lion 3: Straight to Video',
+  'Warp Tour','Alone Together','The Test','Future Vision','On the Run',
+  'Horror Club','Winter Forecast','Maximum Capacity','Marble Madness',
+  "Rose's Scabbard",'Open Book','Shirt Club','Story for Steven',
+  'The Message','Political Power','The Return','Jailbreak'
+ ],
+ 2: [
+  'Full Disclosure','Joy Ride','Say Uncle','Love Letters','Reformed',
+  'Sworn to the Sword','Rising Tides, Crashing Skies','Keeping It Together',
+  'We Need to Talk','Chille Tid','Cry for Help','Keystone Motel',
+  'Onion Friend','Historical Friction','Friend Ship','Nightmare Hospital',
+  "Sadie's Song",'Catch and Release','When It Rains','Back to the Barn',
+  'Too Far','The Answer',"Steven's Birthday","It Could've Been Great",
+  'Message Received','Log Date 7 15 2'
+ ],
+ 3: [
+  'Super Watermelon Island','Gem Drill','Same Old World','Barn Mates',
+  'Hit the Diamond','Steven Floats','Drop Beat Dad','Mr. Greg',
+  'Too Short to Ride','The New Lars','Beach City Drift','Restaurant Wars',
+  "Kiki's Pizza Delivery Service",'Monster Reunion','Alone at Sea',
+  'Greg the Babysitter','Gem Hunt','Crack the Whip','Steven vs. Amethyst',
+  'Bismuth','Bismuth','Beta','Earthlings','Back to the Moon','Bubbled'
+ ],
+ 4: [
+  'Kindergarten Kid','Know Your Fusion',"Buddy's Book",'Mindful Education',
+  'Future Boy Zoltron','Last One Out of Beach City','Onion Gang',
+  'Gem Harvest','Gem Harvest','Three Gems and a Baby',"Steven's Dream",
+  'Adventures in Light Distortion','Gem Heist','The Zoo','That Will Be All',
+  'The New Crystal Gems','Storm in the Room','Rocknaldo','Tiger Philanthropist',
+  'Room for Ruby','Lion 4: Alternate Ending','Doug Out','The Good Lars',
+  'Are You My Dad?','I Am My Mom'
+ ],
+ 5: [
+  'Stuck Together','The Trial','Off Colors',"Lars' Head",'Dewey Wins',
+  'Gemcation','Raising the Barn','Back to the Kindergarten','Sadie Killer',
+  'Kevin Party','Lars of the Stars','Jungle Moon','Your Mother and Mine',
+  'The Big Show','Pool Hopping','Letters to Lars',"Can't Go Back",
+  'A Single Pale Rose',"Now We're Only Falling Apart","What's Your Problem",
+  'The Question','Made of Honor','Reunited','Reunited',
+  'Legs From Here to Homeworld','Familiar','Together Alone','Escapism',
+  'Change Your Mind','Change Your Mind','Change Your Mind','Change Your Mind'
+ ]
+};
+const episodeNameKey=name=>String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .toLowerCase().replace(/\(parts? \d+\)/g,'').replace(/\bparts? \d+\b/g,'')
+ .replace(/[^a-z0-9]/g,'');
+
 const episodeFetches = new Map();
 const wikiFetches = new Map();
 const translationKey = 'linercall-lighty-episode-ptbr-v1';
@@ -185,20 +244,11 @@ export async function getLightyEpisodes(showId,seasonIndex) {
     const future=await tvmazeEpisodes(config.future);
     source=future.filter(ep=>ep.season===1).sort((a,b)=>(a.number||0)-(b.number||0));
   } else if(showId==='lighty-steven-universe') {
-    let bySeason=source.filter(ep=>ep.season===seasonNumber)
-      .sort((a,b)=>(a.number||0)-(b.number||0));
-    // TVmaze groups the double/quadruple episodes into one broadcast entry.
-    // The LightyFlix catalogue counts them as distinct numbered parts.
-    const parts={
-      3:{'bismuth':2},
-      4:{'gem harvest':2},
-      5:{'reunited':2,'change your mind':4}
-    }[seasonNumber]||{};
-    bySeason=bySeason.flatMap(ep=>{
-      const repetitions=parts[normalizedTitle(ep.name)]||1;
-      return Array.from({length:repetitions},()=>ep);
-    });
-    source=bySeason;
+    // TVmaze: 1x52 = Joy Ride. Brasil: 1x52 = Libertador (Jailbreak).
+    // Nunca associar uma miniatura usando apenas o mesmo número de episódio.
+    const originalNames=STEVEN_ORIGINAL_ORDER[seasonNumber]||[];
+    const lookup=new Map(source.map(ep=>[episodeNameKey(ep.name),ep]));
+    source=originalNames.map(name=>lookup.get(episodeNameKey(name))||null);
   } else if(showId==='lighty-jojo-bizarre-adventure'||
             showId==='lighty-gumball'||showId==='lighty-teen-titans') {
     const subset=source.filter(ep=>ep.season===seasonNumber)
