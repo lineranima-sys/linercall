@@ -18,7 +18,7 @@ function saoPauloDate(){
 function dailyWord(date,privateKey){
  // Escolha fixa para toda a comunidade, mas não descoberta pela inspeção do JavaScript.
  const hash=createHmac('sha256',privateKey).update('LinerCall-TERMO-'+date).digest();
- return TERMO_WORDS[hash.readUInt32BE(0)%1800];
+ return TERMO_WORDS[hash.readUInt32BE(0)%TERMO_WORDS.length];
 }
 function snapshot(state,date,target,total){
  const guesses=(Array.isArray(state?.attempts)?state.attempts:[]).map(word=>({word,marks:marcarTermo(word,target)}));
