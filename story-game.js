@@ -14,13 +14,13 @@ const bardoPixels=['..PPPPP...','..PSSSP...','...SSS....','..GGGGG...','..GGGGG.
 const goblinPixels=['..GGGGG..','.GGGGGGG.','GGEGGEGGG','GGGGGGGGG','.GTTTTTG.','..RRRRR..','..RR.RR..'];
 const colors={H:'#6e3b35',S:'#f7c69b',E:'#182b4c',C:'#4677bc',Y:'#f7ca63',B:'#40324e',P:'#76543b',G:'#4eb77a',D:'#60416e',O:'#f3be6a',R:'#674461',T:'#e1bc93'};
 export function mountStory(root,onExit){
- let dead=false,frame=0,scene=0,paused=true,pending=null,last=0,camera=0;
+ let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0;
  const key={left:false,right:false};
  const flags={guards:false,fishNotice:false,fish:false,key:false,dragon:false,wedding:false,potion:false,princess:false,explosion:false,clone:false,bardo:false,rescue:false,win:false};
  const player={x:40,y:FLOOR-24,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
  let mobs=[];
  function build(){
-  root.innerHTML='<div class="luminous-shell"><header class="luminous-header"><div><span>LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>Herói em um mundo Luminoso</h2><p>Uma aventura de plataforma 2D pixel art</p></div><button class="btn" data-story-exit-new>← Minigames</button></header>'+
+  root.innerHTML='<div class="luminous-shell"><header class="luminous-header"><div><span>LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>Herói em um mundo Luminoso</h2><p>Capítulo 1 · Uma aventura de plataforma 2D pixel art</p></div><button class="btn" data-story-exit-new>← Minigames</button></header>'+
    '<div class="luminous-hud"><b id="luminous-zone">A longa estrada</b><span id="luminous-hp">♥ ♥ ♥ ♥ ♥</span><b id="luminous-distance">0%</b></div>'+
    '<div class="luminous-screen"><canvas id="luminous-canvas" width="480" height="270" aria-label="Jogo de plataforma 2D em pixel art"></canvas>'+
    '<div class="luminous-dialog" id="luminous-dialog"><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
@@ -125,14 +125,14 @@ export function mountStory(root,onExit){
   levels[scene].ground.forEach(g=>land(g[0],FLOOR,g[1]-g[0]));
   levels[scene].platforms.forEach(p=>land(p[0],p[1],p[2],10));
   decorations();
-  for(const m of mobs){if(!m.alive)continue;const x=m.x-camera;if(x>-35&&x<500)sprite(goblinPixels,x,FLOOR-18+Math.sin(frame*.07+m.seed)*2,2);}
+  for(const m of mobs){if(!m.alive)continue;const x=m.x-camera;if(x>-35&&x<500)sprite(goblinPixels,x,FLOOR-18+Math.sin(ticks*.07+m.seed)*2,2);}
   const px=player.x-camera;
   if(player.swing>0){box(px+player.face*19,player.y+12,player.face*17,5,'#fff5ac');box(px+player.face*28,player.y+2,player.face*5,19,'#fafff0');}
   if(player.iframes<=0||Math.floor(player.iframes/6)%2===1)sprite(heroPixels,px,player.y);
   box(7,7,116,19,'#233b57');box(10,10,player.hp*22,12,'#f17480');
   c.font='bold 11px monospace';c.fillStyle='#fff';c.fillText('♥ '+player.hp+'    ✦',13,40);
   if(scene===3&&flags.rescue&&!flags.win){box(147,7,186,26,'#963f62');c.fillStyle='white';c.fillText('RESGATE: '+Math.ceil(player.timer)+'s',164,23);}
-  if(scene===3&&flags.explosion&&!flags.clone){for(let i=0;i<28;i++)box(r01(i*42+Math.floor(frame/5))*CW,r01(i*23+Math.floor(frame/9))*200,5,5,'#d9dfec88');}
+  if(scene===3&&flags.explosion&&!flags.clone){for(let i=0;i<28;i++)box(r01(i*42+Math.floor(ticks/5))*CW,r01(i*23+Math.floor(ticks/9))*200,5,5,'#d9dfec88');}
   root.querySelector('#luminous-zone').textContent=levels[scene].name;
   root.querySelector('#luminous-hp').textContent='♥ '.repeat(player.hp).trim();
   root.querySelector('#luminous-distance').textContent=Math.floor(clamp(player.x/levels[scene].length,0,1)*100)+'%';
@@ -168,7 +168,7 @@ export function mountStory(root,onExit){
   }
   if(scene===2){
    if(player.x>275&&!flags.fishNotice){flags.fishNotice=true;dialogue('BARDO','O peixe está mordendo minha mão!','Derrote o peixe monstruoso. Vou tentar ajudá-lo com meu alaúde!');}
-   if(!flags.fish&&player.x>415)player.x=415;
+   if(!flags.fish&&player.x>440)player.x=440;
    if(player.x>2135&&!flags.dragon){
     flags.dragon=true;
     dialogue('DRAGÃO','Não me incomodem!','Eu não quero compensar vocês. Vou devorá-los!',()=>{
@@ -198,7 +198,7 @@ export function mountStory(root,onExit){
  }
  function step(dt){
   if(paused)return;
-  frame+=dt;player.swing=Math.max(0,player.swing-dt);player.cooldown=Math.max(0,player.cooldown-dt);player.iframes=Math.max(0,player.iframes-dt);
+  ticks+=dt;player.swing=Math.max(0,player.swing-dt);player.cooldown=Math.max(0,player.cooldown-dt);player.iframes=Math.max(0,player.iframes-dt);
   const speed=((key.right?1:0)-(key.left?1:0))*2.7*dt;
   if(speed)player.face=Math.sign(speed);
   player.x=clamp(player.x+speed,0,levels[scene].length);
@@ -217,7 +217,7 @@ export function mountStory(root,onExit){
  function loop(t){
   if(dead)return;
   const dt=clamp((t-(last||t))/16.667,.35,2);last=t;
-  step(dt);draw();frame=requestAnimationFrame(loop);
+  step(dt);draw();raf=requestAnimationFrame(loop);
  }
  function jump(){if(!paused&&player.ground){player.ground=false;player.vy=-8.7;}}
  function onKeyDown(e){
@@ -243,13 +243,13 @@ export function mountStory(root,onExit){
  root.addEventListener('click',onClick);root.addEventListener('pointerdown',onHold);root.addEventListener('pointerup',onRelease);root.addEventListener('pointercancel',onRelease);
  window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);window.addEventListener('blur',onBlur);
  function destroy(){
-  dead=true;cancelAnimationFrame(frame);root.removeEventListener('click',onClick);
+  dead=true;cancelAnimationFrame(raf);root.removeEventListener('click',onClick);
   root.removeEventListener('pointerdown',onHold);root.removeEventListener('pointerup',onRelease);root.removeEventListener('pointercancel',onRelease);
   window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('blur',onBlur);
   root.innerHTML='';
  }
  initActors();
  dialogue('CARTA DO BARDO','A princesa foi capturada!','O herói sem nome está longe da vila. Seu amigo Bardo envia uma carta: Malacord tomou o castelo disfarçado de herói e capturou a princesa. Uma longa viagem começa.');
- frame=requestAnimationFrame(loop);
+ raf=requestAnimationFrame(loop);
  return destroy;
 }
