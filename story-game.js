@@ -94,8 +94,9 @@ export function mountStory(root,onExit,uid='guest'){
   resetFlags();Object.assign(flags,save.flags||{});
   // Se o jogador sair durante o deslizamento, o desafio recomeça.
   if(save.scene===2&&flags.dragon&&!flags.slideDone)flags.dragon=false;
-  scene=save.scene;initActors();
-  player.x=clamp(save.x||35,0,levels[scene].length-20);
+  const clearedSlide=save.scene===2&&flags.slideDone;
+  scene=clearedSlide?3:save.scene;initActors();
+  player.x=clearedSlide?35:clamp(save.x||35,0,levels[scene].length-20);
   if(scene===2&&!flags.dragon&&player.x>2110)player.x=2060;
   player.hp=clamp(save.hp||5,1,5);player.fishHP=clamp(save.fishHP??3,0,3);
   for(const mob of mobs)if((save.deadMobs||[]).includes(mob.seed))mob.alive=false;
@@ -121,11 +122,15 @@ export function mountStory(root,onExit,uid='guest'){
   scene++;initActors();objective();saveGame();dialogue(who,title,body);
  }
  function leaveSlide(){
+  const help=root.querySelector('.luminous-instructions');
+  if(help)help.textContent='A / D ou ← → mover · Espaço pular · X atacar ou interagir · Salvo automaticamente.';
   coinSlide=null;key.up=key.down=false;
   root.querySelector('.luminous-shell')?.classList.remove('coin-slide-active');
   objective();
  }
  function startSlide(){
+  const help=root.querySelector('.luminous-instructions');
+  if(help)help.textContent='DESCIDA DE OURO · Você desliza sozinho! Use ↑ e ↓ (ou W/S) para fugir das bolas de fogo.';
   key.left=key.right=key.up=key.down=false;
   const shell=root.querySelector('.luminous-shell');
   shell?.classList.add('coin-slide-active');
