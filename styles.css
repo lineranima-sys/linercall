@@ -697,3 +697,29 @@ body.cinema-modal-open{overflow:hidden}
 .lighty-episode-card.is-locked .lighty-episode-thumb{filter:saturate(.65)}
 .lighty-episode-lock{position:absolute;top:6px;right:6px;z-index:2;background:#151b2be5;border:1px solid #ffc783;color:#ffe1a0;font-weight:800;font-size:10px;padding:4px 6px;border-radius:5px}
 .lighty-unreleased-label{font-size:11px;color:#ffd8a0;margin:6px 0}
+
+
+/* Arena online: convites e partida entre duas contas */
+.pokemon-online-panel{margin:22px 0;padding:20px;border:1px solid #436884}
+.pvp-heading{padding-bottom:15px;border-bottom:1px solid #37516b}.pvp-heading h3{margin:0 0 7px;color:#ecfff9;font-size:19px}.pvp-heading p{margin:0;color:#aab9d0;font-size:12px;line-height:1.5}
+.pvp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:17px 0}
+.pvp-grid>section{min-width:0;border:1px solid #40506c;border-radius:12px;padding:13px;background:#101e33}
+.pvp-grid h4{font-size:12px;margin:0 0 12px;color:#8feaca}
+.pvp-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:8px;padding:9px;border-bottom:1px solid #334563;font-size:11px}
+.pvp-row>b{color:white;max-width:100%;overflow-wrap:anywhere}
+.pvp-row span{font-size:10px;color:#71dfb1}
+.pvp-row .btn{padding:8px;font-size:10px;margin-left:auto}
+.pvp-row .btn:disabled{opacity:.5;cursor:not-allowed}
+.pvp-match{margin-top:20px;border-radius:14px;border:1px solid #65bda4;overflow:hidden;background:#14263d}
+.pvp-match>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#203955}
+.pvp-match>header h3{margin:0;font-size:16px}
+.pvp-field{display:grid;grid-template-columns:1fr 1fr;align-items:end;gap:16px;min-height:260px;padding:25px;background:linear-gradient(180deg,#21b3df 0 46%,#a2e0b9 47% 54%,#4b9863 55% 80%,#316c51 81%);image-rendering:pixelated}
+.pvp-fighter{display:flex;flex-direction:column;align-items:center;min-width:0}
+.pvp-fighter img{width:min(90%,180px);height:135px;object-fit:contain;filter:drop-shadow(0 8px 3px #0006)}
+.pvp-hud{width:100%;max-width:260px;padding:9px;background:#112e40e8;border:2px solid #2a4f52;border-radius:10px;color:#fff;display:grid;gap:5px;font-size:10px}
+.pvp-hud b{font-size:13px}.pvp-meter{height:9px;border-radius:9px;background:#443f4b;overflow:hidden}.pvp-meter i{display:block;background:#7ee189;height:100%}.pvp-meter.pe i{background:#5cbdff}
+.pvp-actions{padding:18px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}.pvp-actions p{width:100%;font-weight:800;color:#e8f5ff;margin:0}.pvp-actions .btn:disabled{opacity:.4;cursor:not-allowed}
+.pvp-outcome{display:block;padding:20px;color:#fcdb8b}
+.pvp-log{margin:0 16px 16px;padding:13px;background:#0c1b2f;border:1px solid #25405c;border-radius:9px}.pvp-log b{color:#79d7f3;font-size:12px}.pvp-log p{font-size:11px;color:#b3c6d9;margin:7px 0}
+@media(max-width:960px){.pvp-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.pvp-field{gap:7px;padding:12px;min-height:225px}.pvp-fighter img{height:108px}.pvp-hud{padding:5px}.pvp-hud b{font-size:11px}}
