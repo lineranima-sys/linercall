@@ -1,24 +1,6 @@
+import {getShooterMap} from './shooter-maps.js';
 // SHOOT’E R! — FPS retro em raycasting (visão em primeira pessoa).
 // Treino contra drones 3D estilizados. Não é PvP online e não envolve violência gráfica.
-const LEVEL=[
-'111111111111111111',
-'100000000000000001',
-'101100000110000001',
-'100100000010000001',
-'100000000000000001',
-'100000110000000001',
-'100000110000000001',
-'100000000000000001',
-'100000000000000001',
-'100011000001100001',
-'100000000001000001',
-'100000000000000001',
-'100000000000000001',
-'100000110000110001',
-'100000000000000001',
-'100000000000000001',
-'111111111111111111'
-];
 const TAU=Math.PI*2;
 const FOV=1.18;
 const DEG=Math.PI/180;
@@ -27,7 +9,16 @@ const DURATION=85;
 const TARGET=12;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 function angleDelta(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b));}
-function wall(x,y){return LEVEL[Math.floor(y)]?.[Math.floor(x)]!=='0';}
+const GUNS=[
+ {name:'Pistola',mag:12,ammo:12,reserve:84,delay:280,reload:1300,damage:31,reach:13,color:'#8feaff'},
+ {name:'Submetralhadora',mag:30,ammo:30,reserve:180,delay:86,reload:1700,damage:14,reach:10,color:'#ffd886'},
+ {name:'Fuzil de precisão',mag:5,ammo:5,reserve:30,delay:900,reload:2400,damage:125,reach:22,color:'#ffdd80'},
+ {name:'Faca',mag:Infinity,ammo:Infinity,reserve:Infinity,delay:520,reload:0,damage:68,reach:1.25,color:'#e1eaf2'}
+];
+export function mountShooterArena({root,user,addCoins,mapId='undefined',mode='single',online=null,onExit=()=>{},autoStart=false}){
+ const arena=getShooterMap(mapId),LEVEL=arena.grid;
+ const isOnline=mode==='multi'&&!!online;
+ function wall(x,y){return LEVEL[Math.floor(y)]?.[Math.floor(x)]!=='0';}
 function canStand(x,y,r=.19){
  return !wall(x-r,y-r)&&!wall(x+r,y-r)&&!wall(x-r,y+r)&&!wall(x+r,y+r);
 }
@@ -44,15 +35,11 @@ function castRay(x,y,angle){
   else{mapY+=stepY;dist=sideY;sideY+=deltaY;side=1;}
   if(wall(mapX+.5,mapY+.5))break;
  }
- return {dist:clamp(dist,.06,25),side,hitX:x+dx*dist,hitY:y+dy*dist};
+ return {dist:clamp(dist,.06,25),side,hitX:x+dx*dist,hitY:y+dy*dist,tile:LEVEL[mapY]?.[mapX]||'1'};
 }
-const GUNS=[
- {name:'Pistola',mag:12,ammo:12,reserve:84,delay:280,reload:1300,damage:31,reach:13,color:'#8feaff'},
- {name:'Submetralhadora',mag:30,ammo:30,reserve:180,delay:86,reload:1700,damage:14,reach:10,color:'#ffd886'},
- {name:'Fuzil de precisão',mag:5,ammo:5,reserve:30,delay:900,reload:2400,damage:125,reach:22,color:'#ffdd80'},
- {name:'Faca',mag:Infinity,ammo:Infinity,reserve:Infinity,delay:520,reload:0,damage:68,reach:1.25,color:'#e1eaf2'}
-];
-export function mountShooter({root,user,addCoins}){
+
+ const rgb=color=>[1,3,5].map(n=>Number.parseInt(String(color).slice(n,n+2),16)||100);
+
  const guns=GUNS.map(g=>({...g}));
  const el=document.createElement('section');
  el.className='arcade-game shooter-game shooter-fps';
@@ -88,7 +75,8 @@ export function mountShooter({root,user,addCoins}){
  }
  function start(){
   if(raf)cancelAnimationFrame(raf);
-  px=9;py=8;look=-Math.PI/2;life=100;kills=0;playing=true;done=false;shooting=false;scope=false;
+  const spawn=arena.spawn[isOnline&&online.side()==='guest'?1:0];
+  px=spawn[0];py=spawn[1];look=spawn[2];life=100;kills=0;playing=true;done=false;shooting=false;scope=false;
   startTime=performance.now();lastFrame=startTime;spawnAt=startTime-800;shotAt=-1e4;flashAt=0;hitAt=0;
   enemies=[];particles=[];reloadEnds=0;current=0;pressed.clear();
   guns.forEach((g,i)=>{g.ammo=GUNS[i].ammo;g.reserve=GUNS[i].reserve;});
@@ -196,10 +184,10 @@ export function mountShooter({root,user,addCoins}){
  }
  function background(){
   const sky=ctx.createLinearGradient(0,0,0,H/2);
-  sky.addColorStop(0,'#091727');sky.addColorStop(1,'#526e87');
+  sky.addColorStop(0,arena.colors.sky[0]);sky.addColorStop(1,arena.colors.sky[1]);
   ctx.fillStyle=sky;ctx.fillRect(0,0,W,H/2);
   const floor=ctx.createLinearGradient(0,H/2,0,H);
-  floor.addColorStop(0,'#283745');floor.addColorStop(1,'#111923');
+  floor.addColorStop(0,arena.colors.floor[0]);floor.addColorStop(1,arena.colors.floor[1]);
   ctx.fillStyle=floor;ctx.fillRect(0,H/2,W,H/2);
   ctx.strokeStyle='#47607718';
   for(let i=0;i<8;i++){
@@ -219,14 +207,18 @@ export function mountShooter({root,user,addCoins}){
    const shade=clamp(1-distance/16,.12,1)*(hit.side?.79:1);
    const pattern=Math.abs((hit.side?hit.hitX:hit.hitY)%1-.5);
    const highlight=pattern<.038?1.17:1;
-   const r=Math.floor(clamp((57+shade*75)*shade*highlight,0,255));
-   const g=Math.floor(clamp((70+shade*95)*shade*highlight,0,255));
-   const b=Math.floor(clamp((91+shade*99)*shade*highlight,0,255));
+   const [pr,pg,pb]=rgb(arena.colors.wall[hit.tile==='2'?1:hit.tile==='3'?2:0]);
+   const r=Math.floor(clamp(pr*shade*highlight,0,255));
+   const g=Math.floor(clamp(pg*shade*highlight,0,255));
+   const b=Math.floor(clamp(pb*shade*highlight,0,255));
    ctx.fillStyle='rgb('+r+','+g+','+b+')';
    ctx.fillRect(screenX,top,COLS+1,height);
    if(pattern<.055){ctx.fillStyle='rgba(14,24,40,.3)';ctx.fillRect(screenX,top,COLS+1,height);}
    const seamY=top+height*.52;
    ctx.fillStyle='rgba(6,12,22,.18)';ctx.fillRect(screenX,seamY,COLS+1,2);
+   if(arena.id==='tanjiro'){ctx.fillStyle='rgba(38,20,12,.30)';for(let i=1;i<5;i++)ctx.fillRect(screenX,top+height*i/5,COLS+1,2);}
+   if(arena.id==='folha'){ctx.fillStyle='rgba(117,39,30,.45)';ctx.fillRect(screenX,top,COLS+1,Math.max(2,height*.13));}
+   if(arena.id==='chaves'){ctx.fillStyle='rgba(255,238,195,.45)';ctx.fillRect(screenX,top+height*.20,COLS+1,Math.max(2,height*.055));}
   }
   return depth;
  }
