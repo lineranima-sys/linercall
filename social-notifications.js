@@ -54,6 +54,10 @@ export function createNotifications({db,uid,openDM,openArena,openFriends,openOff
  }
  const setRequests=list=>{requests=list||[];render();};
  function mark(id){seen[id]=true;save(seenKey,seen);render();}
+ function markCategory(type){
+  for(const r of rows())if(r.type===type&&type!=='dm')seen[type+':'+r.id]=true;
+  save(seenKey,seen);render();
+ }
  function onClick(e){
   if(e.target.closest('#notification-toggle')){opened=!opened;render();return;}
   if(e.target.closest('[data-notice-close]')){opened=false;render();return;}
@@ -82,5 +86,5 @@ export function createNotifications({db,uid,openDM,openArena,openFriends,openOff
   subs.forEach(stop=>stop());subs.clear();globalSubs.forEach(stop=>stop());globalSubs=[];
   dm.clear();friends=[];requests=[];invites=[];offers=[];active=null;opened=false;render();
  }
- return {start,destroy,setFriends,setRequests,setActive,markRead,getUnread:unread,render};
+ return {start,destroy,setFriends,setRequests,setActive,markRead,markCategory,getUnread:unread,render};
 }
