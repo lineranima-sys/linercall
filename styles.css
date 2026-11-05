@@ -634,3 +634,66 @@ body.cinema-modal-open{overflow:hidden}
 .lighty-episode-card>b{white-space:normal;text-overflow:clip;line-height:1.35;min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .lighty-episode-credit{display:block;color:#91a0bc;line-height:1.5;padding:10px 4px 0;font-size:10px}
 .lighty-episode-credit a{color:#5ce1ed}
+
+
+/* Capítulo 1 — interface do jogo pixel art */
+.luminous-shell{background:#0e2434;border:1px solid #3f746c;border-radius:18px;padding:clamp(9px,2vw,19px);box-shadow:0 22px 45px #0005;display:grid;gap:13px}
+.luminous-header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.luminous-header span{font-size:10px;letter-spacing:2px;color:#97f2cb;font-weight:800}
+.luminous-header h2{font-size:clamp(19px,3vw,28px);margin:7px 0;color:#f5fff4;line-height:1.15}
+.luminous-header p,.luminous-instructions{font-size:12px;color:#b6d0d6;margin:0;line-height:1.6}
+.luminous-hud{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#142c41;padding:11px 14px;border-radius:9px;font-size:12px;color:#e4f8fb}
+#luminous-hp{color:#ff7f95;letter-spacing:2px}
+.luminous-screen{position:relative;background:#14c6f2;border:5px solid #577b78;border-radius:12px;overflow:hidden;box-shadow:0 9px 0 #081724}
+#luminous-canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:pixelated}
+.luminous-dialog{position:absolute;inset:auto 5% 5% 5%;background:linear-gradient(140deg,#172e49f0,#172038f7);border:2px solid #f4e5ac;box-shadow:0 6px 0 #0a1936,0 0 0 4px #0d1b32aa;border-radius:8px;padding:clamp(12px,2vw,24px);display:grid;justify-items:start;gap:9px;max-height:88%;overflow:auto}
+.luminous-dialog.hidden{display:none}
+.luminous-dialog small{font-size:10px;letter-spacing:2px;color:#ffd46c;font-weight:800}
+.luminous-dialog h3{font-size:clamp(16px,2.5vw,23px);margin:0;color:white}
+.luminous-dialog p{font-size:clamp(12px,1.5vw,14px);line-height:1.55;color:#e3f2ff;margin:0}
+.luminous-touch{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.luminous-touch>div{display:flex;gap:7px}
+.luminous-touch button{background:#20475f;border:2px solid #4a929a;color:#f0fffc;border-radius:10px;min-width:56px;min-height:51px;font-weight:800;touch-action:none;user-select:none}
+.luminous-touch button:active{background:#5ad6b9;color:#0d2933}
+@media(max-width:540px){.luminous-shell{padding:7px}.luminous-header h2{font-size:18px}.luminous-hud{font-size:10px}.luminous-touch button{min-width:48px;min-height:48px;font-size:11px}.luminous-dialog{inset:4%;padding:12px;gap:5px}}
+
+/* Arena de monstros: cenário inspirado nos RPGs pixelados, HUD acima dos lutadores. */
+.pokemon-arena-scene{
+  min-height:430px;isolation:isolate;overflow:hidden;position:relative;
+  display:grid;grid-template-columns:1fr 1fr;align-items:end;gap:10px;padding:26px 16px 58px;
+  border:4px solid #4b8265;border-radius:18px;
+  background:
+    linear-gradient(180deg,transparent 0 52%,#72b764 52% 54%,#386b50 54% 60%,#254b3d 60% 100%),
+    linear-gradient(180deg,#1cb6e8 0%,#9ae8f8 60%,#ccf2b9 100%);
+  box-shadow:inset 0 0 0 3px #0b344e,0 8px 24px #0006
+}
+.pokemon-arena-scene::before{content:"";position:absolute;z-index:0;inset:0 0 40%;
+ background:linear-gradient(90deg,#c8faff66 6px,transparent 6px 20px,#f5ffff99 20px 38px,transparent 38px 60px),
+ linear-gradient(150deg,transparent 0 58%,#68b1bf 59% 70%,transparent 71%),
+ linear-gradient(24deg,transparent 0 62%,#72c6ca 63% 82%,transparent 83%);
+ background-size:220px 65px,300px 200px,370px 205px;
+ background-position:30px 37px,20px 70px,40px 65px;
+ opacity:.52;image-rendering:pixelated;pointer-events:none}
+.pokemon-arena-scene::after{content:"";pointer-events:none;position:absolute;z-index:0;inset:62% 0 0;
+ background:repeating-linear-gradient(90deg,#386f46 0 16px,#438a4c 16px 23px,#275c43 23px 26px),
+ repeating-linear-gradient(0deg,transparent 0 17px,#294e35 18px 21px);
+ opacity:.32;clip-path:polygon(0 20%,100% 15%,100% 100%,0 100%)}
+.pokemon-arena-scene .arena-fighter{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;z-index:2;min-width:0}
+.pokemon-arena-scene .arena-fighter-meta{order:-1;align-self:stretch;max-width:330px;min-width:0;border:2px solid #254650;background:#112d3ddd;border-radius:10px;padding:10px 12px;box-shadow:3px 4px 0 #0d2a39;color:white}
+.pokemon-arena-scene .arena-fighter-meta b{font-size:clamp(14px,2vw,18px);color:#fff}
+.pokemon-arena-scene .arena-fighter-meta small{color:#e8f8ed}
+.pokemon-arena-scene .arena-fighter img{width:clamp(105px,26vw,210px);height:clamp(150px,25vw,220px);object-fit:contain;filter:drop-shadow(0 11px 2px #153b3977)}
+.pokemon-arena-scene .pokemon-hp{height:13px;border:2px solid #203e38;border-radius:7px;background:#4c3e48;overflow:hidden}
+.pokemon-arena-scene .pokemon-hp i{background:linear-gradient(90deg,#69db69,#c6f47c)}
+.pokemon-arena-scene .pokemon-pe{height:10px;border-radius:8px;background:#14283b;overflow:hidden;border:1px solid #27485f}
+.pokemon-arena-scene .pokemon-pe i{display:block;height:100%;background:linear-gradient(90deg,#229fe1,#80eaff);transition:width .22s}
+.pokemon-arena-scene .arena-spike-band{position:absolute;z-index:2;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:transparent;width:auto;height:auto}
+.pokemon-arena-scene .arena-spike-band span{background:#ffd87b;border:2px solid #724f40;padding:5px 16px;border-radius:8px;color:#2f2550;font-weight:900}
+.pokemon-rest-btn{width:100%;border:1px solid #6cd8b4;color:#d5fff4;background:#204d4d;border-radius:8px;margin-top:10px;padding:12px;font-weight:800;cursor:pointer}
+.pokemon-rest-btn:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:650px){.pokemon-arena-scene{min-height:355px;padding:15px 7px 44px;gap:5px}.pokemon-arena-scene .arena-fighter img{height:145px;width:95%}.pokemon-arena-scene .arena-fighter-meta{padding:7px 5px}.pokemon-arena-scene .arena-fighter-meta small{font-size:9px}}
+/* LightyFlix — episódios não lançados */
+.lighty-episode-card.is-locked{border-color:#6d6178;opacity:.93;cursor:not-allowed}
+.lighty-episode-card.is-locked .lighty-episode-thumb{filter:saturate(.65)}
+.lighty-episode-lock{position:absolute;top:6px;right:6px;z-index:2;background:#151b2be5;border:1px solid #ffc783;color:#ffe1a0;font-weight:800;font-size:10px;padding:4px 6px;border-radius:5px}
+.lighty-unreleased-label{font-size:11px;color:#ffd8a0;margin:6px 0}
