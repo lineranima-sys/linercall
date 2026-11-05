@@ -1,3 +1,4 @@
+import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
 import { mountStory } from './story-game.js?v=20261105-moedas-fire-dodge';
@@ -276,6 +277,7 @@ async function startApp(user) {
   setUserUI();
   if(localStorage.getItem('linercall-sidebar-collapsed')==='1')$('app-shell')?.classList.add('sidebar-collapsed');
 
+  initSocialControls();
   initNotifications();
   listenChat();
   listenFriends();
@@ -387,6 +389,8 @@ function buildSidebarNavigation() {
 let activeFriendId = null;
 let stopFriendListeners = [];
 let notificationCenter = null;
+let socialControls = null;
+let latestFriendDocs = [];
 let dmWasCollapsed = false;
 let dmFocus = false;
 function dmFocusOff(){
@@ -413,6 +417,64 @@ function initNotifications(){
  notificationCenter.start();
 }
 
+
+function memberPhoto(user={}){
+ const raw=String(user.avatarData||user.photoURL||(user.id===currentUser?.uid?(shopState?.avatarData||''):'')||'');
+ return /^https:\/\//i.test(raw)||/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(raw)?raw:'';
+}
+function memberAvatarHTML(user){
+ const img=memberPhoto(user),name=user.displayName||'Jogador';
+ return '<span class="avatar member-avatar">'+(img?'<img src="'+safeText(img)+'" loading="lazy" alt="Foto de '+safeText(name)+'">':safeText(initials(name)))+'</span>';
+}
+function socialDisplayName(id,real){return socialControls?.label(id,real)||real||'Jogador';}
+function refreshSocialUI(){
+ notificationCenter?.setPreferences(socialControls);
+ renderFriendList();
+ renderOnlineMembers(latestOnlinePlayers);
+}
+function initSocialControls(){
+ socialControls?.destroy();
+ socialControls=createSocialControls({
+  db,uid:currentUser.uid,notify:toast,onChange:refreshSocialUI,
+  onFriendRemoved:id=>{
+   if(activeFriendId===id){window.stopDMListener?.();window.stopDMListener=null;activeFriendId=null;dmFocusOff();$('dm-panel')?.classList.add('hidden');}
+   renderFriendList();
+  }
+ });
+ socialControls.start();
+}
+function renderFriendList(){
+ const box=$('friends-list');if(!box||!currentUser)return;
+ const docs=latestFriendDocs.filter(d=>d.data().uids.some(id=>id!==currentUser.uid&&!socialControls?.hasBlocked(id)));
+ notificationCenter?.setFriends(docs.map(d=>{
+  const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid);
+  return {uid:other,name:socialDisplayName(other,f.names?.[other]||'Jogador')};
+ }));
+ box.innerHTML=docs.length?docs.map(d=>{
+  const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid),real=f.names?.[other]||'Jogador',
+   alias=socialDisplayName(other,real),muted=socialControls?.isMuted(other);
+  return '<div class="friend-row friend-with-actions">'+
+   '<button type="button" class="friend-open" data-friend-open="'+safeText(other)+'" data-friend-name="'+safeText(real)+'">'+
+   '<span>● '+safeText(alias)+'</span><small>'+(muted?'🔕 Silenciado':'Abrir conversa →')+'</small></button>'+
+   '<button type="button" class="btn social-settings-btn" data-social-manage="'+safeText(other)+'" data-social-name="'+safeText(real)+'" aria-label="Gerenciar '+safeText(alias)+'">⚙</button></div>';
+ }).join(''):'<p class="muted">Você ainda não adicionou amigos.</p>';
+ notificationCenter?.render();
+}
+function renderOnlineMembers(active=latestOnlinePlayers){
+ if(!currentUser)return;
+ const members=(active||[]).filter(user=>!socialControls?.hasBlocked(user.id));
+ if($('online-count'))$('online-count').textContent=String(members.length);
+ if($('online-members'))$('online-members').innerHTML=members.length?members.map(user=>
+  '<button class="member-row profile-open-trigger" data-profile-open="'+safeText(user.id)+'" data-profile-name="'+safeText(user.displayName||'Jogador')+'">'+
+  memberAvatarHTML(user)+'<b>'+safeText(socialDisplayName(user.id,user.displayName||'Jogador'))+'</b><small>'+
+  safeText(user.activityLabel||'online')+'</small></button>'
+ ).join(''):'<p class="muted">Ninguém online por enquanto.</p>';
+ if($('arena-members'))$('arena-members').innerHTML=members.filter(user=>user.id!==currentUser.uid).map(user=>
+  '<div class="arena-player">'+memberAvatarHTML(user)+'<b>'+safeText(socialDisplayName(user.id,user.displayName||'Jogador'))+'</b><small>● online</small>'+
+  '<button class="duel-btn" data-challenge="'+safeText(user.id)+'" data-name="'+safeText(user.displayName||'Jogador')+'">Desafiar</button></div>'
+ ).join('')||'<p class="muted">Nenhum outro jogador online agora.</p>';
+}
+
 function friendPairId(a,b){return [a,b].sort().join('_');}
 function listenFriends(){
   stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
@@ -427,16 +489,8 @@ function listenFriends(){
   },e=>{console.error(e);toast('Não foi possível carregar pedidos.');}));
   const fq=query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid));
   stopFriendListeners.push(onSnapshot(fq,snap=>{
-    const box=$('friends-list');if(!box)return;
-    notificationCenter?.setFriends(snap.docs.map(d=>{
-      const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid);
-      return {uid:other,name:f.names?.[other]||'Jogador'};
-    }));
-    box.innerHTML=snap.empty?'<p class="muted">Você ainda não adicionou amigos.</p>':snap.docs.map(d=>{
-      const f=d.data(),other=f.uids.find(uid=>uid!==currentUser.uid),name=f.names?.[other]||'Jogador';
-      return '<button class="friend-row friend-open" data-friend-open="'+safeText(other)+'" data-friend-name="'+safeText(name)+'"><span>● '+safeText(name)+'</span><small>Abrir conversa →</small></button>';
-    }).join('');
-    notificationCenter?.render();
+    latestFriendDocs=snap.docs;
+    renderFriendList();
   },e=>{console.error(e);toast('Não foi possível carregar amigos.');}));
 }
 async function searchFriend(){
@@ -683,32 +737,7 @@ function listenUsers() {
     latestOnlinePlayers=active;
     pokemonOnline?.setPlayers(active);
     if(rankingPlayers.length)renderGlobalRanking();
-    $('online-count').textContent = active.length;
-
-    $('online-members').innerHTML = active.length
-      ? active.map(user => `
-          <button class="member-row profile-open-trigger" data-profile-open="${safeText(user.id)}" data-profile-name="${safeText(user.displayName || 'Jogador')}">
-            <div class="avatar member-avatar" ${user.avatarData ? `style="background-image:url('${user.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${user.avatarData ? '' : safeText(initials(user.displayName))}</div>
-            <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>${safeText(user.activityLabel || 'online')}</small>
-          </button>
-        `).join('')
-      : '<p class="muted">Ninguém online por enquanto.</p>';
-
-    $('arena-members').innerHTML = active
-      .filter(user => user.id !== currentUser.uid)
-      .map(user => `
-        <div class="arena-player">
-          <div class="avatar">${safeText(initials(user.displayName))}</div>
-          <b>${safeText(user.displayName || 'Jogador')}</b>
-          <small>● online</small>
-          <button class="duel-btn"
-            data-challenge="${safeText(user.id)}"
-            data-name="${safeText(user.displayName || 'Jogador')}">
-            Desafiar
-          </button>
-        </div>
-      `).join('') || '<p class="muted">Nenhum outro jogador online agora.</p>';
+    renderOnlineMembers(active);
 
   }, error => {
     console.error(error);
