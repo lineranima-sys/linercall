@@ -237,6 +237,19 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // TERMO Online: tentativas e saldo são alterados apenas pela API Firebase Admin.
+    // O cliente só pode ler o placar público da competição, nunca gravar vencedores.
+    match /termoDays/{day}/players/{uid} {
+      allow read, write: if false;
+    }
+    match /termoDays/{day}/winners/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /arcadeWallets/{uid} {
+      allow read, write: if false;
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
