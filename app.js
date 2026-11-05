@@ -3,6 +3,7 @@ import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
 import { mountStory } from './story-game.js?v=20261105-moedas-fire-dodge';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
+import { LIGHTY_PRICES, episodePrice, quoteSeason, ownsEpisode, lightyEpisodeKey, lightySeasonKey } from './lightyflix-pricing.js?v=20261105-episodes-150-300';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import {
@@ -1723,14 +1724,72 @@ const SERIES_EPISODE_DATA = Object.fromEntries(
    }))
  ])
 );
+// Desbloqueios no protótipo: associados ao UID neste navegador.
 function lightyPurchasesKey(){return 'linercall-lighty-purchases-'+(currentUser?.uid||'guest');}
-function getLightyPurchases(){try{return JSON.parse(localStorage.getItem(lightyPurchasesKey())||'{}');}catch{return {};}}
+function getLightyPurchases(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(lightyPurchasesKey())||'{}');
+    return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
+  }catch{return {};}
+}
 function hasLightyPurchase(key){return !!getLightyPurchases()[key];}
+function formatLightyCoins(n){return Math.max(0,Number(n)||0).toLocaleString('pt-BR')+' LCoins';}
+function commitLightyPurchase(key,cost,label,warning){
+ if(!pokemonArena||!currentUser)return toast('Entre na sua conta para comprar.');
+ const purchases=getLightyPurchases();
+ if(purchases[key])return toast('Este conteúdo já está desbloqueado.');
+ if(!Number.isSafeInteger(cost)||cost<0)return toast('Preço de compra inválido.');
+ if((Number(pokemonArena.coins)||0)<cost)return toast('Saldo insuficiente: você precisa de '+formatLightyCoins(cost)+'.');
+ const message='Confirmar '+label+' por '+formatLightyCoins(cost)+'?'
+   +'\nSaldo atual: '+formatLightyCoins(pokemonArena.coins)
+   +'\nSaldo depois: '+formatLightyCoins(pokemonArena.coins-cost)
+   +(warning?'\n\n'+warning:'');
+ if(!window.confirm(message))return false;
+ purchases[key]={cost,boughtAt:Date.now()};
+ try{localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));}
+ catch(error){console.error('Não foi possível salvar a compra LightyFlix',error);toast('Falha ao salvar o desbloqueio. Nenhuma moeda foi descontada.');return false;}
+ pokemonArena.coins=Number(pokemonArena.coins)-cost;
+ savePokemonArena();
+ document.querySelectorAll('.pokemon-wallet b').forEach(el=>{el.textContent=pokemonArena.coins;});
+ renderShop();
+ toast(label+' desbloqueado! Saldo: '+formatLightyCoins(pokemonArena.coins)+'.');
+ return true;
+}
 function buyLightyContent(key,cost,label){
  if(!pokemonArena)return;
- const purchases=getLightyPurchases();if(purchases[key])return toast('Você já comprou este conteúdo.');
- if(pokemonArena.coins<cost)return toast('Moedas insuficientes.');
- pokemonArena.coins-=cost;purchases[key]={boughtAt:Date.now()};localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));savePokemonArena();renderShop();toast(label+' comprado!');
+ const purchases=getLightyPurchases();
+ if(purchases[key])return toast('Você já comprou este conteúdo.');
+ if((Number(pokemonArena.coins)||0)<cost)return toast('Moedas insuficientes.');
+ pokemonArena.coins-=cost;
+ purchases[key]={cost,boughtAt:Date.now()};
+ try{localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));}
+ catch(error){pokemonArena.coins+=cost;console.error(error);return toast('Erro ao salvar a compra. Moedas preservadas.');}
+ savePokemonArena();renderShop();toast(label+' comprado!');
+}
+const lightyNoVideoWarning='A reprodução deste episódio ainda não está disponível no LightyFlix. Este pagamento usa moedas virtuais e desbloqueia somente o registro no catálogo por enquanto.';
+function buyLightyEpisode(showId,seasonIndex,number){
+ const item=cinemaItems.find(x=>x.id===showId&&x.type==='series');
+ const season=Number(seasonIndex),episode=Number(number);
+ const entry=SERIES_EPISODE_DATA[item?.id]?.[season];
+ if(!entry||!Number.isInteger(episode)||episode<1||episode>entry.count)return toast('Episódio inválido.');
+ const purchases=getLightyPurchases();
+ if(ownsEpisode(purchases,showId,season,episode))return toast('Este episódio já está desbloqueado.');
+ const price=episodePrice(item.duration);
+ if(commitLightyPurchase(lightyEpisodeKey(showId,season,episode),price,'Episódio '+episode,lightyNoVideoWarning))
+   renderSeriesDetails(item,season);
+}
+function buyLightySeason(showId,seasonIndex){
+ const item=cinemaItems.find(x=>x.id===showId&&x.type==='series');
+ const season=Number(seasonIndex),entry=SERIES_EPISODE_DATA[item?.id]?.[season];
+ if(!entry)return toast('Temporada inválida.');
+ const quote=quoteSeason({showId,season,episodeCount:entry.count,duration:item.duration,purchases:getLightyPurchases()});
+ if(quote.completed)return toast('Você já tem todos os episódios desta temporada.');
+ const creditText=quote.paid>0?'\nAbatimento dos episódios já comprados: '+formatLightyCoins(quote.paid)+'.':'';
+ const warning='Pacote inteiro: '+formatLightyCoins(quote.bundleTotal)
+  +' (desconto de '+formatLightyCoins(quote.discount)+' sobre '+formatLightyCoins(quote.normalTotal)+').'
+  +creditText+'\n'+lightyNoVideoWarning;
+ if(commitLightyPurchase(lightySeasonKey(showId,season),quote.remaining,'Temporada '+(season+1),warning))
+   renderSeriesDetails(item,season);
 }
 let lightyEpisodeRenderToken=0;
 function renderSeriesDetails(item,selectedSeason=0){
@@ -1740,28 +1799,41 @@ function renderSeriesDetails(item,selectedSeason=0){
  const token=++lightyEpisodeRenderToken;
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
  const active=Math.max(0,Math.min(selectedSeason,seasons.length-1));
- const season=seasons[active];
- const isUnreleased=item.id!=='lighty-demon-slayer';
+ const season=seasons[active],purchases=getLightyPurchases();
+ const epCost=episodePrice(item.duration);
+ const quote=quoteSeason({showId:item.id,season:active,episodeCount:season.count,duration:item.duration,purchases});
  const safePoster=validWebUrl(item.backdrop||item.poster||'')||
    'https://placehold.co/480x270/17152b/e7d8ff?text=LIGHTYFLIX';
- const seasonCards=seasons.map((entry,index)=>
-  '<article class="lighty-season-card '+(index===active?'active':'')+'">'+
-  '<button class="lighty-season-select" type="button" data-select-season="'+index+
-  '" data-season-show="'+safeText(item.id)+'"><b>'+safeText(entry.name)+
-  '</b><small>'+entry.count+' episódio'+(entry.count===1?'':'s')+'</small></button>'+
-  '<button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+
-  safeText(item.id)+'" data-season-index="'+index+'">'+
-  (isUnreleased?'🔒 Ainda não lançado':(hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Em preparação'))+
-  '</button></article>').join('');
+ const seasonCards=seasons.map((entry,index)=>{
+   const price=quoteSeason({showId:item.id,season:index,episodeCount:entry.count,duration:item.duration,purchases});
+   const savings=price.discount?' · economia '+formatLightyCoins(price.discount):'';
+   const already=price.paid?'<small>Abatimento do que você já comprou: '+formatLightyCoins(price.paid)+'</small>':'';
+   return '<article class="lighty-season-card '+(index===active?'active':'')+'">'+
+    '<button class="lighty-season-select" type="button" data-select-season="'+index+
+    '" data-season-show="'+safeText(item.id)+'"><b>'+safeText(entry.name)+
+    '</b><small>'+entry.count+' episódio'+(entry.count===1?'':'s')+'</small></button>'+
+    '<div class="lighty-season-pricing"><small>Total avulso: '+formatLightyCoins(price.normalTotal)+'</small>'+
+    '<b>Pacote: '+formatLightyCoins(price.bundleTotal)+'</b><small>'+savings.replace(/^ · /,'')+'</small>'+already+'</div>'+
+    '<button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+safeText(item.id)+
+    '" data-season-index="'+index+'" '+(price.completed?'disabled':'')+'>'+
+    (price.completed?'✓ Temporada desbloqueada':'🪙 Completar por '+formatLightyCoins(price.remaining))+
+    '</button></article>';
+ }).join('');
  root.innerHTML='<section class="lighty-season-picker">'+
-  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>'+(isUnreleased?'🔒 Lançamento pendente':'Em preparação')+'</span></div>'+
+  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>Temporadas em catálogo</span></div>'+
+  '<div class="lighty-balance"><span>🪙 Seu saldo: <b>'+formatLightyCoins(pokemonArena?.coins||0)+'</b></span><small>10 min: '+formatLightyCoins(LIGHTY_PRICES.shortEpisode)+' · 20 min: '+formatLightyCoins(LIGHTY_PRICES.longEpisode)+' · 20% de desconto no pacote (2+ episódios)</small></div>'+
   '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="prev" aria-label="Temporadas anteriores">‹</button>'+
   '<div class="lighty-season-row">'+seasonCards+'</div>'+
   '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="next" aria-label="Próximas temporadas">›</button></div></section>'+
   '<section class="lighty-episode-picker"><div class="lighty-section-heading"><h3>'+
   safeText(item.title)+' · '+safeText(season.name)+'</h3><span>'+season.count+
   ' episódio'+(season.count===1?'':'s')+'</span></div>'+
-  '<p class="lighty-unreleased-label">'+(isUnreleased?'🔒 Episódios ainda não lançados no LightyFlix.':'Episódio 1 cadastrado. O vídeo ainda não foi publicado.')+'</p>'+ 
+  '<p class="lighty-unreleased-label">Vídeos ainda não disponíveis para assistir. As compras são desbloqueios antecipados no catálogo, sem reprodução até que haja conteúdo autorizado.</p>'+
+  '<div class="lighty-season-summary"><span>Avulsos: <b>'+formatLightyCoins(quote.normalTotal)+'</b></span>'+
+  '<span>Desconto do pacote: <b>'+formatLightyCoins(quote.discount)+'</b></span>'+
+  '<span>Pacote inteiro: <b>'+formatLightyCoins(quote.bundleTotal)+'</b></span>'+
+  '<span>Já pago: <b>'+formatLightyCoins(quote.paid)+'</b></span>'+
+  '<strong>Para completar: '+formatLightyCoins(quote.remaining)+'</strong></div>'+
   '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="prev" aria-label="Episódios anteriores">‹</button>'+
   '<div class="lighty-episode-row" aria-live="polite"></div>'+
   '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="next" aria-label="Próximos episódios">›</button></div>'+
@@ -1782,12 +1854,19 @@ function renderSeriesDetails(item,selectedSeason=0){
     const title=entry.title||('Episódio '+(i+1));
     const url=validWebUrl(entry.image||'')||safePoster;
     const imageLabel=entry.isStill?'Cena do episódio':'Imagem ilustrativa da série';
-    return '<button class="lighty-episode-card '+(isUnreleased?'is-locked':'')+'" type="button" data-episode-number="'+
-      (i+1)+'" title="'+safeText(title)+'">'+
-      '<span class="lighty-episode-thumb">'+(isUnreleased?'<span class="lighty-episode-lock">🔒 EM BREVE</span>':'')+'<img src="'+safeText(url)+
+    const number=i+1,owned=ownsEpisode(getLightyPurchases(),item.id,active,number);
+    return '<article class="lighty-episode-unit">'+
+      '<button class="lighty-episode-card '+(owned?'is-owned':'is-locked')+'" type="button" data-episode-open="'+
+      safeText(item.id)+'" data-episode-season="'+active+'" data-episode-number="'+number+
+      '" title="'+safeText(title)+'">'+
+      '<span class="lighty-episode-thumb"><span class="lighty-episode-lock">'+
+      (owned?'✓ DESBLOQUEADO':'🔒 EM BREVE')+'</span><img src="'+safeText(url)+
       '" alt="'+safeText(imageLabel+': '+title)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+
       safeText(safePoster)+'\'"><i>▶</i></span>'+
-      '<b>'+safeText(title)+'</b><small>Episódio '+(i+1)+(isUnreleased?' · Não lançado':' · Em preparação')+'</small></button>';
+      '<b>'+safeText(title)+'</b><small>Episódio '+number+' · '+formatLightyCoins(epCost)+'</small></button>'+
+      '<button type="button" class="btn lighty-episode-buy" data-buy-episode="'+safeText(item.id)+
+      '" data-episode-season="'+active+'" data-episode-number="'+number+'" '+(owned?'disabled':'')+'>'+
+      (owned?'✓ Comprado':'🪙 Comprar por '+formatLightyCoins(epCost))+'</button></article>';
   }).join('');
   episodesRoot.scrollLeft=previousScroll;
  }
