@@ -66,10 +66,16 @@ export default async function handler(req,res){
  if(!['create','join','vote','shoot','reload','status','leave'].includes(action))return res.status(400).json({error:'Ação inválida.'});
  try{
   const app=firebaseAdmin(),db=getFirestore(app),decoded=await getAuth(app).verifyIdToken(match[1]);
-  const uid=decoded.uid,name=String(decoded.name||'Jogador').slice(0,36);
+  const uid=decoded.uid;
+  let name='Jogador';
+  if(action==='create'||action==='join'){
+   const account=await db.collection('users').doc(uid).get();
+   name=String(account.data()?.displayName||'Jogador').slice(0,36);
+  }
   if(action==='create'){
    for(let attempt=0;attempt<5;attempt++){
-    const code=randomBytes(6).toString('hex').toUpperCase().replace(/[018]/g,'A').slice(0,6);
+    const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const code=Array.from(randomBytes(6),byte=>alphabet[byte%alphabet.length]).join('');
     const ref=db.collection('shooterRooms').doc(code);
     try{
      await ref.create({hostUid:uid,guestUid:'',hostName:name,guestName:'',
