@@ -63,11 +63,12 @@ export function mountShooter({root,user,addCoins}){
  '<div class="shoot-fps-screen"><canvas id="shoot-canvas" width="900" height="520" tabindex="0" aria-label="Visão em primeira pessoa do SHOOT’E R!"></canvas>'+
  '<div class="shoot-fps-paused" id="shoot-overlay"><b>SHOOT’E R!</b><span>FPS EM PRIMEIRA PESSOA</span><small>Clique em Iniciar para controlar o personagem.</small></div></div>'+
  '<div class="shooter-keys"><b>WASD</b> mover · <b>Mouse</b> olhar · <b>Esquerdo</b> atirar · <b>Direito</b> mira do fuzil · <b>1–4</b> armas · <b>R</b> recarregar · <b>Esc</b> solta mouse</div>'+
- '<p id="shoot-message" class="arcade-note">Elimine 12 drones e sobreviva por 85 segundos para ganhar 45 LCoins (uma vez por dia).</p>'+
+ '<p id="shoot-message" class="arcade-note">Elimine 12 drones antes do fim do tempo para ganhar 45 LCoins (uma vez por dia).</p>'+
  '<div class="shooter-actions"><button type="button" class="btn btn-primary" data-shoot-start>▶ Iniciar partida</button>'+
  '<button type="button" class="btn" data-shoot-reload>Recarregar (R)</button>'+
  '<button type="button" class="btn" data-shoot-scope>🔭 Zoom do fuzil</button>'+
- '<button type="button" class="btn" data-shoot-mouse>🎯 Capturar mouse</button></div>';
+ '<button type="button" class="btn" data-shoot-mouse>🎯 Capturar mouse</button></div>'+
+ '<div class="shoot-touch-controls"><div class="shoot-touch-nav"><button type="button" data-hold-key="w">▲</button><div><button type="button" data-hold-key="a">◀</button><button type="button" data-hold-key="s">▼</button><button type="button" data-hold-key="d">▶</button></div></div><div class="shoot-touch-actions"><button type="button" data-hold-fire>🎯 ATIRAR</button><button type="button" data-hold-scope>🔭 ZOOM</button></div><small>Arraste a visão com o dedo na arena para virar. Toque nas armas acima para trocar (1–4 no teclado).</small></div>';
  root.replaceChildren(el);
  const $=s=>el.querySelector(s),canvas=$('#shoot-canvas'),ctx=canvas.getContext('2d',{alpha:false}),hud=$('#shoot-weapon'),message=$('#shoot-message'),overlay=$('#shoot-overlay');
  const W=canvas.width,H=canvas.height;
@@ -333,10 +334,25 @@ export function mountShooter({root,user,addCoins}){
   event.preventDefault();
   if(event.button===2){scope=current===2;return;}
   if(event.button!==0)return;
+  if(event.pointerType==='touch'){dragX=event.clientX;canvas.setPointerCapture?.(event.pointerId);return;}
   shooting=true;fire();
   if(document.pointerLockElement!==canvas){dragX=event.clientX;canvas.requestPointerLock?.().catch(()=>{});}
  }
- function up(event){if(event.button===2){scope=false;return;}shooting=false;dragX=null;}
+ function up(event){if(event.target?.closest?.('[data-hold-key],[data-hold-fire],[data-hold-scope]'))return;
+  if(event.button===2){scope=false;return;}shooting=false;dragX=null;}
+ function pointerMove(e){if(!playing||e.pointerType!=='touch'||dragX===null)return;
+  look+=(e.clientX-dragX)*.006;dragX=e.clientX;}
+ function touchDown(e){
+  const key=e.target.closest('[data-hold-key]');
+  if(key){e.preventDefault();pressed.add(key.dataset.holdKey);key.setPointerCapture?.(e.pointerId);return;}
+  if(e.target.closest('[data-hold-fire]')){e.preventDefault();shooting=true;fire();e.target.setPointerCapture?.(e.pointerId);return;}
+  if(e.target.closest('[data-hold-scope]')){e.preventDefault();scope=current===2;e.target.setPointerCapture?.(e.pointerId);}
+ }
+ function touchUp(e){
+  const key=e.target.closest('[data-hold-key]');if(key)pressed.delete(key.dataset.holdKey);
+  if(e.target.closest('[data-hold-fire]'))shooting=false;
+  if(e.target.closest('[data-hold-scope]'))scope=false;
+ }
  function contextMenu(e){e.preventDefault();}
  function click(e){
   if(e.target.closest('[data-shoot-start]')){rewarded=false;start();}
@@ -354,7 +370,11 @@ export function mountShooter({root,user,addCoins}){
  document.addEventListener('pointerup',up);
  document.addEventListener('pointerlockchange',lockChanged);
  canvas.addEventListener('pointerdown',down);
+ canvas.addEventListener('pointermove',pointerMove);
  canvas.addEventListener('contextmenu',contextMenu);
+ el.addEventListener('pointerdown',touchDown);
+ el.addEventListener('pointerup',touchUp);
+ el.addEventListener('pointercancel',touchUp);
  el.addEventListener('click',click);
  look=-Math.PI/2;render(performance.now());updateHud();
  return ()=>{
@@ -366,7 +386,11 @@ export function mountShooter({root,user,addCoins}){
   document.removeEventListener('pointerup',up);
   document.removeEventListener('pointerlockchange',lockChanged);
   canvas.removeEventListener('pointerdown',down);
+  canvas.removeEventListener('pointermove',pointerMove);
   canvas.removeEventListener('contextmenu',contextMenu);
+  el.removeEventListener('pointerdown',touchDown);
+  el.removeEventListener('pointerup',touchUp);
+  el.removeEventListener('pointercancel',touchUp);
   el.removeEventListener('click',click);
  };
 }
