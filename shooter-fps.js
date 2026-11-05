@@ -68,7 +68,7 @@ export function mountShooter({root,user,addCoins}){
  '<button type="button" class="btn" data-shoot-reload>Recarregar (R)</button>'+
  '<button type="button" class="btn" data-shoot-scope>🔭 Zoom do fuzil</button>'+
  '<button type="button" class="btn" data-shoot-mouse>🎯 Capturar mouse</button></div>'+
- '<div class="shoot-touch-controls"><div class="shoot-touch-nav"><button type="button" data-hold-key="w">▲</button><div><button type="button" data-hold-key="a">◀</button><button type="button" data-hold-key="s">▼</button><button type="button" data-hold-key="d">▶</button></div></div><div class="shoot-touch-actions"><button type="button" data-hold-fire>🎯 ATIRAR</button><button type="button" data-hold-scope>🔭 ZOOM</button></div><small>Arraste a visão com o dedo na arena para virar. Toque nas armas acima para trocar (1–4 no teclado).</small></div>';
+ '<div class="shoot-touch-controls"><div class="shoot-touch-weaponbar"><button type="button" data-shoot-weapon="0">Pistola</button><button type="button" data-shoot-weapon="1">SMG</button><button type="button" data-shoot-weapon="2">Sniper</button><button type="button" data-shoot-weapon="3">Faca</button></div><div class="shoot-touch-nav"><button type="button" data-hold-key="w">▲</button><div><button type="button" data-hold-key="a">◀</button><button type="button" data-hold-key="s">▼</button><button type="button" data-hold-key="d">▶</button></div></div><div class="shoot-touch-actions"><button type="button" data-hold-fire>🎯 ATIRAR</button><button type="button" data-hold-scope>🔭 ZOOM</button></div><small>Arraste a visão com o dedo na arena para virar. Toque nas armas acima para trocar (1–4 no teclado).</small></div>';
  root.replaceChildren(el);
  const $=s=>el.querySelector(s),canvas=$('#shoot-canvas'),ctx=canvas.getContext('2d',{alpha:false}),hud=$('#shoot-weapon'),message=$('#shoot-message'),overlay=$('#shoot-overlay');
  const W=canvas.width,H=canvas.height;
@@ -356,6 +356,7 @@ export function mountShooter({root,user,addCoins}){
  function contextMenu(e){e.preventDefault();}
  function click(e){
   if(e.target.closest('[data-shoot-start]')){rewarded=false;start();}
+  else if(e.target.closest('[data-shoot-weapon]')){const index=Number(e.target.closest('[data-shoot-weapon]').dataset.shootWeapon);if(playing&&Number.isInteger(index)&&index>=0&&index<guns.length){current=index;scope=false;reloadEnds=0;updateHud(DURATION-(performance.now()-startTime)/1000);}}
   else if(e.target.closest('[data-shoot-reload]'))startReload();
   else if(e.target.closest('[data-shoot-scope]'))scope=current===2?!scope:false;
   else if(e.target.closest('[data-shoot-mouse]'))canvas.requestPointerLock?.().catch(()=>setHint('Seu navegador bloqueou a captura do mouse.'));
