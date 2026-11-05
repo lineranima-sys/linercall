@@ -1899,15 +1899,8 @@ function openCinemaDetails(id){
   purchaseButton.classList.toggle('hidden',item.type!=='movie');
   purchaseButton.onclick=()=>{if(!catalogOnly)buyLightyContent(key,2000,'Filme');};
  }
- const detailActions=$('cinema-detail-buy')?.parentElement;
- if(detailActions){
-  detailActions.querySelector('#cinema-official-link')?.remove();
-  if(item.catalogOnly===true&&validWebUrl(item.officialUrl||'')){
-   const official=document.createElement('a');official.id='cinema-official-link';
-   official.className='btn cinema-official-link';official.href=item.officialUrl;official.target='_blank';official.rel='noopener noreferrer';
-   official.textContent='Ver na Netflix ↗';detailActions.appendChild(official);
-  }
- }
+ // Evitar botões de plataformas externas; limpar eventuais links antigos.
+ $('cinema-official-link')?.remove();
  const listButton=$('cinema-detail-list');listButton.dataset.itemId=id;const refresh=()=>{listButton.textContent=getMyList().includes(id)?'✓ Remover da lista':'+ Minha lista';};listButton.onclick=()=>{toggleMyList(id);refresh();};refresh();
  $('cinema-details').classList.remove('hidden');document.body.classList.add('cinema-modal-open');applyLanguage();
 }
@@ -1928,7 +1921,7 @@ async function loadCinema() {
     {id:'lighty-teen-titans',title:'Jovens Titãs',type:'series',year:2003,releaseDate:'19 de julho de 2003',duration:'~22 min por episódio',description:'Robin, Estelar, Ravena, Mutano e Ciborgue protegem Jump City enquanto enfrentam vilões e tentam conviver como equipe.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BOTg3NzY2MDQtMjUxNS00N2Q3LTkxODktMmU1NzdjZTNkMzQ0XkEyXkFqcGc%40._V1_.jpg'},
     {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
     {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'},
-    {id:'lighty-pokemon-mewtwo-evolution',title:'Pokémon: Mewtwo Contra-ataca — Evolução',type:'movie',year:2019,releaseDate:'27 de fevereiro de 2020 (Netflix Brasil)',duration:'~96 min',description:'Uma aventura 3D que recria o primeiro filme Pokémon. Ash, Misty e Brock recebem um convite misterioso para uma ilha onde conhecem Mewtwo, um Pokémon criado artificialmente. Uma batalha de Pokémon originais e clones coloca todos à prova.',featured:true,catalogOnly:true,officialUrl:'https://www.netflix.com/br/title/81223075',poster:'https://image.tmdb.org/t/p/w780/xlO50h3EX1w99KGztTzsjQBwPfs.jpg'}
+    {id:'lighty-pokemon-mewtwo-evolution',title:'Pokémon: Mewtwo Contra-ataca — Evolução',type:'movie',year:2019,releaseDate:'27 de fevereiro de 2020 (Netflix Brasil)',duration:'~96 min',description:'Uma aventura 3D que recria o primeiro filme Pokémon. Ash, Misty e Brock recebem um convite misterioso para uma ilha onde conhecem Mewtwo, um Pokémon criado artificialmente. Uma batalha de Pokémon originais e clones coloca todos à prova.',featured:true,catalogOnly:true,poster:'https://image.tmdb.org/t/p/w780/xlO50h3EX1w99KGztTzsjQBwPfs.jpg'}
   ];
 
   try {
