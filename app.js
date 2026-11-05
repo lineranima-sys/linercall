@@ -1532,6 +1532,7 @@ function renderSeriesDetails(item,selectedSeason=0){
  if(item.type!=='series'||!seasons){root.innerHTML='';related.innerHTML='';return;}
  const active=Math.max(0,Math.min(selectedSeason,seasons.length-1));
  const season=seasons[active];
+ const isUnreleased=item.id!=='lighty-demon-slayer';
  const safePoster=validWebUrl(item.backdrop||item.poster||'')||
    'https://placehold.co/480x270/17152b/e7d8ff?text=LIGHTYFLIX';
  const seasonCards=seasons.map((entry,index)=>
@@ -1541,16 +1542,17 @@ function renderSeriesDetails(item,selectedSeason=0){
   '</b><small>'+entry.count+' episódio'+(entry.count===1?'':'s')+'</small></button>'+
   '<button class="btn btn-primary lighty-season-buy" type="button" data-buy-season="'+
   safeText(item.id)+'" data-season-index="'+index+'">'+
-  (hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Comprar · 1.500')+
+  (isUnreleased?'🔒 Ainda não lançado':(hasLightyPurchase('season:'+item.id+':'+index)?'✓ Comprada':'Em preparação'))+
   '</button></article>').join('');
  root.innerHTML='<section class="lighty-season-picker">'+
-  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>1.500 LCoins cada</span></div>'+
+  '<div class="lighty-section-heading"><h3>Escolha uma temporada</h3><span>'+(isUnreleased?'🔒 Lançamento pendente':'Em preparação')+'</span></div>'+
   '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="prev" aria-label="Temporadas anteriores">‹</button>'+
   '<div class="lighty-season-row">'+seasonCards+'</div>'+
   '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="seasons" data-direction="next" aria-label="Próximas temporadas">›</button></div></section>'+
   '<section class="lighty-episode-picker"><div class="lighty-section-heading"><h3>'+
   safeText(item.title)+' · '+safeText(season.name)+'</h3><span>'+season.count+
   ' episódio'+(season.count===1?'':'s')+'</span></div>'+
+  '<p class="lighty-unreleased-label">'+(isUnreleased?'🔒 Episódios ainda não lançados no LightyFlix.':'Episódio 1 cadastrado. O vídeo ainda não foi publicado.')+'</p>'+ 
   '<div class="lighty-carousel-wrap"><button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="prev" aria-label="Episódios anteriores">‹</button>'+
   '<div class="lighty-episode-row" aria-live="polite"></div>'+
   '<button class="lighty-carousel-arrow" type="button" data-lighty-scroll="episodes" data-direction="next" aria-label="Próximos episódios">›</button></div>'+
@@ -1571,12 +1573,12 @@ function renderSeriesDetails(item,selectedSeason=0){
     const title=entry.title||('Episódio '+(i+1));
     const url=validWebUrl(entry.image||'')||safePoster;
     const imageLabel=entry.isStill?'Cena do episódio':'Imagem ilustrativa da série';
-    return '<button class="lighty-episode-card" type="button" data-episode-number="'+
+    return '<button class="lighty-episode-card '+(isUnreleased?'is-locked':'')+'" type="button" data-episode-number="'+
       (i+1)+'" title="'+safeText(title)+'">'+
-      '<span class="lighty-episode-thumb"><img src="'+safeText(url)+
+      '<span class="lighty-episode-thumb">'+(isUnreleased?'<span class="lighty-episode-lock">🔒 EM BREVE</span>':'')+'<img src="'+safeText(url)+
       '" alt="'+safeText(imageLabel+': '+title)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+
       safeText(safePoster)+'\'"><i>▶</i></span>'+
-      '<b>'+safeText(title)+'</b><small>Episódio '+(i+1)+'</small></button>';
+      '<b>'+safeText(title)+'</b><small>Episódio '+(i+1)+(isUnreleased?' · Não lançado':' · Em preparação')+'</small></button>';
   }).join('');
   episodesRoot.scrollLeft=previousScroll;
  }
@@ -1772,7 +1774,7 @@ function setupEvents() {
 
   document.addEventListener('click', event => {
     const lightyScroll=event.target.closest('[data-lighty-scroll]');if(lightyScroll){const row=lightyScroll.parentElement?.querySelector(lightyScroll.dataset.lightyScroll==='episodes'?'.lighty-episode-row':'.lighty-season-row');if(row)row.scrollBy({left:(lightyScroll.dataset.direction==='next'?1:-1)*Math.max(220,row.clientWidth*.78),behavior:'smooth'});}
-    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightyContent('season:'+seasonBuy.dataset.buySeason+':'+seasonBuy.dataset.seasonIndex,1500,'Temporada');
+    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)toast(seasonBuy.dataset.buySeason==='lighty-demon-slayer'?'Este episódio ainda não tem reprodução publicada.':'🔒 Temporada ainda não lançada no LightyFlix.');
     const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
     const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie)buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
@@ -1814,6 +1816,8 @@ function setupEvents() {
     const cinemaScroll=event.target.closest('[data-cinema-scroll]');if(cinemaScroll){const row=$(cinemaScroll.dataset.cinemaScroll);if(row)row.scrollBy({left:(cinemaScroll.dataset.direction==='next'?1:-1)*Math.max(260,row.clientWidth*.8),behavior:'smooth'});}
     const cinemaOpen=event.target.closest('[data-cinema-open]');if(cinemaOpen)openCinemaDetails(cinemaOpen.dataset.cinemaOpen);
     if(event.target.closest('[data-cinema-close]'))closeCinemaDetails();
+    const epClicked=event.target.closest('.lighty-episode-card');
+    if(epClicked) toast(epClicked.classList.contains('is-locked')?'🔒 Este episódio ainda não foi lançado no LightyFlix.':'O episódio 1 está cadastrado; o vídeo ainda não está disponível para reprodução.');
     const watch = event.target.closest('[data-watch]');
     if (watch) playCinemaItem(watch.dataset.watch);
 
