@@ -1,6 +1,7 @@
 // Pokémon Arena Online — partidas PvP entre duas contas reais no Firestore.
 // As partidas têm turnos atômicos e dano determinístico. Não concedem moedas
 // nem resultados de ranking sem validação pelo servidor.
+// Recompensas de 100/10 LCoins são creditadas somente na carteira LOCAL do protótipo.
 import {
  collection, doc, getDoc, addDoc, updateDoc, runTransaction, query,
  where, limit, onSnapshot, serverTimestamp
@@ -55,7 +56,7 @@ export function calculateOnlineBattle(match,turns,catalogue){
  }
  return {teams,active,winner,turnUid:expected,processed,log};
 }
-export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt,notify}){
+export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt,notify,onReward}){
  let players=[],matches=new Map(),selected=null,turns=[],unsubs=[],roomUnsubs=[];
  let warnedRules=false;
  const root=() => document.getElementById('pokemon-online-panel');
@@ -77,7 +78,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
   const inviteRows=live.length?live.map(p=>'<div class="pvp-row"><b>'+esc(p.displayName||'Jogador')+'</b><span>● Online</span><button class="btn" data-pvp-invite="'+esc(p.id)+'" data-pvp-name="'+esc(p.displayName||'Jogador')+'" '+(mine().length!==3?'disabled':'')+'>⚔ Desafiar</button></div>').join(''):'<p class="muted">Não há outros jogadores online agora.</p>';
   const inboxRows=inbox.map(m=>'<div class="pvp-row"><b>'+esc(m.hostName)+'</b><span>quer batalhar!</span><button class="btn" data-pvp-accept="'+esc(m.id)+'" '+(mine().length!==3?'disabled':'')+'>Aceitar</button><button class="btn" data-pvp-reject="'+esc(m.id)+'">Recusar</button></div>').join('')||'<p class="muted">Nenhum convite recebido.</p>';
   const roomsHtml=mineRooms.map(m=>'<div class="pvp-row"><b>'+esc(m.hostName)+' × '+esc(m.guestName)+'</b><span>'+esc(m.status==='active'?'Partida iniciada':'Convite enviado')+'</span><button class="btn" data-pvp-open="'+esc(m.id)+'" '+(m.status!=='active'?'disabled':'')+'>Entrar</button></div>').join('')||'<p class="muted">Nenhuma partida em andamento.</p>';
-  el.innerHTML='<div class="pvp-heading"><h3>⚔ Pokémon Arena · Online</h3><p>Duelo de turnos entre amigos conectados. Sem LCoins no PvP enquanto o placar não for validado por servidor.</p></div>'+
+  el.innerHTML='<div class="pvp-heading"><h3>⚔ Pokémon Arena · Online</h3><p>Duelo de turnos entre amigos conectados. 🏆 Vitória: 100 LCoins · 🤝 Derrota: 10 LCoins. Créditos locais (não sincronizados entre dispositivos).</p></div>'+
    '<div class="pvp-grid"><section><h4>Jogadores disponíveis</h4>'+inviteRows+'</section><section><h4>Convites recebidos</h4>'+inboxRows+'</section><section><h4>Suas partidas</h4>'+roomsHtml+'</section></div><div id="pokemon-online-battle"></div>';
   renderBattle();
  }
@@ -85,6 +86,11 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
   const el=document.getElementById('pokemon-online-battle');if(!el||!selected)return;
   const match=matches.get(selected);if(!match||match.status!=='active')return;
   const state=calculateOnlineBattle(match,turns,catalogue);
+  // Aguarda todos os turnos gravados; a carteira local impede o pagamento
+  // duplicado quando snapshots chegam repetidos ou o usuário reabre a sala.
+  if(state.winner && state.processed===match.turnNo && turns.length===match.turnNo){
+   onReward?.({matchId:match.id,winnerUid:state.winner,hostUid:match.hostUid,guestUid:match.guestUid});
+  }
   const owner=uid,other=uid===match.hostUid?match.guestUid:match.hostUid;
   const me=state.teams[owner]?.[state.active[owner]],enemy=state.teams[other]?.[state.active[other]];
   if(!me||!enemy)return;
@@ -92,7 +98,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
   const pe=p=>Math.max(0,Math.floor(p.pe/100*100));
   const fighterMarkup=(p,who,own)=>'<div class="pvp-fighter"><div class="pvp-hud"><b>'+esc(who)+' · '+esc(p.name)+'</b><span>HP '+p.hpNow+'/'+p.hp+'</span><div class="pvp-meter"><i style="width:'+pct(p)+'%"></i></div><span>PE '+p.pe+'/100</span><div class="pvp-meter pe"><i style="width:'+pe(p)+'%"></i></div></div><img src="'+esc(getArt(p))+'" alt="'+esc(p.name)+'" loading="lazy"></div>';
   const myTurn=match.turnUid===uid&&state.processed===match.turnNo&&!state.winner;
-  const actions=state.winner?'<strong class="pvp-outcome">'+(state.winner===uid?'Você venceu!':'Você perdeu!')+' Resultado PvP não concede moedas.</strong>':
+  const actions=state.winner?'<strong class="pvp-outcome">'+(state.winner===uid?'Você venceu!':'Você perdeu!')+' · '+(state.winner===uid?'+100 LCoins pela vitória!':'+10 LCoins pela participação!')+' (carteira deste navegador).</strong>':
     '<div class="pvp-actions"><p>'+(myTurn?'É a sua vez!':'Aguardando o adversário...')+'</p>'+
     me.moves.map((m,i)=>'<button class="btn" data-pvp-move="'+i+'" '+(!myTurn||me.pe<charge(m)?'disabled':'')+'>'+esc(m.name)+' · '+charge(m)+' PE</button>').join('')+
     '<button class="btn" data-pvp-rest '+(!myTurn?'disabled':'')+'>Descansar +45 PE</button>'+
