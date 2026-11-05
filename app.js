@@ -415,6 +415,7 @@ function initNotifications(){
   openOffer:()=>{switchView('shop');renderShop();}
  });
  notificationCenter.start();
+ notificationCenter.setPreferences(socialControls);
 }
 
 
@@ -482,7 +483,7 @@ function listenFriends(){
   stopFriendListeners.push(onSnapshot(rq,snap=>{
     const box=$('friend-requests'); if(!box)return;
     const pending=snap.docs.filter(d=>d.data().status==='pending');
-    notificationCenter?.setRequests(pending.map(d=>({id:d.id,name:d.data().fromName})));
+    notificationCenter?.setRequests(pending.map(d=>({id:d.id,uid:d.data().fromUid,name:d.data().fromName})));
     box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
       const r=d.data();return '<div class="friend-row"><b>'+safeText(r.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
     }).join('');
