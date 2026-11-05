@@ -250,6 +250,45 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // SHOOT’E R! multiplayer 1v1:
+    // Criação, entrada, voto, acertos, HP e moedas são alterados SOMENTE via Firebase Admin.
+    match /shooterRooms/{roomId} {
+      function inRoom() {
+        return signedIn() && (resource.data.hostUid == request.auth.uid
+          || resource.data.guestUid == request.auth.uid);
+      }
+      allow read: if inRoom();
+      allow create, update, delete: if false;
+
+      match /players/{playerUid} {
+        function participant() {
+          return signedIn()
+            && (get(/databases/$(database)/documents/shooterRooms/$(roomId)).data.hostUid == request.auth.uid
+              || get(/databases/$(database)/documents/shooterRooms/$(roomId)).data.guestUid == request.auth.uid);
+        }
+        allow read: if participant();
+        allow create, delete: if false;
+        // Cada jogador controla somente sua posição/rotação, nunca a vida ou pontuação.
+        allow update: if participant()
+          && request.auth.uid == playerUid
+          && resource.data.uid == playerUid
+          && request.resource.data.uid == playerUid
+          && get(/databases/$(database)/documents/shooterRooms/$(roomId)).data.status == 'playing'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['x','y','angle','weapon','updatedAt'])
+          && request.resource.data.keys().hasOnly(['uid','x','y','angle','weapon','updatedAt'])
+          && request.resource.data.x is number
+          && request.resource.data.y is number
+          && request.resource.data.angle is number
+          && request.resource.data.weapon is int
+          && request.resource.data.x >= 0.2 && request.resource.data.x <= 17.8
+          && request.resource.data.y >= 0.2 && request.resource.data.y <= 16.8
+          && request.resource.data.angle >= -100 && request.resource.data.angle <= 100
+          && request.resource.data.weapon >= 0 && request.resource.data.weapon <= 3
+          && request.resource.data.updatedAt == request.time;
+      }
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
