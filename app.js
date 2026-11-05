@@ -1,6 +1,8 @@
 import { soloBattleEffect, RARE_SUPER_MULTIPLIER } from './pokemon-battle-effects.js';
 import { mountTermo } from './termo-game.js';
-import { mountDetective, mountMusic, mountShooter } from './arcade-extras.js';
+import { mountDetective } from './arcade-extras.js?v=20261105';
+import { mountMusic } from './music-trivia.js?v=20261105-famous-covers';
+import { mountShooter } from './shooter-fps.js?v=20261105-first-person';
 import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';

@@ -1007,3 +1007,43 @@ body > #toast.show{opacity:1;transform:translate(-50%,0)}
  .game-content:has(.arcade-game){padding:10px}
  .arcade-case-panel{padding:13px}
 }
+
+
+/* SHOOT’E R! — nova apresentação FPS em primeira pessoa */
+.shoot-fps-screen{position:relative;overflow:hidden;border-radius:14px;border:2px solid #536d86;box-shadow:0 24px 52px #0008;background:#101923}
+.shoot-fps-screen #shoot-canvas{display:block;width:100%;height:auto;aspect-ratio:900 / 520;max-height:75vh;border:0!important;border-radius:0!important;outline:0!important;image-rendering:auto;cursor:crosshair;touch-action:none}
+.shoot-fps-paused{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;gap:13px;align-items:center;justify-content:center;text-align:center;background:linear-gradient(135deg,#091526ee,#1e2837ee);padding:22px}
+.shoot-fps-paused b{font-weight:900;font-size:clamp(22px,4vw,50px);color:#ffca65;text-shadow:3px 4px #3a1f28;letter-spacing:1px}
+.shoot-fps-paused span{font-size:13px;color:#99edff;font-weight:800;letter-spacing:3px}
+.shoot-fps-paused small{color:#b8c9dd;font-size:12px}
+.shooter-fps .shooter-hud{position:relative;gap:10px;justify-content:space-between;background:linear-gradient(90deg,#1b2736,#253245);border-color:#68849f}
+.shooter-fps .shooter-hud span{font-size:12px;font-variant-numeric:tabular-nums}
+.shooter-fps .shooter-keys{font-size:12px;padding:8px 2px;line-height:1.8}
+.shooter-fps .shooter-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.shooter-fps .shooter-actions .btn{white-space:normal}
+.music-local-covers{margin-top:20px;background:#151e37;border:1px solid #4c5575;border-radius:12px;padding:14px}
+.music-local-covers summary{font-weight:800;font-size:13px;cursor:pointer;color:#dcbdff}
+.music-local-covers>p{font-size:12px;color:#afc7dd}
+#music-import{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:end;margin:14px 0}
+#music-import label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#c8dded;min-width:0}
+#music-import input,#music-import select{width:100%;min-width:0;padding:10px;border:1px solid #516b89;border-radius:8px;background:#101b30;color:#f5f7ff;font:inherit}
+#music-import input[type=file]{font-size:10px}
+#music-import button{grid-column:1/-1;justify-self:start}
+@media(max-width:640px){.shooter-fps .shooter-hud span{font-size:10px}#music-import{grid-template-columns:1fr}.shoot-fps-paused span{letter-spacing:1px}}
+
+
+/* Controles de tela para FPS no celular: não dependem de teclado/mouse. */
+.shoot-touch-controls{display:none;margin:12px 0;padding:12px;background:#18283a;border:1px solid #536c86;border-radius:12px}
+.shoot-touch-controls button{min-width:55px;min-height:51px;border:1px solid #6c8396;border-radius:10px;background:linear-gradient(145deg,#30495f,#1b3148);color:#edf7ff;font-size:18px;font-weight:800;touch-action:none;user-select:none}
+.shoot-touch-controls button:active{background:#6689a1;transform:translateY(1px)}
+.shoot-touch-weaponbar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.shoot-touch-weaponbar button{font-size:11px;flex:1;min-width:62px;min-height:36px}
+.shoot-touch-nav{display:grid;justify-items:center;gap:3px}
+.shoot-touch-nav>div{display:flex;gap:4px}
+.shoot-touch-actions{display:flex;gap:8px;flex-direction:column;align-items:stretch;justify-content:center}
+.shoot-touch-actions [data-hold-fire]{color:#fff3c5;background:linear-gradient(145deg,#b94f2f,#7c3434);border-color:#e78b54}
+.shoot-touch-actions [data-hold-scope]{font-size:13px}
+.shoot-touch-controls>small{grid-column:1/-1;display:block;color:#b9cddb;font-size:10px;margin-top:10px}
+@media(pointer:coarse),(max-width:720px){
+ .shoot-touch-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+}
