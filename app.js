@@ -224,6 +224,7 @@ async function logout() {
     if (jitsiApi) leaveCall();
 
     cleanupListeners();
+    notificationCenter?.destroy();notificationCenter=null;dmFocusOff();
     await signOut(auth);
 
     currentUser = null;
@@ -533,6 +534,7 @@ function setPresence(activity,label){
     .catch(error=>console.warn('Presença não atualizada:',error));
 }
 function switchView(name) {
+  if(name==='friends')notificationCenter?.markCategory('friend');
   if(name!=='friends')dmFocusOff();
   if (name !== 'games' && miniGamePage === 'story') backToMiniGames();
   const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
@@ -957,6 +959,7 @@ function pokemonArt(p) {
 }
 let miniGamePage = 'home';
 function showMiniGamePage(page) {
+  if(page==='pokemon') notificationCenter?.markCategory('battle');
   miniGamePage = page;
   const root = $('minigame-stage');
   const tabs = $('minigame-tabs');
@@ -1799,7 +1802,7 @@ function startStory() {
   if(!stage)return;
   let root=$('story-game-content');
   if(!root){root=document.createElement('div');root.id='story-game-content';stage.appendChild(root);}
-  stopStorySession=mountStory(root,backToMiniGames);
+  stopStorySession=mountStory(root,backToMiniGames,currentUser?.uid||'visitante');
 }
 function stopStory() {
   if(stopStorySession){stopStorySession();stopStorySession=null;}
