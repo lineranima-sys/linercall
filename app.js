@@ -1806,7 +1806,22 @@ function openCinemaDetails(id){
  renderSeriesDetails(item,0);
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
- const purchaseButton=$('cinema-detail-buy');if(purchaseButton){const key='movie:'+id,owned=hasLightyPurchase(key);purchaseButton.textContent=owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';purchaseButton.disabled=item.type!=='movie'||owned;purchaseButton.classList.toggle('hidden',item.type!=='movie');purchaseButton.onclick=()=>buyLightyContent(key,2000,'Filme');}
+ const purchaseButton=$('cinema-detail-buy');if(purchaseButton){
+  const key='movie:'+id,owned=hasLightyPurchase(key),catalogOnly=item.catalogOnly===true;
+  purchaseButton.textContent=catalogOnly?'🔒 Ainda não disponível no LightyFlix':owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';
+  purchaseButton.disabled=catalogOnly||item.type!=='movie'||owned;
+  purchaseButton.classList.toggle('hidden',item.type!=='movie');
+  purchaseButton.onclick=()=>{if(!catalogOnly)buyLightyContent(key,2000,'Filme');};
+ }
+ const detailActions=$('cinema-detail-buy')?.parentElement;
+ if(detailActions){
+  detailActions.querySelector('#cinema-official-link')?.remove();
+  if(item.catalogOnly===true&&validWebUrl(item.officialUrl||'')){
+   const official=document.createElement('a');official.id='cinema-official-link';
+   official.className='btn cinema-official-link';official.href=item.officialUrl;official.target='_blank';official.rel='noopener noreferrer';
+   official.textContent='Ver na Netflix ↗';detailActions.appendChild(official);
+  }
+ }
  const listButton=$('cinema-detail-list');listButton.dataset.itemId=id;const refresh=()=>{listButton.textContent=getMyList().includes(id)?'✓ Remover da lista':'+ Minha lista';};listButton.onclick=()=>{toggleMyList(id);refresh();};refresh();
  $('cinema-details').classList.remove('hidden');document.body.classList.add('cinema-modal-open');applyLanguage();
 }
