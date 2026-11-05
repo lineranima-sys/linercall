@@ -1,3 +1,4 @@
+import { createCoinSlide } from './coin-slide.js?v=20261105';
 // Herói em um mundo Luminoso · Capítulo 1 — aventura 2D original em Canvas.
 // A arte é desenhada no próprio jogo: não exige imagens externas.
 const CW=480, CH=270, FLOOR=220, HERO_H=36, HERO_W=30;
@@ -36,8 +37,8 @@ const goblinIdle=[
 ];
 const colors={H:'#684336',P:'#c75864',S:'#f8cda4',E:'#252842',C:'#263a67',A:'#4486a3',L:'#8ce6e0',Y:'#f5d277',D:'#4b354f',B:'#272f46',G:'#39795e',R:'#526947',T:'#eddd9c'};
 export function mountStory(root,onExit,uid='guest'){
- let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0,menu=true,intro=false,lastSave=0,bardX=0,bardY=FLOOR-36;
- const key={left:false,right:false};
+ let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0,menu=true,intro=false,lastSave=0,bardX=0,bardY=FLOOR-36,coinSlide=null;
+ const key={left:false,right:false,up:false,down:false};
  const flags={guards:false,fishNotice:false,fish:false,key:false,dragon:false,wedding:false,potion:false,princess:false,explosion:false,clone:false,bardo:false,rescue:false,win:false};
  const player={x:40,y:FLOOR-HERO_H,vx:0,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
  const dragonImage=new Image();dragonImage.src='./assets/dragon-pixel.svg';
@@ -51,6 +52,7 @@ export function mountStory(root,onExit,uid='guest'){
    '<div id="luminous-menu" class="luminous-menu"><div class="luminous-menu-card"><span class="eyebrow">LINERCALL APRESENTA</span><h2>HERÓI EM UM MUNDO <em>LUMINOSO</em></h2><span class="luminous-chapter">CAPÍTULO 1 · A CARTA DO BARDO</span><div class="luminous-menu-actions"><button type="button" data-story-continue class="btn btn-primary">▶ Continuar aventura</button><button type="button" data-story-new class="btn">✦ Novo jogo</button><button type="button" data-story-controls class="btn">⌨ Como jogar</button></div><small>Seu progresso fica salvo neste dispositivo.</small></div></div>'+
    '<div class="luminous-dialog hidden" id="luminous-dialog" role="dialog" aria-live="polite"><div class="luminous-dialog-head"><span class="luminous-portrait" id="luminous-portrait">✦</span><div><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3></div></div><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
    '<div class="luminous-touch"><div><button data-story-hold="left">◀</button><button data-story-hold="right">▶</button></div><div><button data-story-act="jump">▲ PULAR</button><button data-story-act="attack">⚔ ATACAR</button></div></div>'+
+   '<div class="luminous-slide-touch"><b>DESLIZE AUTOMÁTICO</b><div><button data-story-hold="up" aria-label="Desviar para cima">▲ SUBIR</button><button data-story-hold="down" aria-label="Desviar para baixo">▼ DESCER</button></div></div>'+
    '<p class="luminous-instructions">A / D ou ← → mover · Espaço pular · X atacar ou interagir · O jogo é gratuito durante os testes.</p></div>';
  }
  build();
@@ -67,7 +69,7 @@ export function mountStory(root,onExit,uid='guest'){
  }
  function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();saveGame();}
  function saveGame(){
-  if(menu||intro||dead)return;
+  if(menu||intro||dead||coinSlide)return;
   const save={version:2,scene,x:Math.round(player.x),hp:player.hp,flags:{...flags},
    fishHP:player.fishHP,deadMobs:mobs.filter(m=>!m.alive).map(m=>m.seed),timestamp:Date.now()};
   try{localStorage.setItem(saveKey,JSON.stringify(save));}catch{}
@@ -90,8 +92,13 @@ export function mountStory(root,onExit,uid='guest'){
  function continueGame(){
   const save=readSave();if(!save){newGame();return;}
   resetFlags();Object.assign(flags,save.flags||{});
-  scene=save.scene;initActors();
-  player.x=clamp(save.x||35,0,levels[scene].length-20);player.hp=clamp(save.hp||5,1,5);player.fishHP=clamp(save.fishHP??3,0,3);
+  // Se o jogador sair durante o deslizamento, o desafio recomeça.
+  if(save.scene===2&&flags.dragon&&!flags.slideDone)flags.dragon=false;
+  const clearedSlide=save.scene===2&&flags.slideDone;
+  scene=clearedSlide?3:save.scene;initActors();
+  player.x=clearedSlide?35:clamp(save.x||35,0,levels[scene].length-20);
+  if(scene===2&&!flags.dragon&&player.x>2110)player.x=2060;
+  player.hp=clamp(save.hp||5,1,5);player.fishHP=clamp(save.fishHP??3,0,3);
   for(const mob of mobs)if((save.deadMobs||[]).includes(mob.seed))mob.alive=false;
   bardX=player.x-40;menu=false;intro=false;paused=false;
   root.querySelector('#luminous-menu').classList.add('hidden');objective();
@@ -112,7 +119,39 @@ export function mountStory(root,onExit,uid='guest'){
   mobs=levels[scene].mobs.map((x,i)=>({x,home:x,hp:2,alive:true,dir:i%2?1:-1,aware:false,seed:i+scene*13}));
  }
  function nextLevel(who,title,body){
-  saveGame();scene++;initActors();objective();dialogue(who,title,body);
+  scene++;initActors();objective();saveGame();dialogue(who,title,body);
+ }
+ function leaveSlide(){
+  const help=root.querySelector('.luminous-instructions');
+  if(help)help.textContent='A / D ou ← → mover · Espaço pular · X atacar ou interagir · Salvo automaticamente.';
+  coinSlide=null;key.up=key.down=false;
+  root.querySelector('.luminous-shell')?.classList.remove('coin-slide-active');
+  objective();
+ }
+ function startSlide(){
+  const help=root.querySelector('.luminous-instructions');
+  if(help)help.textContent='DESCIDA DE OURO · Você desliza sozinho! Use ↑ e ↓ (ou W/S) para fugir das bolas de fogo.';
+  key.left=key.right=key.up=key.down=false;
+  const shell=root.querySelector('.luminous-shell');
+  shell?.classList.add('coin-slide-active');
+  const objectiveText=root.querySelector('#luminous-objective');
+  if(objectiveText)objectiveText.textContent='DESAFIO · Deslize sozinho e use ↑ ↓ para escapar do fogo do dragão!';
+  coinSlide=createCoinSlide(c,{
+   drawHero:(x,y)=>{c.save();c.translate(Math.round(x),Math.round(y));c.rotate(-.13);
+     sprite(heroJump,0,0,2);c.restore();},
+   onLose:()=>{
+    leaveSlide();
+    dialogue('NARRADOR','As chamas te alcançaram!','O herói se protege e volta ao início da pilha de moedas. O dragão ainda está furioso! Vamos tentar a descida novamente.',()=>startSlide());
+   },
+   onWin:()=>{
+    leaveSlide();flags.slideDone=true;
+    dialogue('HERÓI','MOEDAS... DE CHOCOLATE?!','Ao chegar no fim da descida, o herói abre uma embalagem dourada e descobre que as moedas são de chocolate! Malacord enganou o dragão!',()=>{
+     dialogue('DRAGÃO','Por favor, não contem a ninguém!','Envergonhado, o dragão promete levá-los ao castelo em troca de moedas verdadeiras. Ele pede que o segredo fique entre vocês.',()=>{
+      nextLevel('NARRADOR','Pelo alto do castelo','O dragão transporta o herói e o Bardo até a torre. É hora de descer ao salão e encontrar Malacord.');
+     });
+    });
+   }
+  });
  }
  const box=(x,y,w,h,fill)=>{c.fillStyle=fill;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
  function sprite(rows,x,y,s=2,palette=colors){
@@ -190,6 +229,14 @@ export function mountStory(root,onExit,uid='guest'){
   }
  }
  function draw(){
+  if(coinSlide){
+    coinSlide.draw();
+    const part=coinSlide.state;
+    root.querySelector('#luminous-zone').textContent='Desafio: Descida de Ouro';
+    root.querySelector('#luminous-hp').textContent='♥ '.repeat(part.hearts).trim();
+    root.querySelector('#luminous-distance').textContent=Math.min(100,Math.floor(part.elapsed/coinSlide.durationFrames*100))+'%';
+    return;
+  }
   camera=clamp(player.x-145,0,levels[scene].length-CW+30);
   backdrop();
   if(intro){drawCabinCutscene();return;}
@@ -238,7 +285,7 @@ export function mountStory(root,onExit,uid='guest'){
   if(player.hp<=0){player.hp=5;player.x=Math.max(25,player.x-240);dialogue('NARRADOR','Você ainda não foi derrotado','O herói retorna a um ponto seguro e recupera o fôlego. Continue tentando!');}
  }
  function attack(){
-  if(paused||menu||player.cooldown>0)return;
+  if(paused||menu||coinSlide||player.cooldown>0)return;
   player.swing=13;player.cooldown=28;
   for(const m of mobs){if(!m.alive)continue;if(Math.abs(m.x-player.x)<48){m.hp--;if(m.hp<=0)m.alive=false;}}
   if(scene===2&&!flags.fish&&Math.abs(485-player.x)<70){
@@ -267,11 +314,9 @@ export function mountStory(root,onExit,uid='guest'){
    if(!flags.fish&&player.x>440)player.x=440;
    if(player.x>2135&&!flags.dragon){
     flags.dragon=true;
-    dialogue('DRAGÃO','Não me incomodem!','Eu não quero compensar vocês. Vou devorá-los!',()=>{
-     dialogue('HERÓI','Moedas de chocolate?!','O herói desliza pela pilha de moedas. Uma embalagem entreaberta revela que Malacord enganou o dragão com moedas falsas!',()=>{
-      dialogue('DRAGÃO','Não contem a ninguém!','Envergonhado, o dragão implora para ajudar. Os dois prometem pagar moedas verdadeiras. Ele ficará esperando sob sua árvore.',()=>{
-       nextLevel('NARRADOR','O castelo por cima','O dragão leva os dois à torre do castelo. Eles descem por uma escada e encontram Malacord vestido para o próprio casamento.');
-      });});});
+    dialogue('DRAGÃO','Vocês serão devorados!','O dragão não quer ajudar e começa a cuspir fogo! O herói salta sobre a pilha de moedas e desliza montanha abaixo. Use SOMENTE ↑ e ↓ para desviar das bolas de fogo!',()=>{
+     startSlide();
+    });
    }
   }
   if(scene===3){
@@ -294,6 +339,7 @@ export function mountStory(root,onExit,uid='guest'){
  }
  function step(dt){
   if(paused||menu)return;
+  if(coinSlide){ticks+=dt;coinSlide.update(dt,key.up,key.down);return;}
   ticks+=dt;player.swing=Math.max(0,player.swing-dt);player.cooldown=Math.max(0,player.cooldown-dt);player.iframes=Math.max(0,player.iframes-dt);
   const speed=((key.right?1:0)-(key.left?1:0))*2.7*dt;
   if(speed)player.face=Math.sign(speed);
@@ -330,10 +376,12 @@ export function mountStory(root,onExit,uid='guest'){
   const dt=clamp((t-(last||t))/16.667,.35,2);last=t;
   step(dt);draw();raf=requestAnimationFrame(loop);
  }
- function jump(){if(!paused&&!menu&&player.ground){player.ground=false;player.vy=-8.7;}}
+ function jump(){if(!coinSlide&&!paused&&!menu&&player.ground){player.ground=false;player.vy=-8.7;}}
  function onKeyDown(e){
   if(dead||e.target?.matches('input, textarea, select'))return;
   const k=e.key.toLowerCase();
+  if(coinSlide){if(['arrowup','w'].includes(k))key.up=true;if(['arrowdown','s'].includes(k))key.down=true;
+   if(['arrowup','arrowdown','w','s','arrowleft','arrowright',' '].includes(k))e.preventDefault();return;}
   if(['arrowleft','arrowright','arrowup','a','d','w',' ','x','z'].includes(k))e.preventDefault();
   if(k==='arrowleft'||k==='a')key.left=true;
   if(k==='arrowright'||k==='d')key.right=true;
@@ -341,16 +389,16 @@ export function mountStory(root,onExit,uid='guest'){
   if(!e.repeat&&(k==='x'||k==='z'))attack();
   if(k==='enter'&&!modal.classList.contains('hidden'))resume();
  }
- function onKeyUp(e){const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')key.left=false;if(k==='arrowright'||k==='d')key.right=false;}
- function onBlur(){key.left=false;key.right=false;}
+ function onKeyUp(e){const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')key.left=false;if(k==='arrowright'||k==='d')key.right=false;if(k==='arrowup'||k==='w')key.up=false;if(k==='arrowdown'||k==='s')key.down=false;}
+ function onBlur(){key.left=key.right=key.up=key.down=false;}
  function onClick(e){
   if(e.target.closest('[data-story-new]')){newGame();return;}
   if(e.target.closest('[data-story-continue]')){continueGame();return;}
   if(e.target.closest('[data-story-controls]')){root.querySelector('#luminous-menu').classList.add('hidden');menu=false;dialogue('COMO JOGAR','Controles','A / D ou as setas movem o herói. Espaço pula, X ataca ou interage. Na montanha, o Bardo ajuda. O progresso é salvo automaticamente.',()=>{menu=true;root.querySelector('#luminous-menu').classList.remove('hidden');});return;}
   if(e.target.closest('[data-story-next-new]')){resume();return;}
-  if(e.target.closest('[data-story-exit-new]')){destroy();onExit();}
+  if(e.target.closest('[data-story-exit-new]')){destroy();onExit();return;}
   const action=e.target.closest('[data-story-act]')?.dataset.storyAct;
-  if(action==='jump')jump();if(action==='attack')attack();
+  if(!coinSlide&&action==='jump')jump();if(!coinSlide&&action==='attack')attack();
  }
  function onHold(e){const btn=e.target.closest('[data-story-hold]');if(!btn)return;e.preventDefault();key[btn.dataset.storyHold]=true;btn.setPointerCapture?.(e.pointerId);}
  function onRelease(e){const btn=e.target.closest('[data-story-hold]');if(btn)key[btn.dataset.storyHold]=false;}
