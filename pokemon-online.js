@@ -2,6 +2,7 @@
 // As partidas têm turnos atômicos e dano determinístico. Não concedem moedas
 // nem resultados de ranking sem validação pelo servidor.
 // Recompensas de 100/10 LCoins são creditadas somente na carteira LOCAL do protótipo.
+import {pvpBattleEffect,RARE_SUPER_MULTIPLIER} from './pokemon-battle-effects.js';
 import {
  collection, doc, getDoc, addDoc, updateDoc, runTransaction, query,
  where, limit, onSnapshot, serverTimestamp
@@ -43,9 +44,11 @@ export function calculateOnlineBattle(match,turns,catalogue){
    const move=attacker.moves?.[turn.index];
    if(!move||attacker.hpNow<=0||attacker.pe<charge(move))break;
    attacker.pe-=charge(move);
-   const damage=Math.max(4,Math.round((move.power+attacker.atk*.55-defender.def*.30)*types(move.type,defender.type)));
+   const effect=pvpBattleEffect(match.id,turn.turnNo,turn.uid);
+   const damage=effect.miss?0:Math.max(4,Math.round((move.power+attacker.atk*.55-defender.def*.30)*types(move.type,defender.type)*(effect.rareSuper?RARE_SUPER_MULTIPLIER:1)));
    defender.hpNow=Math.max(0,defender.hpNow-damage);
-   log.unshift(attacker.name+' usou '+move.name+'! '+damage+' de dano.');
+   log.unshift(effect.miss?attacker.name+' usou '+move.name+'... MISS! O golpe errou.':
+     attacker.name+' usou '+move.name+'! '+damage+' de dano.'+(effect.rareSuper?' SUPER EFETIVO!! Golpe raríssimo!':types(move.type,defender.type)>1?' É super efetivo pelo tipo!':''));
    if(defender.hpNow===0){
     const replacement=enemy.findIndex(p=>p.hpNow>0);
     if(replacement<0){winner=turn.uid;log.unshift('A batalha terminou!');}
