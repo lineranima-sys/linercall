@@ -1,5 +1,6 @@
+import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
-import { createPokemonOnline } from './pokemon-online.js?v=20261105-pvp-rewards-100-10';
+import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
 import { mountStory } from './story-game.js?v=20261105-moedas-fire-dodge';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 
@@ -276,6 +277,7 @@ async function startApp(user) {
   setUserUI();
   if(localStorage.getItem('linercall-sidebar-collapsed')==='1')$('app-shell')?.classList.add('sidebar-collapsed');
 
+  initSocialControls();
   initNotifications();
   listenChat();
   listenFriends();
@@ -387,6 +389,9 @@ function buildSidebarNavigation() {
 let activeFriendId = null;
 let stopFriendListeners = [];
 let notificationCenter = null;
+let socialControls = null;
+let latestFriendDocs = [];
+let latestFriendRequests = [];
 let dmWasCollapsed = false;
 let dmFocus = false;
 function dmFocusOff(){
@@ -411,32 +416,89 @@ function initNotifications(){
   openOffer:()=>{switchView('shop');renderShop();}
  });
  notificationCenter.start();
+ notificationCenter.setPreferences(socialControls);
+}
+
+
+function memberPhoto(user={}){
+ const raw=String(user.avatarData||user.photoURL||(user.id===currentUser?.uid?(shopState?.avatarData||''):'')||'');
+ return /^https:\/\//i.test(raw)||/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(raw)?raw:'';
+}
+function memberAvatarHTML(user){
+ const img=memberPhoto(user),name=user.displayName||'Jogador';
+ return '<span class="avatar member-avatar">'+(img?'<img src="'+safeText(img)+'" loading="lazy" alt="Foto de '+safeText(name)+'">':safeText(initials(name)))+'</span>';
+}
+function socialDisplayName(id,real){return socialControls?.label(id,real)||real||'Jogador';}
+function refreshSocialUI(){
+ notificationCenter?.setPreferences(socialControls);
+ renderFriendRequests();
+ renderFriendList();
+ renderOnlineMembers(latestOnlinePlayers);
+}
+function initSocialControls(){
+ socialControls?.destroy();
+ socialControls=createSocialControls({
+  db,uid:currentUser.uid,notify:toast,onChange:refreshSocialUI,
+  onFriendRemoved:id=>{
+   if(activeFriendId===id){window.stopDMListener?.();window.stopDMListener=null;activeFriendId=null;dmFocusOff();$('dm-panel')?.classList.add('hidden');}
+   renderFriendList();
+  }
+ });
+ socialControls.start();
+}
+function renderFriendList(){
+ const box=$('friends-list');if(!box||!currentUser)return;
+ const docs=latestFriendDocs.filter(d=>d.data().uids.some(id=>id!==currentUser.uid&&!socialControls?.hasBlocked(id)));
+ notificationCenter?.setFriends(docs.map(d=>{
+  const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid);
+  return {uid:other,name:socialDisplayName(other,f.names?.[other]||'Jogador')};
+ }));
+ box.innerHTML=docs.length?docs.map(d=>{
+  const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid),real=f.names?.[other]||'Jogador',
+   alias=socialDisplayName(other,real),muted=socialControls?.isMuted(other);
+  return '<div class="friend-row friend-with-actions">'+
+   '<button type="button" class="friend-open" data-friend-open="'+safeText(other)+'" data-friend-name="'+safeText(real)+'">'+
+   '<span>● '+safeText(alias)+'</span><small>'+(muted?'🔕 Silenciado':'Abrir conversa →')+'</small></button>'+
+   '<button type="button" class="btn social-settings-btn" data-social-manage="'+safeText(other)+'" data-social-name="'+safeText(real)+'" aria-label="Gerenciar '+safeText(alias)+'">⚙</button></div>';
+ }).join(''):'<p class="muted">Você ainda não adicionou amigos.</p>';
+ notificationCenter?.render();
+}
+function renderOnlineMembers(active=latestOnlinePlayers){
+ if(!currentUser)return;
+ const members=(active||[]).filter(user=>!socialControls?.hasBlocked(user.id));
+ if($('online-count'))$('online-count').textContent=String(members.length);
+ if($('online-members'))$('online-members').innerHTML=members.length?members.map(user=>
+  '<button class="member-row profile-open-trigger" data-profile-open="'+safeText(user.id)+'" data-profile-name="'+safeText(user.displayName||'Jogador')+'">'+
+  memberAvatarHTML(user)+'<b>'+safeText(socialDisplayName(user.id,user.displayName||'Jogador'))+'</b><small>'+
+  safeText(user.activityLabel||'online')+'</small></button>'
+ ).join(''):'<p class="muted">Ninguém online por enquanto.</p>';
+ if($('arena-members'))$('arena-members').innerHTML=members.filter(user=>user.id!==currentUser.uid).map(user=>
+  '<div class="arena-player">'+memberAvatarHTML(user)+'<b>'+safeText(socialDisplayName(user.id,user.displayName||'Jogador'))+'</b><small>● online</small>'+
+  '<button class="duel-btn" data-challenge="'+safeText(user.id)+'" data-name="'+safeText(user.displayName||'Jogador')+'">Desafiar</button></div>'
+ ).join('')||'<p class="muted">Nenhum outro jogador online agora.</p>';
 }
 
 function friendPairId(a,b){return [a,b].sort().join('_');}
+function renderFriendRequests(){
+  const box=$('friend-requests');if(!box)return;
+  const pending=latestFriendRequests.filter(d=>d.data().status==='pending'&&!socialControls?.hasBlocked(d.data().fromUid));
+  notificationCenter?.setRequests(pending.map(d=>({id:d.id,uid:d.data().fromUid,name:d.data().fromName})));
+  box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
+    const req=d.data();
+    return '<div class="friend-row"><b>'+safeText(req.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
+  }).join('');
+}
 function listenFriends(){
   stopFriendListeners.forEach(fn=>fn()); stopFriendListeners=[];
   const rq=query(collection(db,'friendRequests'),where('toUid','==',currentUser.uid));
   stopFriendListeners.push(onSnapshot(rq,snap=>{
-    const box=$('friend-requests'); if(!box)return;
-    const pending=snap.docs.filter(d=>d.data().status==='pending');
-    notificationCenter?.setRequests(pending.map(d=>({id:d.id,name:d.data().fromName})));
-    box.innerHTML=!pending.length?'<p class="muted">Nenhum pedido recebido.</p>':pending.map(d=>{
-      const r=d.data();return '<div class="friend-row"><b>'+safeText(r.fromName)+'</b><div><button class="btn btn-primary" data-friend-accept="'+d.id+'">Aceitar</button> <button class="btn" data-friend-reject="'+d.id+'">Recusar</button></div></div>';
-    }).join('');
+    latestFriendRequests=snap.docs;
+    renderFriendRequests();
   },e=>{console.error(e);toast('Não foi possível carregar pedidos.');}));
   const fq=query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid));
   stopFriendListeners.push(onSnapshot(fq,snap=>{
-    const box=$('friends-list');if(!box)return;
-    notificationCenter?.setFriends(snap.docs.map(d=>{
-      const f=d.data(),other=f.uids.find(id=>id!==currentUser.uid);
-      return {uid:other,name:f.names?.[other]||'Jogador'};
-    }));
-    box.innerHTML=snap.empty?'<p class="muted">Você ainda não adicionou amigos.</p>':snap.docs.map(d=>{
-      const f=d.data(),other=f.uids.find(uid=>uid!==currentUser.uid),name=f.names?.[other]||'Jogador';
-      return '<button class="friend-row friend-open" data-friend-open="'+safeText(other)+'" data-friend-name="'+safeText(name)+'"><span>● '+safeText(name)+'</span><small>Abrir conversa →</small></button>';
-    }).join('');
-    notificationCenter?.render();
+    latestFriendDocs=snap.docs;
+    renderFriendList();
   },e=>{console.error(e);toast('Não foi possível carregar amigos.');}));
 }
 async function searchFriend(){
@@ -451,6 +513,7 @@ async function searchFriend(){
 }
 async function sendFriendRequest(uid,name){
   if(!uid||uid===currentUser.uid)return;
+  if(socialControls?.hasBlocked(uid))return toast('Desbloqueie esta pessoa antes de enviar um pedido.');
   try{
     const existing=await getDocs(query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid)));
     if(existing.docs.some(d=>d.data().uids.includes(uid))){toast('Vocês já são amigos.');return;}
@@ -483,24 +546,25 @@ async function answerFriendRequest(requestId,accept){
 }
 async function loadDMContact(uid,name){
  const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
- set('dm-contact-name',name);
+ set('dm-contact-name',socialDisplayName(uid,name));
  const avatar=$('dm-contact-avatar');if(avatar){avatar.textContent=initials(name);avatar.style.backgroundImage='';}
  set('dm-contact-activity','Buscando presença...');
  try{
   const snapshot=await getDoc(doc(db,'users',uid));
   if(uid!==activeFriendId||!snapshot.exists())return;
   const other=snapshot.data(),isOnline=Date.now()-(other.lastSeen?.toMillis?.()||0)<180000;
-  set('dm-contact-name',other.displayName||name);
+  set('dm-contact-name',socialDisplayName(uid,other.displayName||name));
   set('dm-contact-activity',isOnline?(other.activityLabel||'● Online'):'Offline');
-  if(other.avatarData&&avatar){avatar.style.backgroundImage='url("'+String(other.avatarData).replace(/"/g,'%22')+'")';avatar.textContent='';}
+  const photo=memberPhoto(other);if(photo&&avatar){avatar.style.backgroundImage='url("'+photo.replace(/"/g,'%22')+'")';avatar.textContent='';}
  }catch(e){if(uid===activeFriendId)set('dm-contact-activity','Status indisponível');}
 }
 function openDirectMessage(uid,name){
  if(!currentUser||!uid)return;
+ if(socialControls?.hasBlocked(uid))return toast('Este jogador está bloqueado.');
  if(!$('view-friends')?.classList.contains('active-view'))switchView('friends');
  activeFriendId=uid;
  setPresence('private_chat','Em chat privado com '+name);
- $('dm-title').textContent=name;
+ $('dm-title').textContent=socialDisplayName(uid,name);
  $('dm-panel')?.classList.remove('hidden');
  $('dm-messages').innerHTML='<p class="muted">Carregando mensagens...</p>';
  dmFocusOn();notificationCenter?.setActive(uid);
@@ -520,7 +584,7 @@ function openDirectMessage(uid,name){
 }
 async function sendDirectMessage(event){
   event.preventDefault();const input=$('dm-input'),value=input.value.trim();
-  if(!value||!activeFriendId)return;if(value.length>1000){toast('A mensagem é muito longa.');return;}
+  if(!value||!activeFriendId)return;if(socialControls?.hasBlocked(activeFriendId))return toast('Jogador bloqueado.');if(value.length>1000){toast('A mensagem é muito longa.');return;}
   try{
     await addDoc(collection(db,'conversations',friendPairId(currentUser.uid,activeFriendId),'messages'),{uid:currentUser.uid,displayName:profile?.displayName||'Jogador',text:value,createdAt:serverTimestamp()});
     input.value='';input.style.height='auto';
@@ -669,8 +733,7 @@ async function sendMessage(event) {
 function listenUsers() {
   const q = query(
     collection(db, 'users'),
-    orderBy('lastSeen', 'desc'),
-    limit(50)
+    orderBy('lastSeen', 'desc')
   );
 
   stopListeners.push(onSnapshot(q, snap => {
@@ -683,32 +746,8 @@ function listenUsers() {
 
     latestOnlinePlayers=active;
     pokemonOnline?.setPlayers(active);
-    $('online-count').textContent = active.length;
-
-    $('online-members').innerHTML = active.length
-      ? active.slice(0, 9).map(user => `
-          <button class="member-row profile-open-trigger" data-profile-open="${safeText(user.id)}" data-profile-name="${safeText(user.displayName || 'Jogador')}">
-            <div class="avatar member-avatar" ${user.avatarData ? `style="background-image:url('${user.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${user.avatarData ? '' : safeText(initials(user.displayName))}</div>
-            <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>${safeText(user.activityLabel || 'online')}</small>
-          </button>
-        `).join('')
-      : '<p class="muted">Ninguém online por enquanto.</p>';
-
-    $('arena-members').innerHTML = active
-      .filter(user => user.id !== currentUser.uid)
-      .map(user => `
-        <div class="arena-player">
-          <div class="avatar">${safeText(initials(user.displayName))}</div>
-          <b>${safeText(user.displayName || 'Jogador')}</b>
-          <small>● online</small>
-          <button class="duel-btn"
-            data-challenge="${safeText(user.id)}"
-            data-name="${safeText(user.displayName || 'Jogador')}">
-            Desafiar
-          </button>
-        </div>
-      `).join('') || '<p class="muted">Nenhum outro jogador online agora.</p>';
+    if(rankingPlayers.length)renderGlobalRanking();
+    renderOnlineMembers(active);
 
   }, error => {
     console.error(error);
@@ -721,7 +760,11 @@ function listenUsers() {
 // ========================================
 
 function currentIsoWeekKey(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  // Uma semana inicia segunda-feira à meia-noite em Brasília.
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{
+    timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(date).map(p=>[p.type,p.value]));
+  const d = new Date(Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day)));
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -741,49 +784,91 @@ function renderLocalBattleRecord() {
   record.innerHTML='<b>Seu registro local da semana</b><p>'+wins+' vitórias · '+losses+' derrotas</p>'+
   '<small>Salvo neste navegador. O ranking global requer validação pelo servidor para evitar resultados falsos.</small>';
 }
-function listenRanking() {
-  const weekKey = currentIsoWeekKey();
-  stopListeners.push(onSnapshot(collection(db, 'users'), snap => {
-    const users = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(user => user.weekKey === weekKey && Number(user.weeklyWins) > 0)
-      .sort((a, b) => (Number(b.weeklyWins) || 0) - (Number(a.weeklyWins) || 0)
-        || (Number(a.weeklyLosses) || 0) - (Number(b.weeklyLosses) || 0)
-        || String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'));
-
-    const top = users.slice(0, 3);
-    $('podium').innerHTML = top.length
-      ? top.map((user, i) => `
-          <div class="podium-place ${i === 0 ? 'first' : i === 1 ? 'second' : 'third'}">
-            <div class="avatar">${safeText(initials(user.displayName))}</div>
-            <b>${safeText(user.displayName || 'Jogador')}</b>
-            <small>${Number(user.weeklyWins) || 0} vitórias na semana</small>
-            <div class="podium-block">${i + 1}º</div>
-          </div>
-        `).join('')
-      : '<div class="podium-empty">Ainda não há resultados semanais registrados.</div>';
-
-    $('ranking-list').innerHTML = users.map((user, i) => `
-      <div class="ranking-row">
-        <span>${i + 1}</span>
-        <span class="rank-name">
-          <span class="avatar">${safeText(initials(user.displayName))}</span>
-          ${safeText(user.displayName || 'Jogador')}
-          ${user.id === currentUser.uid ? ' (você)' : ''}
-        </span>
-        <span class="wins">${Number(user.weeklyWins) || 0}</span>
-        <span class="losses">${Number(user.weeklyLosses) || 0}</span>
-      </div>
-    `).join('') || '<p class="muted">O ranking semanal começa a aparecer quando resultados validados forem registrados.</p>';
-
-    renderLocalBattleRecord();
-    const period = $('ranking-period');
-    if (period) period.textContent = `SEMANA ${weekKey} · ZERA AUTOMATICAMENTE NA PRÓXIMA SEMANA`;
-  }, error => {
-    console.error(error);
-    toast('Erro ao carregar ranking semanal.');
-  }));
+// Classificação comunitária: todos os usuários, incluindo quem ainda tem 0 vitória.
+// Apenas as vitórias/derrotas PvP confirmadas pelo servidor entram no placar GLOBAL.
+let rankingPlayers=[],rankingScores=new Map(),rankingLoaded=false;
+function rankingPortrait(user){
+ const url=memberPhoto(user);
+ const valid=/^https:\/\//i.test(url)||/^data:image\/(?:png|jpeg|webp);base64,/i.test(url);
+ return valid?'<img src="'+safeText(url)+'" alt="Foto de '+safeText(user.displayName||'Jogador')+'" loading="lazy" referrerpolicy="no-referrer">':safeText(initials(user.displayName||'Jogador'));
 }
+function rankingOnline(user){
+ const last=user.lastSeen?.toMillis?.()||user.lastSeen?.toDate?.()?.getTime()||0;
+ return last>0&&Date.now()-last<3*60*1000;
+}
+function rankingUserStats(user){
+ const score=rankingScores.get(user.id)||{};
+ return {...user,wins:Math.max(0,Number(score.wins)||0),
+  losses:Math.max(0,Number(score.losses)||0),points:Math.max(0,Number(score.points)||0),
+  online:rankingOnline(user)};
+}
+function renderGlobalRanking(){
+ const leaderboard=$('ranking-list'),onlineContainer=$('ranking-online-list'),podium=$('podium');
+ if(!leaderboard||!podium||!onlineContainer)return;
+ const players=rankingPlayers.map(rankingUserStats)
+  .sort((a,b)=>b.wins-a.wins || b.points-a.points || a.losses-b.losses
+   || String(a.displayName||'').localeCompare(String(b.displayName||''),'pt-BR'));
+ const online=players.filter(p=>p.online)
+  .sort((a,b)=>String(a.displayName||'').localeCompare(String(b.displayName||''),'pt-BR'));
+ const badge=$('ranking-online-count');if(badge)badge.textContent=String(online.length);
+ const checkAvatar=u=>'<span class="avatar rank-avatar">'+rankingPortrait(u)+'</span>';
+ const label=p=>p.id===currentUser?.uid?' <span class="rank-you">(você)</span>':'';
+ onlineContainer.innerHTML=online.length?online.map(p=>
+  '<button type="button" class="ranking-live-user" data-profile-open="'+safeText(p.id)+
+   '" data-profile-name="'+safeText(p.displayName||'Jogador')+'">'+
+   checkAvatar(p)+'<span><b>'+safeText(p.displayName||'Jogador')+'</b>'+
+   '<small>● Online · '+p.wins+' V · '+p.losses+' D · '+p.points+' pts</small></span></button>'
+ ).join(''):'<p class="muted">Nenhum jogador online neste momento.</p>';
+ const ranked=players.filter(p=>p.wins>0);
+ podium.innerHTML=ranked.length?ranked.slice(0,3).map((p,i)=>
+  '<div class="podium-place '+(i===0?'first':i===1?'second':'third')+'">'+
+   checkAvatar(p)+'<b>'+safeText(p.displayName||'Jogador')+'</b>'+
+   '<small>'+p.wins+' vitória'+(p.wins===1?'':'s')+' · '+p.points+' pts</small>'+
+   '<div class="podium-block">'+(i+1)+'º</div></div>'
+ ).join(''):'<div class="podium-empty">O pódio começa com a primeira vitória online validada.</div>';
+ leaderboard.innerHTML=players.length?players.map((p,i)=>
+  '<button type="button" class="ranking-row ranking-player-row '+(p.id===currentUser?.uid?'ranking-me ':'')+
+   '" data-profile-open="'+safeText(p.id)+'" data-profile-name="'+safeText(p.displayName||'Jogador')+'">'+
+   '<span class="rank-position">'+(i+1)+'º</span>'+
+   '<span class="rank-name">'+checkAvatar(p)+'<span class="rank-player-name"><b>'+
+    safeText(p.displayName||'Jogador')+'</b><small>'+(p.online?'● Online':'Offline')+label(p)+'</small></span></span>'+
+   '<span class="wins">'+p.wins+'</span><span class="losses">'+p.losses+'</span>'+
+   '<span class="rank-points">'+p.points+'</span></button>'
+ ).join(''):'<p class="muted">Nenhum jogador cadastrado no momento.</p>';
+ const period=$('ranking-period');
+ if(period)period.textContent='SEMANA '+currentIsoWeekKey()+' · REINICIA TODA SEGUNDA ÀS 00:00 (BRASÍLIA)';
+ const status=$('ranking-status');
+ if(status)status.textContent=rankingLoaded?'Pontuação global: 100 por vitória e 10 por derrota PvP validada.':'Buscando resultados globais da semana...';
+ renderLocalBattleRecord();
+}
+function listenRanking(){
+ let weekKey='',stopWeek=null;
+ stopListeners.push(onSnapshot(collection(db,'users'),snap=>{
+  rankingPlayers=snap.docs.map(d=>({id:d.id,...d.data()}));renderGlobalRanking();
+ },err=>{console.error('Erro no ranking de jogadores',err);toast('Não foi possível listar os jogadores.');}));
+ const watchWeek=()=>{
+  const current=currentIsoWeekKey();
+  if(current!==weekKey){
+   if(stopWeek)stopWeek();
+   weekKey=current;rankingLoaded=false;rankingScores=new Map();renderGlobalRanking();
+   stopWeek=onSnapshot(collection(db,'weeklyRankings',weekKey,'players'),snap=>{
+    rankingScores=new Map(snap.docs.map(d=>[d.id,d.data()]));rankingLoaded=true;
+    renderGlobalRanking();
+   },err=>{
+    rankingLoaded=false;console.error('Ranking global inacessível:',err);
+    const status=$('ranking-status');
+    if(status)status.textContent='Ranking global indisponível. Confira as regras publicadas no Firebase.';
+   });
+  }
+  renderGlobalRanking();
+ };
+ watchWeek();
+ const timer=setInterval(watchWeek,60*1000);
+ const onVisible=()=>{if(!document.hidden)watchWeek();};
+ document.addEventListener('visibilitychange',onVisible);
+ stopListeners.push(()=>{clearInterval(timer);stopWeek?.();document.removeEventListener('visibilitychange',onVisible);});
+}
+
 // ========================================
 // DESAFIOS
 // ========================================
@@ -852,13 +937,14 @@ async function openMemberProfile(uid, fallbackName) {
     document.body.appendChild(modal);
   }
   const own = uid === currentUser?.uid;
+  const displayName=socialDisplayName(uid,member.displayName||'Jogador');
   const isOnline = member.lastSeen?.toDate && Date.now()-member.lastSeen.toDate().getTime()<3*60*1000;
   const activity = member.activityLabel || (isOnline ? 'online' : 'offline');
   modal.innerHTML = `<div class="cropper-card member-profile-card">
     <div class="panel-head"><h3>Perfil do jogador</h3><button class="icon-btn" data-profile-close>✕</button></div>
-    <div class="profile-banner-preview ${member.bannerStyle ? '' : 'no-profile-banner'}" data-style="${member.bannerStyle || 0}">${safeText(member.displayName || 'Jogador')}</div>
-    <div class="member-profile-identity"><div class="avatar avatar-large" ${member.avatarData ? `style="background-image:url('${member.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${member.avatarData ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : safeText(activity)}</small></div></div>
-    ${!own ? `<div class="member-profile-actions"><button class="btn btn-primary" data-profile-add="${safeText(uid)}" data-profile-add-name="${safeText(member.displayName||'Jogador')}">Adicionar amizade</button><button class="btn" data-profile-message="${safeText(uid)}" data-profile-message-name="${safeText(member.displayName||'Jogador')}">Enviar mensagem</button></div>` : ''}
+    <div class="profile-banner-preview ${member.bannerStyle ? '' : 'no-profile-banner'}" data-style="${member.bannerStyle || 0}">${safeText(displayName)}</div>
+    <div class="member-profile-identity"><div class="avatar avatar-large" ${memberPhoto(member) ? `style="background-image:url('${memberPhoto(member)}');background-size:cover;background-position:center;color:transparent"` : ''}>${memberPhoto(member) ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(displayName)}</h2><small>${own ? 'Este é o seu perfil' : safeText(activity)}</small></div></div>
+    ${!own ? `<div class="member-profile-actions"><button class="btn btn-primary" data-profile-add="${safeText(uid)}" data-profile-add-name="${safeText(member.displayName||'Jogador')}">Adicionar amizade</button><button class="btn" data-profile-message="${safeText(uid)}" data-profile-message-name="${safeText(member.displayName||'Jogador')}">Enviar mensagem</button><button class="btn" data-social-manage="${safeText(uid)}" data-social-name="${safeText(member.displayName||'Jogador')}">⚙ Gerenciar</button></div>` : ''}
   </div>`;
   modal.classList.remove('hidden');
 }
@@ -940,6 +1026,31 @@ function savePokemonArena() {
 
 // PvP: crédito local único por partida concluída. O saldo atual do LinerCall
 // ainda usa localStorage; para economia anti-fraude é necessário backend.
+let rankBackendWarningSent=false;
+async function settleOnlineRanking(matchId){
+ if(!currentUser||!matchId)return;
+ const token=await currentUser.getIdToken();
+ try{
+  const response=await fetch('/api/settlePokemonMatch',{
+   method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+   body:JSON.stringify({matchId})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+   if(!rankBackendWarningSent){
+    rankBackendWarningSent=true;
+    toast(response.status===503?'Ranking global: falta configurar as credenciais no servidor.':'Ranking global: '+(data.error||'não foi possível registrar a partida.'));
+   }
+   throw new Error(data.error||'Falha ao validar resultado.');
+  }
+  rankBackendWarningSent=false;
+  return data;
+ }catch(error){
+  console.warn('Registro de resultado semanal pendente:',error);
+  throw error;
+ }
+}
+
 function creditPokemonOnlineReward({matchId,winnerUid,hostUid,guestUid}) {
   if(!currentUser||!pokemonArena||!matchId||typeof matchId!=='string')return;
   const uid=currentUser.uid;
@@ -968,7 +1079,7 @@ function initPokemonArena() {
   if (!currentUser) return;
   pokemonArena = loadPokemonArena();
   if (pokemonOnline) pokemonOnline.destroy();
-  pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast,onReward:creditPokemonOnlineReward});
+  pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast,onReward:creditPokemonOnlineReward,onMatchSettled:settleOnlineRanking});
   pokemonOnline.start();
   pokemonOnline.setPlayers(latestOnlinePlayers);
   if (String(profile?.displayName||'').trim().toLocaleLowerCase('pt-BR') === 'tom' && !localStorage.getItem('linercall-tom-coins-reset-v1')) { pokemonArena.coins=0; localStorage.setItem('linercall-tom-coins-reset-v1','1'); savePokemonArena(); }
@@ -1255,7 +1366,7 @@ function renderShop() {
   <article class="shop-item panel"><div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle||0}">✦ LINERCALL'S ✦</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Banner de perfil</h3><p>Você pode trocar o banner uma vez por compra. Cada nova alteração custa moedas novamente.</p><b class="shop-price">🪙 200 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="banner">${shopState.bannerCredits>0?'Escolher banner · crédito disponível':'Comprar alteração'}</button><div class="banner-style-options"><button data-banner-style="1" ${shopState.bannerCredits>0?'':'disabled'}>Aurora</button><button data-banner-style="2" ${shopState.bannerCredits>0?'':'disabled'}>Nebulosa</button><button data-banner-style="3" ${shopState.bannerCredits>0?'':'disabled'}>Vulcão</button></div></div></article>
  </div><p class="shop-notice">Protótipo local: moedas e cosméticos ficam neste navegador e ainda não sincronizam entre dispositivos.</p>
  <div id="avatar-cropper" class="cropper-modal hidden"><div class="cropper-card"><div class="panel-head"><h3>Enquadre sua foto</h3><button class="icon-btn" data-crop-cancel>✕</button></div><div class="cropper-window"><img id="avatar-crop-image" alt="Prévia da foto"></div><label>Zoom <input id="avatar-crop-zoom" type="range" min="1" max="3" step=".05" value="1"></label><label>Horizontal <input id="avatar-crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical <input id="avatar-crop-y" type="range" min="0" max="100" value="50"></label><div class="cropper-actions"><button class="btn" data-crop-cancel>Cancelar</button><button class="btn btn-primary" data-crop-save>Salvar foto</button></div></div></div>`;
- if(cinemaItems.length){const lighty=cinemaItems.map(item=>item.type==='movie'?`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · FILME</span><h3>${safeText(item.title)}</h3><b class="shop-price">🪙 2.000 moedas</b><button class="btn btn-primary" data-shop-movie="${safeText(item.id)}" ${hasLightyPurchase('movie:'+item.id)?'disabled':''}>${hasLightyPurchase('movie:'+item.id)?'Comprado':'Comprar filme'}</button></div></article>`:`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · SÉRIE</span><h3>${safeText(item.title)}</h3><b class="shop-price">🪙 1.500 moedas por temporada</b><p>Escolha a temporada na página da série para comprar.</p><button class="btn" data-shop-open-cinema="${safeText(item.id)}">Ver temporadas</button></div></article>`).join('');root.insertAdjacentHTML('beforeend','<h3 class="shop-section-title">LightyFlix</h3><div class="shop-grid">'+lighty+'</div>');}
+ if(cinemaItems.length){const lighty=cinemaItems.map(item=>item.type==='movie'?`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · FILME</span><h3>${safeText(item.title)}</h3><b class="shop-price">${item.catalogOnly?'🔒 Ainda indisponível':'🪙 2.000 moedas'}</b><button class="btn btn-primary" data-shop-movie="${safeText(item.id)}" ${item.catalogOnly||hasLightyPurchase('movie:'+item.id)?'disabled':''}>${item.catalogOnly?'Em breve':hasLightyPurchase('movie:'+item.id)?'Comprado':'Comprar filme'}</button></div></article>`:`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · SÉRIE</span><h3>${safeText(item.title)}</h3><b class="shop-price">🪙 1.500 moedas por temporada</b><p>Escolha a temporada na página da série para comprar.</p><button class="btn" data-shop-open-cinema="${safeText(item.id)}">Ver temporadas</button></div></article>`).join('');root.insertAdjacentHTML('beforeend','<h3 class="shop-section-title">LightyFlix</h3><div class="shop-grid">'+lighty+'</div>');}
  applyShopCosmetics();
 }
 let pendingAvatarImage = null;
@@ -1702,7 +1813,22 @@ function openCinemaDetails(id){
  renderSeriesDetails(item,0);
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
- const purchaseButton=$('cinema-detail-buy');if(purchaseButton){const key='movie:'+id,owned=hasLightyPurchase(key);purchaseButton.textContent=owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';purchaseButton.disabled=item.type!=='movie'||owned;purchaseButton.classList.toggle('hidden',item.type!=='movie');purchaseButton.onclick=()=>buyLightyContent(key,2000,'Filme');}
+ const purchaseButton=$('cinema-detail-buy');if(purchaseButton){
+  const key='movie:'+id,owned=hasLightyPurchase(key),catalogOnly=item.catalogOnly===true;
+  purchaseButton.textContent=catalogOnly?'🔒 Ainda não disponível no LightyFlix':owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';
+  purchaseButton.disabled=catalogOnly||item.type!=='movie'||owned;
+  purchaseButton.classList.toggle('hidden',item.type!=='movie');
+  purchaseButton.onclick=()=>{if(!catalogOnly)buyLightyContent(key,2000,'Filme');};
+ }
+ const detailActions=$('cinema-detail-buy')?.parentElement;
+ if(detailActions){
+  detailActions.querySelector('#cinema-official-link')?.remove();
+  if(item.catalogOnly===true&&validWebUrl(item.officialUrl||'')){
+   const official=document.createElement('a');official.id='cinema-official-link';
+   official.className='btn cinema-official-link';official.href=item.officialUrl;official.target='_blank';official.rel='noopener noreferrer';
+   official.textContent='Ver na Netflix ↗';detailActions.appendChild(official);
+  }
+ }
  const listButton=$('cinema-detail-list');listButton.dataset.itemId=id;const refresh=()=>{listButton.textContent=getMyList().includes(id)?'✓ Remover da lista':'+ Minha lista';};listButton.onclick=()=>{toggleMyList(id);refresh();};refresh();
  $('cinema-details').classList.remove('hidden');document.body.classList.add('cinema-modal-open');applyLanguage();
 }
@@ -1722,7 +1848,8 @@ async function loadCinema() {
     {id:'lighty-gumball',title:'O Incrível Mundo de Gumball',type:'series',year:2011,releaseDate:'3 de maio de 2011',duration:'~11 min por episódio',description:'Gumball, Darwin e a família Watterson vivem confusões absurdas na cidade de Elmore, onde qualquer coisa pode acontecer.',featured:true,poster:'https://image.tmdb.org/t/p/original/VYnnyA2hyxi3VUPgCA71mMtt69.jpg'},
     {id:'lighty-teen-titans',title:'Jovens Titãs',type:'series',year:2003,releaseDate:'19 de julho de 2003',duration:'~22 min por episódio',description:'Robin, Estelar, Ravena, Mutano e Ciborgue protegem Jump City enquanto enfrentam vilões e tentam conviver como equipe.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BOTg3NzY2MDQtMjUxNS00N2Q3LTkxODktMmU1NzdjZTNkMzQ0XkEyXkFqcGc%40._V1_.jpg'},
     {id:'lighty-peabody-sherman',title:'As Aventuras de Peabody e Sherman',type:'movie',year:2014,releaseDate:'28 de fevereiro de 2014 (Brasil)',duration:'92 min',description:'Sr. Peabody, um cão inventor e genial, e seu filho adotivo Sherman viajam pela história usando a máquina do tempo WABAC. Quando uma aventura sai do controle, os dois precisam consertar o passado para proteger o futuro.',featured:true,poster:'https://m.media-amazon.com/images/M/MV5BYTBjMDAzYTEtYTI2ZS00MWJkLWJiM2MtOGEwN2NhZGQ1MmNlXkEyXkFqcGc%40._V1_FMjpg_UX1000_.jpg'},
-    {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'}
+    {id:'lighty-steven-universe-movie',title:'Steven Universo: O Filme',type:'movie',year:2019,releaseDate:'7 de outubro de 2019 (Brasil)',duration:'82 min',description:'Depois de um longo período de paz, Steven acredita que finalmente poderá descansar. Mas uma nova ameaça chega à Terra, obrigando-o e às Crystal Gems a proteger tudo o que construíram.',featured:true,poster:'https://www.syfy.com/sites/syfy/files/2019/07/stevenuniverse.png'},
+    {id:'lighty-pokemon-mewtwo-evolution',title:'Pokémon: Mewtwo Contra-ataca — Evolução',type:'movie',year:2019,releaseDate:'27 de fevereiro de 2020 (Netflix Brasil)',duration:'~96 min',description:'Uma aventura 3D que recria o primeiro filme Pokémon. Ash, Misty e Brock recebem um convite misterioso para uma ilha onde conhecem Mewtwo, um Pokémon criado artificialmente. Uma batalha de Pokémon originais e clones coloca todos à prova.',featured:true,catalogOnly:true,officialUrl:'https://www.netflix.com/br/title/81223075',poster:'https://image.tmdb.org/t/p/w780/xlO50h3EX1w99KGztTzsjQBwPfs.jpg'}
   ];
 
   try {
@@ -1759,6 +1886,7 @@ function playCinemaItem(id) {
     return;
   }
 
+  if(item.catalogOnly)return toast('Este filme ainda não pode ser reproduzido no LightyFlix.');
   const source = validWebUrl(item.sourceUrl || item.embedUrl || '');
   if(item.type==='movie'&&!hasLightyPurchase('movie:'+id))return toast('Compre este filme por 2.000 moedas para liberar.');
 
@@ -1879,7 +2007,7 @@ function setupEvents() {
     const lightyScroll=event.target.closest('[data-lighty-scroll]');if(lightyScroll){const row=lightyScroll.parentElement?.querySelector(lightyScroll.dataset.lightyScroll==='episodes'?'.lighty-episode-row':'.lighty-season-row');if(row)row.scrollBy({left:(lightyScroll.dataset.direction==='next'?1:-1)*Math.max(220,row.clientWidth*.78),behavior:'smooth'});}
     const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)toast(seasonBuy.dataset.buySeason==='lighty-demon-slayer'?'Este episódio ainda não tem reprodução publicada.':'🔒 Temporada ainda não lançada no LightyFlix.');
     const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
-    const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie)buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');
+    const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie){const listing=cinemaItems.find(x=>x.id===lightyMovie.dataset.shopMovie);if(listing?.catalogOnly)toast('Este filme ainda não está disponível no LightyFlix.');else buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');}
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
     const addFriend = event.target.closest('[data-friend-add]'); if(addFriend)sendFriendRequest(addFriend.dataset.friendAdd,addFriend.dataset.friendAddName);
     const acceptFriend = event.target.closest('[data-friend-accept]'); if(acceptFriend)answerFriendRequest(acceptFriend.dataset.friendAccept,true);
@@ -1934,6 +2062,12 @@ function setupEvents() {
     if (event.target.closest('[data-crop-cancel]')) { pendingAvatarImage=null; $('avatar-cropper')?.classList.add('hidden'); }
     if (event.target.closest('[data-crop-save]')) saveCroppedAvatar();
     if (event.target.closest('[data-profile-close]')) $('member-profile-modal')?.classList.add('hidden');
+    const manageSocial=event.target.closest('[data-social-manage]');
+    if(manageSocial){
+      const other=manageSocial.dataset.socialManage;
+      socialControls?.show(other,manageSocial.dataset.socialName||'Jogador',latestFriendDocs.some(d=>d.data().uids.includes(other)));
+      return;
+    }
     const profileTrigger=event.target.closest('[data-profile-open]'); if(profileTrigger) openMemberProfile(profileTrigger.dataset.profileOpen, profileTrigger.dataset.profileName);
     const profileAdd=event.target.closest('[data-profile-add]'); if(profileAdd)sendFriendRequest(profileAdd.dataset.profileAdd,profileAdd.dataset.profileAddName);
     const profileMessage=event.target.closest('[data-profile-message]'); if(profileMessage){$('member-profile-modal')?.classList.add('hidden');openDirectMessage(profileMessage.dataset.profileMessage,profileMessage.dataset.profileMessageName);}
@@ -1973,7 +2107,7 @@ if (configured) {
 
       } else {
         pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
-        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;
+        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;socialControls?.destroy();socialControls=null;latestFriendDocs=[];latestFriendRequests=[];
         currentUser = null;
         profile = null;
         cleanupListeners();

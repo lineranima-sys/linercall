@@ -844,3 +844,84 @@ body.cinema-modal-open{overflow:hidden}
 .coin-slide-active .luminous-slide-touch{display:flex}
 .coin-slide-active .luminous-instructions{color:#fff0bc;font-weight:700}
 @media(max-width:540px){.luminous-slide-touch{flex-direction:column;padding:7px;gap:7px}.luminous-slide-touch button{min-height:46px;min-width:110px}}
+
+
+/* Ranking global semanal · fotos, vitórias, derrotas, pontos e presença */
+.ranking-live-panel{padding:19px 21px;margin-bottom:20px;border-color:#346c74;background:linear-gradient(130deg,#15283c,#132038)}
+.ranking-live-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px}
+.ranking-live-heading h3{display:flex;align-items:center;gap:8px;font-size:17px;margin:5px 0;color:#edfffc}
+.ranking-live-heading small{color:#9bb4c6;font-size:11px}
+.ranking-online-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#4a8192 #102138}
+.ranking-live-user{display:flex;align-items:center;text-align:left;gap:10px;min-width:0;min-height:70px;padding:11px;border:1px solid #34546a;border-radius:11px;background:#0e2134;color:inherit}
+.ranking-live-user:hover,.ranking-live-user:focus-visible{border-color:#6ad6cd;background:#1d3a4b}
+.ranking-live-user>span:last-child{min-width:0;display:grid;gap:4px}
+.ranking-live-user b{font-size:12px;color:#fff;overflow-wrap:anywhere}
+.ranking-live-user small{font-size:10px;color:#90d7b8;line-height:1.4}
+.rank-avatar{display:grid;place-items:center;flex-shrink:0;overflow:hidden;border-radius:13px;background:linear-gradient(135deg,#326c8c,#428d8d);width:43px;height:43px;color:#fff;font-weight:800}
+.rank-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.ranking-summary{display:flex;justify-content:space-between;flex-wrap:wrap;gap:9px;color:#caeae9;background:#162f46;border:1px solid #345873;padding:12px 15px;border-radius:10px;font-size:11px;font-weight:700;margin-bottom:16px}
+.ranking-table-head,.ranking-row{display:grid;grid-template-columns:44px minmax(170px,1fr) 90px 90px 95px;align-items:center;gap:10px}
+.ranking-table-head{padding:13px 16px;background:#111e31;color:#9eb8d0;font-size:10px;letter-spacing:1px;font-weight:800}
+.ranking-player-row{width:100%;text-align:left;border:0;border-bottom:1px solid #30425b;background:transparent;color:#e8f3fc;padding:13px 16px;font-size:13px;transition:background .15s}
+.ranking-player-row:hover,.ranking-player-row:focus-visible{background:#20394e}
+.ranking-player-row.ranking-me{background:#163d4888;border-left:3px solid #69e8d3}
+.ranking-player-row .rank-name{display:flex;align-items:center;gap:10px;min-width:0}
+.ranking-player-row .rank-player-name{display:grid;gap:5px;min-width:0}
+.rank-player-name b{color:#fff;overflow-wrap:anywhere}
+.rank-player-name small{font-size:10px;color:#a2bed1}
+.ranking-player-row .wins,.ranking-player-row .losses,.ranking-player-row .rank-points{font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}
+.ranking-player-row .rank-points{color:#ffd679}
+.ranking-player-row .wins{color:#8cebb4}
+.ranking-player-row .losses{color:#f5a6ae}
+.rank-position{color:#f1d594;font-weight:800}
+.rank-you{color:#9ee8e1}
+.ranking-status{padding:13px 15px 0;color:#94a9bd;font-size:11px;line-height:1.5}
+#podium .podium-place .rank-avatar{width:60px;height:60px;margin:0 auto 10px;border:2px solid #75a7bd}
+#podium .podium-place b{display:block;overflow-wrap:anywhere}
+#online-members{max-height:420px;overflow-y:auto;scrollbar-width:thin}
+.ranking-table-head span:nth-child(n+3){text-align:center}
+.ranking-player-row>.wins,.ranking-player-row>.losses,.ranking-player-row>.rank-points{text-align:center}
+@media(max-width:760px){
+ .ranking-table-head,.ranking-row{grid-template-columns:29px minmax(85px,1fr) 53px 57px 62px;gap:5px}
+ .ranking-table-head{padding:11px 7px;font-size:8px;letter-spacing:0}
+ .ranking-player-row{padding:11px 7px;font-size:11px}
+ .ranking-player-row .rank-avatar{width:32px;height:32px;min-width:32px}
+ .rank-player-name small{font-size:9px}
+ .ranking-player-row .wins,.ranking-player-row .losses,.ranking-player-row .rank-points{font-size:12px}
+ .ranking-live-panel{padding:13px}
+}
+
+/* Avisos sobre modais do LightyFlix: nunca sofrer o blur do fundo */
+body > #toast{z-index:2500!important;isolation:isolate;filter:none!important;backdrop-filter:none!important;max-width:min(90vw,520px);text-align:center;box-shadow:0 18px 45px #0009,0 0 0 2px #ffffff35}
+body > #toast.show{opacity:1;transform:translate(-50%,0)}
+
+
+/* Amigos: botões separados para abrir DM e gerenciar apelidos/privacidade */
+.friend-with-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.friend-with-actions .friend-open{display:flex;align-items:center;justify-content:space-between;gap:9px;flex:1;min-width:0;min-height:48px;background:transparent;border:0;color:inherit;text-align:left}
+.friend-with-actions .friend-open span{font-size:12px;overflow-wrap:anywhere}
+.friend-with-actions .friend-open small{font-size:10px;color:#96dacc}
+.friend-with-actions .social-settings-btn{min-width:39px;min-height:39px;padding:5px 9px;background:#22344c;border-color:#567187;border-radius:9px}
+.social-blocked-panel{grid-column:1/-1}
+.social-blocked-row{display:flex;align-items:center;gap:15px;justify-content:space-between}
+.social-blocked-row b{font-size:12px;overflow-wrap:anywhere}
+.social-overlay{position:fixed;inset:0;z-index:2600;display:grid;place-items:center;background:#020816ca;backdrop-filter:blur(7px);padding:18px}
+.social-modal{width:min(100%,470px);display:grid;gap:13px;border:1px solid #7ecdc7;border-radius:17px;background:linear-gradient(145deg,#1b3451,#132236);padding:clamp(17px,4vw,27px);box-shadow:0 25px 75px #010716e0}
+.social-modal header{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #354d63;padding-bottom:13px}
+.social-modal header small{font-size:10px;letter-spacing:1.2px;color:#9dd7c9}
+.social-modal header h3{margin:6px 0 0;color:#f0f9ff;font-size:22px;overflow-wrap:anywhere}
+.social-modal header button{border:1px solid #4c7181;background:#213b51;color:white;border-radius:9px;width:36px;height:36px}
+.social-modal p{margin:0;color:#a7c4d8;font-size:12px;line-height:1.6}
+.social-modal label{font-weight:700;color:#d4f1eb;font-size:12px}
+.social-nickname-form{display:flex;gap:8px}
+.social-nickname-form input{flex:1;min-width:0;padding:12px;border-radius:10px;border:1px solid #486681;background:#0c1c2e;color:#fff;font-size:13px}
+.social-nickname-form .btn{font-size:12px}
+.social-modal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.social-modal-actions .btn{min-height:44px;white-space:normal}
+.social-danger{border-color:#cc6973!important;color:#ffe3e4!important;background:#512833!important}
+.social-danger:hover{background:#75333e!important}
+.member-avatar{display:grid;place-items:center;overflow:hidden;flex-shrink:0;border-radius:13px}
+.member-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.arena-player .member-avatar{height:48px;width:48px}
+.member-profile-actions{display:flex;flex-wrap:wrap;gap:8px}
+@media(max-width:600px){.social-modal-actions{grid-template-columns:1fr}.social-nickname-form{flex-wrap:wrap}.social-nickname-form input{flex-basis:100%}}
