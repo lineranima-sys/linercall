@@ -832,3 +832,15 @@ body.cinema-modal-open{overflow:hidden}
 .luminous-dialog>p{font-size:clamp(11px,1.65vw,14px);line-height:1.65;max-width:80ch;color:#e2f4ff}
 .luminous-dialog>.btn{justify-self:end;min-width:130px;min-height:35px;font-size:11px}
 @media(max-width:540px){.luminous-menu-card{gap:6px;padding:10px}.luminous-menu-card>h2{font-size:10px}.luminous-menu-actions{gap:4px}.luminous-menu-actions button{min-height:29px;padding:6px}.luminous-menu-card>small{font-size:8px}.luminous-dialog{inset:2%;padding:9px;gap:5px;max-height:96%}.luminous-portrait{width:37px;height:37px;flex-basis:37px;font-size:20px}.luminous-dialog h3{font-size:14px}.luminous-dialog>p{font-size:11px;line-height:1.45}.luminous-dialog>.btn{min-height:30px}}
+
+
+/* Descida de Ouro: controles touch somente ↑/↓ durante o minigame */
+.luminous-slide-touch{display:none;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(105deg,#4c3244,#83543c);padding:11px 15px;border:2px solid #eec16a;border-radius:13px;box-shadow:inset 0 0 0 2px #3e3148}
+.luminous-slide-touch>b{font-size:11px;letter-spacing:1px;color:#ffebae}
+.luminous-slide-touch>div{display:flex;gap:10px}
+.luminous-slide-touch button{min-height:52px;min-width:85px;border:2px solid #ffda8d;border-radius:10px;background:linear-gradient(#9e6949,#684358);color:#fff7d6;font-weight:900;touch-action:none;user-select:none;box-shadow:0 4px 0 #38283d}
+.luminous-slide-touch button:active{transform:translateY(3px);box-shadow:0 1px 0 #38283d;background:#bd895a}
+.coin-slide-active .luminous-touch{display:none!important}
+.coin-slide-active .luminous-slide-touch{display:flex}
+.coin-slide-active .luminous-instructions{color:#fff0bc;font-weight:700}
+@media(max-width:540px){.luminous-slide-touch{flex-direction:column;padding:7px;gap:7px}.luminous-slide-touch button{min-height:46px;min-width:110px}}
