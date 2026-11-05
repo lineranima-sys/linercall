@@ -894,3 +894,34 @@ body.cinema-modal-open{overflow:hidden}
 /* Avisos sobre modais do LightyFlix: nunca sofrer o blur do fundo */
 body > #toast{z-index:2500!important;isolation:isolate;filter:none!important;backdrop-filter:none!important;max-width:min(90vw,520px);text-align:center;box-shadow:0 18px 45px #0009,0 0 0 2px #ffffff35}
 body > #toast.show{opacity:1;transform:translate(-50%,0)}
+
+
+/* Amigos: botões separados para abrir DM e gerenciar apelidos/privacidade */
+.friend-with-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.friend-with-actions .friend-open{display:flex;align-items:center;justify-content:space-between;gap:9px;flex:1;min-width:0;min-height:48px;background:transparent;border:0;color:inherit;text-align:left}
+.friend-with-actions .friend-open span{font-size:12px;overflow-wrap:anywhere}
+.friend-with-actions .friend-open small{font-size:10px;color:#96dacc}
+.friend-with-actions .social-settings-btn{min-width:39px;min-height:39px;padding:5px 9px;background:#22344c;border-color:#567187;border-radius:9px}
+.social-blocked-panel{grid-column:1/-1}
+.social-blocked-row{display:flex;align-items:center;gap:15px;justify-content:space-between}
+.social-blocked-row b{font-size:12px;overflow-wrap:anywhere}
+.social-overlay{position:fixed;inset:0;z-index:2600;display:grid;place-items:center;background:#020816ca;backdrop-filter:blur(7px);padding:18px}
+.social-modal{width:min(100%,470px);display:grid;gap:13px;border:1px solid #7ecdc7;border-radius:17px;background:linear-gradient(145deg,#1b3451,#132236);padding:clamp(17px,4vw,27px);box-shadow:0 25px 75px #010716e0}
+.social-modal header{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #354d63;padding-bottom:13px}
+.social-modal header small{font-size:10px;letter-spacing:1.2px;color:#9dd7c9}
+.social-modal header h3{margin:6px 0 0;color:#f0f9ff;font-size:22px;overflow-wrap:anywhere}
+.social-modal header button{border:1px solid #4c7181;background:#213b51;color:white;border-radius:9px;width:36px;height:36px}
+.social-modal p{margin:0;color:#a7c4d8;font-size:12px;line-height:1.6}
+.social-modal label{font-weight:700;color:#d4f1eb;font-size:12px}
+.social-nickname-form{display:flex;gap:8px}
+.social-nickname-form input{flex:1;min-width:0;padding:12px;border-radius:10px;border:1px solid #486681;background:#0c1c2e;color:#fff;font-size:13px}
+.social-nickname-form .btn{font-size:12px}
+.social-modal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.social-modal-actions .btn{min-height:44px;white-space:normal}
+.social-danger{border-color:#cc6973!important;color:#ffe3e4!important;background:#512833!important}
+.social-danger:hover{background:#75333e!important}
+.member-avatar{display:grid;place-items:center;overflow:hidden;flex-shrink:0;border-radius:13px}
+.member-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.arena-player .member-avatar{height:48px;width:48px}
+.member-profile-actions{display:flex;flex-wrap:wrap;gap:8px}
+@media(max-width:600px){.social-modal-actions{grid-template-columns:1fr}.social-nickname-form{flex-wrap:wrap}.social-nickname-form input{flex-basis:100%}}
