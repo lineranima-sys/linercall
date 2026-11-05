@@ -5,7 +5,7 @@ const W=480,H=270;
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const rand=(n)=>{const x=Math.sin(n*91.73+16.1)*43758.5453;return x-Math.floor(x);};
 export function createCoinSlide(ctx,{drawHero,onWin,onLose}={}){
- let elapsed=0,spawnAt=40,index=0,done=false,invulnerable=0,hearts=3,shake=0,heroY=128;
+ let elapsed=0,spawnAt=40,index=0,done=false,invulnerable=0,hearts=4,shake=0,heroY=128;
  const shots=[];
  const total=1260; // aproximadamente 21 segundos a 60fps
  const bx=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
@@ -94,17 +94,17 @@ export function createCoinSlide(ctx,{drawHero,onWin,onLose}={}){
   elapsed=Math.min(total,elapsed+dt);
   invulnerable=Math.max(0,invulnerable-dt);
   shake=Math.max(0,shake-.22*dt);
-  heroY=clamp(heroY+((down?1:0)-(up?1:0))*2.8*dt,93,187);
+  heroY=clamp(heroY+((down?1:0)-(up?1:0))*3.5*dt,74,194);
   if(elapsed>=spawnAt){
-   const range=110,position=98+rand(index*17)*range;
+   const range=139,position=71+rand(index*17)*range;
    shots.push({x:510,y:position,r:10+(index%3===0?2:0),speed:2.7+Math.min(1.5,elapsed/total*1.5)+(index%4)*.18});
-   index++;spawnAt=elapsed+Math.max(34,64-elapsed/total*23)+rand(index*11)*12;
+   index++;spawnAt=elapsed+Math.max(56,85-elapsed/total*18)+rand(index*11)*12;
   }
   for(let i=shots.length-1;i>=0;i--){
    const s=shots[i];s.x-=s.speed*dt;
    if(s.x< -40){shots.splice(i,1);continue;}
-   if(invulnerable<=0 && Math.abs(s.x-143)<23+s.r && Math.abs(s.y-(heroY+9))<15+s.r){
-    hearts--;invulnerable=68;shake=4;
+   if(invulnerable<=0 && Math.abs(s.x-143)<17+s.r && Math.abs(s.y-(heroY+9))<13+s.r){
+    hearts--;invulnerable=85;shake=4;
     shots.splice(i,1);
     if(hearts<=0){done=true;onLose?.();return;}
    }
