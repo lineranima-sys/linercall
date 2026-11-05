@@ -199,6 +199,21 @@ function castRay(x,y,angle){
   const sky=ctx.createLinearGradient(0,0,0,H/2);
   sky.addColorStop(0,arena.colors.sky[0]);sky.addColorStop(1,arena.colors.sky[1]);
   ctx.fillStyle=sky;ctx.fillRect(0,0,W,H/2);
+  // Horizonte personalizado, totalmente desenhado no canvas.
+  if(arena.id==='tanjiro'){
+   ctx.fillStyle='#314b6b';ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(80,140);ctx.lineTo(190,218);ctx.lineTo(320,110);ctx.lineTo(470,211);ctx.lineTo(640,120);ctx.lineTo(900,H/2);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#e0ebf4';ctx.beginPath();ctx.moveTo(250,165);ctx.lineTo(320,110);ctx.lineTo(390,165);ctx.lineTo(342,153);ctx.lineTo(318,141);ctx.lineTo(303,153);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#e9f4fc';for(let i=0;i<42;i++){const x=(i*67+31)%W,y=(i*47+23)%(H/2);ctx.fillRect(x,y,2+i%2,2+i%2);}
+  }else if(arena.id==='folha'){
+   ctx.fillStyle='#4e8465';for(let i=0;i<15;i++){const x=i*70-25;ctx.beginPath();ctx.arc(x,H/2+8,39+(i%3)*8,0,TAU);ctx.fill();}
+   ctx.fillStyle='#b86947';for(let i=0;i<8;i++){const x=i*135+27;ctx.fillRect(x,H/2-36,70,36);ctx.beginPath();ctx.moveTo(x-12,H/2-36);ctx.lineTo(x+35,H/2-65);ctx.lineTo(x+82,H/2-36);ctx.closePath();ctx.fill();}
+  }else if(arena.id==='chaves'){
+   ctx.fillStyle='#e8c27f';for(let i=0;i<7;i++){const x=i*150-30;ctx.fillRect(x,H/2-70,124,70);ctx.fillStyle='#a86d4a';ctx.fillRect(x+23,H/2-42,24,42);ctx.fillRect(x+67,H/2-51,34,25);ctx.fillStyle='#e8c27f';}
+   ctx.fillStyle='#cb9869';ctx.fillRect(0,H/2-4,W,5);
+  }else{
+   ctx.fillStyle='#234253';for(let i=0;i<12;i++){const x=i*85;ctx.fillRect(x,H/2-40-(i%4)*14,62,40+(i%4)*14);}
+   ctx.fillStyle='#79e0dd';for(let i=0;i<10;i++)ctx.fillRect(i*95+12,H/2-15,15,4);
+  }
   const floor=ctx.createLinearGradient(0,H/2,0,H);
   floor.addColorStop(0,arena.colors.floor[0]);floor.addColorStop(1,arena.colors.floor[1]);
   ctx.fillStyle=floor;ctx.fillRect(0,H/2,W,H/2);
@@ -232,6 +247,19 @@ function castRay(x,y,angle){
    if(arena.id==='tanjiro'){ctx.fillStyle='rgba(38,20,12,.30)';for(let i=1;i<5;i++)ctx.fillRect(screenX,top+height*i/5,COLS+1,2);}
    if(arena.id==='folha'){ctx.fillStyle='rgba(117,39,30,.45)';ctx.fillRect(screenX,top,COLS+1,Math.max(2,height*.13));}
    if(arena.id==='chaves'){ctx.fillStyle='rgba(255,238,195,.45)';ctx.fillRect(screenX,top+height*.20,COLS+1,Math.max(2,height*.055));}
+   if(hit.tile==='2'&&arena.id==='tanjiro'){
+    const edge=Math.abs((hit.side?hit.hitX:hit.hitY)%1-.5);
+    if(edge>.40){ctx.fillStyle='rgba(46,21,12,.65)';ctx.fillRect(screenX,top,COLS+1,height);}
+    else{ctx.fillStyle='rgba(226,216,191,.12)';ctx.fillRect(screenX,top+height*.26,COLS+1,height*.4);}
+   }
+   if(hit.tile==='2'&&arena.id==='folha'){
+    const fx=(hit.side?hit.hitX:hit.hitY)%1;
+    if(fx>.30&&fx<.67){ctx.fillStyle='rgba(126,62,35,.22)';ctx.fillRect(screenX,top+height*.32,COLS+1,height*.27);}
+   }
+   if(hit.tile==='2'&&arena.id==='chaves'){
+    const fx=(hit.side?hit.hitX:hit.hitY)%1;
+    if(fx>.33&&fx<.66){ctx.fillStyle='rgba(86,48,35,.44)';ctx.fillRect(screenX,top+height*.36,COLS+1,height*.35);}
+   }
   }
   return depth;
  }
