@@ -43,9 +43,9 @@ function castRay(x,y,angle){
  const guns=GUNS.map(g=>({...g}));
  const el=document.createElement('section');
  el.className='arcade-game shooter-game shooter-fps';
- el.innerHTML='<span class="eyebrow">FPS RETRÔ · ARENA DE TREINAMENTO</span>'+
+ el.innerHTML='<span class="eyebrow">FPS RETRÔ · CENÁRIOS PERSONALIZADOS</span>'+
  '<h2 class="shooter-logo">SHOOT<span>’E</span> R!</h2>'+
- '<p>Agora em <b>primeira pessoa</b>: movimentação, mira com mouse, paredes em 3D, recarga e fuzil com zoom. Combate contra robôs de treino (solo).</p>'+
+ '<p><b>Mapa: '+arena.name+'</b> · '+arena.subtitle+'. '+(isOnline?'Partida multiplayer 1v1.':'Treino solo contra drones.')+'</p>'+
  '<div class="shooter-hud"><span id="shoot-hp">❤️ 100 HP</span><span id="shoot-weapon">Pistola</span><span id="shoot-score">0/12</span><span id="shoot-timer">85 s</span></div>'+
  '<div class="shoot-fps-screen"><canvas id="shoot-canvas" width="900" height="520" tabindex="0" aria-label="Visão em primeira pessoa do SHOOT’E R!"></canvas>'+
  '<div class="shoot-fps-paused" id="shoot-overlay"><b>SHOOT’E R!</b><span>FPS EM PRIMEIRA PESSOA</span><small>Clique em Iniciar para controlar o personagem.</small></div></div>'+
@@ -222,6 +222,49 @@ function castRay(x,y,angle){
   }
   return depth;
  }
+
+ function drawProps(fov,depth){
+  const projected=[];
+  for(const prop of arena.props){
+   const dx=prop.x-px,dy=prop.y-py,dist=Math.hypot(dx,dy),offset=angleDelta(Math.atan2(dy,dx),look);
+   if(dist<.2||Math.abs(offset)>fov/2+.15)continue;
+   if(castRay(px,py,Math.atan2(dy,dx)).dist<dist-.23)continue;
+   projected.push({...prop,dist,offset});
+  }
+  projected.sort((a,b)=>b.dist-a.dist);
+  for(const p of projected){
+   const sx=W/2+Math.tan(p.offset)/Math.tan(fov/2)*W/2;
+   const h=clamp(H/(p.dist*Math.tan(fov/2)*2)*1.2,8,H*2.4),w=h*.5;
+   const col=clamp(Math.floor(sx/COLS),0,depth.length-1);
+   if(depth[col]<p.dist-.08)continue;
+   const cy=H/2+h*.36;
+   if(p.type==='pine'||p.type==='tree'){
+    ctx.fillStyle='#67472c';ctx.fillRect(sx-w*.12,cy-h*.34,w*.24,h*.34);
+    ctx.fillStyle=p.type==='pine'?'#1e514c':'#376f43';
+    for(let i=0;i<3;i++){const y=cy-h*(.22+i*.22),width=w*(1-i*.18);
+     ctx.beginPath();ctx.moveTo(sx,y-h*.3);ctx.lineTo(sx-width/2,y+h*.13);ctx.lineTo(sx+width/2,y+h*.13);ctx.closePath();ctx.fill();}
+    if(p.type==='pine'){ctx.fillStyle='#d8eaf2';ctx.fillRect(sx-w*.2,cy-h*.52,w*.4,h*.055);}
+   }else if(p.type==='barrel'){
+    ctx.fillStyle='#70451e';ctx.fillRect(sx-w*.36,cy-h*.62,w*.72,h*.55);
+    ctx.fillStyle='#b07836';ctx.fillRect(sx-w*.27,cy-h*.62,w*.54,h*.55);
+    ctx.strokeStyle='#3d271a';ctx.lineWidth=Math.max(2,h*.025);
+    ctx.strokeRect(sx-w*.36,cy-h*.62,w*.72,h*.55);
+    ctx.beginPath();ctx.moveTo(sx-w*.36,cy-h*.46);ctx.lineTo(sx+w*.36,cy-h*.46);ctx.stroke();
+   }else if(p.type==='bench'){
+    ctx.fillStyle='#865b31';ctx.fillRect(sx-w*.45,cy-h*.4,w*.9,h*.18);
+    ctx.fillRect(sx-w*.35,cy-h*.24,w*.1,h*.2);ctx.fillRect(sx+w*.23,cy-h*.24,w*.1,h*.2);
+   }else if(p.type==='lantern'){
+    ctx.fillStyle='#3c3e38';ctx.fillRect(sx-w*.05,cy-h*.68,w*.1,h*.68);
+    ctx.fillStyle='#ffe5a0';ctx.fillRect(sx-w*.19,cy-h*.78,w*.38,h*.23);
+    ctx.strokeStyle='#8b492c';ctx.lineWidth=Math.max(1,h*.03);ctx.strokeRect(sx-w*.19,cy-h*.78,w*.38,h*.23);
+   }else if(p.type==='terminal'){
+    ctx.fillStyle='#304b5c';ctx.fillRect(sx-w*.3,cy-h*.68,w*.6,h*.65);
+    ctx.fillStyle='#4df1e1';ctx.fillRect(sx-w*.23,cy-h*.57,w*.46,h*.31);
+   }else if(p.type==='flower'||p.type==='snow'){
+    ctx.fillStyle=p.type==='flower'?'#cd72c1':'#e8f4ff';ctx.beginPath();ctx.arc(sx,cy-h*.05,w*.24,0,TAU);ctx.fill();
+   }
+  }
+ }
  function drawEnemies(fov,depth,now){
   const visible=[];
   for(const e of enemies){
@@ -281,8 +324,11 @@ function castRay(x,y,angle){
   const fov=scope&&current===2?.29:FOV;
   background();
   const depths=drawWalls(fov);
+  drawProps(fov,depths);
   drawEnemies(fov,depths,now);
   gunView(now);
+  ctx.fillStyle=arena.colors.accent;ctx.font='bold 18px sans-serif';ctx.textAlign='left';
+  ctx.fillText(arena.name+' · '+(isOnline?'MULTIPLAYER':'SINGLEPLAYER'),18,30);
   if(now-hitAt<180){ctx.fillStyle='#caffbd';ctx.font='bold 23px sans-serif';ctx.textAlign='center';ctx.fillText('✕',W/2,H/2-30);}
   const vignette=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,W*.68);
   vignette.addColorStop(0,'#00000000');vignette.addColorStop(1,'#00000099');
