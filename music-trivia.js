@@ -41,7 +41,7 @@ export function mountMusic({root,user,addCoins}){
  '<p>Adicione gravações de covers que você pode usar. Elas <b>não são enviadas ao site</b>. Isso permite testar faixas modernas sem hospedar arquivos de terceiros.</p>'+
  '<form id="music-import"><label>Nome da música<input name="title" required maxlength="90" placeholder="Ex.: título da música"></label>'+
  '<label>Categoria<select name="category"><option>Geek</option><option>Aberturas</option><option>Sertanejo</option></select></label>'+
- '<label>Arquivo de cover<audio hidden></audio><input name="audio" type="file" accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/webm,audio/mp4" required></label>'+
+ '<label>Arquivo de cover<input name="audio" type="file" accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/webm,audio/mp4" required></label>'+
  '<button class="btn btn-primary" type="submit">Adicionar cover local</button></form>'+
  '<p id="music-import-status" class="arcade-note">Nenhum cover local adicionado.</p></details></section>';
  const $=sel=>root.querySelector(sel);
