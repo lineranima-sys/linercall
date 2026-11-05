@@ -60,17 +60,59 @@ export function mountStory(root,onExit,uid='guest'){
  function dialogue(who,title,body,next){
   paused=true;key.left=false;key.right=false;pending=next||null;
   root.querySelector('#luminous-speaker').textContent=who;
+  root.querySelector('#luminous-portrait').textContent=({BARDO:'♫',HERÓI:'⚔',DRAGÃO:'🐉',MALACORD:'♛',GUARDA:'♜','CÓPIA DE NÉVOA':'◈','FIM DO CAPÍTULO 1':'✦'})[who]||'✧';
   root.querySelector('#luminous-dialog-title').textContent=title;
   root.querySelector('#luminous-dialog-body').textContent=body;
   modal.classList.remove('hidden');
  }
- function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();}
+ function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();saveGame();}
+ function saveGame(){
+  if(menu||intro||dead)return;
+  const save={version:2,scene,x:Math.round(player.x),hp:player.hp,flags:{...flags},
+   fishHP:player.fishHP,deadMobs:mobs.filter(m=>!m.alive).map(m=>m.seed),timestamp:Date.now()};
+  try{localStorage.setItem(saveKey,JSON.stringify(save));}catch{}
+  lastSave=ticks;
+ }
+ function readSave(){try{const value=JSON.parse(localStorage.getItem(saveKey)||'null');return value?.version===2&&Number.isInteger(value.scene)&&value.scene>=0&&value.scene<levels.length?value:null;}catch{return null;}}
+ function resetFlags(){for(const k of Object.keys(flags))flags[k]=false;flags.fishSong=false;}
+ function newGame(){
+  try{localStorage.removeItem(saveKey);}catch{}
+  resetFlags();scene=0;initActors();menu=false;intro=true;paused=true;
+  root.querySelector('#luminous-menu').classList.add('hidden');objective();
+  dialogue('NARRADOR','Uma manhã longe de casa...','Em uma cabana distante da vila, o herói sem nome descansava. Até que um mensageiro deixou uma carta do seu melhor amigo.',()=>{
+   dialogue('HERÓI','Uma carta do Bardo','O herói senta à mesa, rompe o selo e lê a carta. A caligrafia é familiar e parece apressada.',()=>{
+    dialogue('BARDO','A princesa foi capturada!','“Malacord se disfarçou de você e tomou o castelo! A princesa está presa. Preciso de sua ajuda, velho amigo. — Bardo”',()=>{
+     dialogue('HERÓI','A jornada começa agora','O herói guarda a carta, pega sua espada e deixa a cabana. Uma estrada longa e cheia de monstros o espera.',()=>{intro=false;saveGame();});
+    });
+   });
+  });
+ }
+ function continueGame(){
+  const save=readSave();if(!save){newGame();return;}
+  resetFlags();Object.assign(flags,save.flags||{});
+  scene=save.scene;initActors();
+  player.x=clamp(save.x||35,0,levels[scene].length-20);player.hp=clamp(save.hp||5,1,5);player.fishHP=clamp(save.fishHP??3,0,3);
+  for(const mob of mobs)if((save.deadMobs||[]).includes(mob.seed))mob.alive=false;
+  bardX=player.x-40;menu=false;intro=false;paused=false;
+  root.querySelector('#luminous-menu').classList.add('hidden');objective();
+  dialogue('CAPÍTULO 1','Progresso restaurado','Você voltou ao ponto em que parou. Boa aventura!');
+ }
+ function objective(){
+  const descriptions=[
+   'Atravesse a longa estrada e derrote os monstros de Malacord',
+   flags.guards?'Encontre o Bardo e siga para a Montanha Sagrada':'Descubra por que os guardas não deixam você entrar',
+   flags.fish?'Suba até o dragão que descansa sob a árvore':'Resgate o Bardo do peixe e encontre a chave',
+   flags.rescue?'Liberte a princesa: X nas cordas, antes de 1:00!':flags.explosion&&!flags.clone?'Não ataque a cópia de névoa':flags.potion?'Siga pelo salão e descubra a armadilha':'Explore o castelo e procure o baú'
+  ];
+  const el=root.querySelector('#luminous-objective');if(el)el.textContent='OBJETIVO · '+descriptions[scene];
+ }
+
  function initActors(){
   player.x=35;player.y=FLOOR-HERO_H;player.vy=0;player.hp=5;player.iframes=0;player.peace=0;bardX=player.x-48;bardY=player.y;
   mobs=levels[scene].mobs.map((x,i)=>({x,home:x,hp:2,alive:true,dir:i%2?1:-1,aware:false,seed:i+scene*13}));
  }
  function nextLevel(who,title,body){
-  scene++;initActors();dialogue(who,title,body);
+  saveGame();scene++;initActors();objective();dialogue(who,title,body);
  }
  const box=(x,y,w,h,fill)=>{c.fillStyle=fill;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
  function sprite(rows,x,y,s=2,palette=colors){
@@ -262,7 +304,10 @@ export function mountStory(root,onExit,uid='guest'){
  function onKeyUp(e){const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')key.left=false;if(k==='arrowright'||k==='d')key.right=false;}
  function onBlur(){key.left=false;key.right=false;}
  function onClick(e){
-  if(e.target.closest('[data-story-next-new]'))resume();
+  if(e.target.closest('[data-story-new]')){newGame();return;}
+  if(e.target.closest('[data-story-continue]')){continueGame();return;}
+  if(e.target.closest('[data-story-controls]')){root.querySelector('#luminous-menu').classList.add('hidden');menu=false;dialogue('COMO JOGAR','Controles','A / D ou as setas movem o herói. Espaço pula, X ataca ou interage. Na montanha, o Bardo ajuda. O progresso é salvo automaticamente.',()=>{menu=true;root.querySelector('#luminous-menu').classList.remove('hidden');});return;}
+  if(e.target.closest('[data-story-next-new]')){resume();return;}
   if(e.target.closest('[data-story-exit-new]')){destroy();onExit();}
   const action=e.target.closest('[data-story-act]')?.dataset.storyAct;
   if(action==='jump')jump();if(action==='attack')attack();
@@ -272,13 +317,14 @@ export function mountStory(root,onExit,uid='guest'){
  root.addEventListener('click',onClick);root.addEventListener('pointerdown',onHold);root.addEventListener('pointerup',onRelease);root.addEventListener('pointercancel',onRelease);
  window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);window.addEventListener('blur',onBlur);
  function destroy(){
-  dead=true;cancelAnimationFrame(raf);root.removeEventListener('click',onClick);
+  saveGame();dead=true;cancelAnimationFrame(raf);root.removeEventListener('click',onClick);
   root.removeEventListener('pointerdown',onHold);root.removeEventListener('pointerup',onRelease);root.removeEventListener('pointercancel',onRelease);
   window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('blur',onBlur);
   root.innerHTML='';
  }
- initActors();
- dialogue('CARTA DO BARDO','A princesa foi capturada!','O herói sem nome está longe da vila. Seu amigo Bardo envia uma carta: Malacord tomou o castelo disfarçado de herói e capturou a princesa. Uma longa viagem começa.');
+ initActors();objective();
+ const canContinue=readSave(),btn=root.querySelector('[data-story-continue]');
+ if(btn){btn.disabled=!canContinue;btn.title=canContinue?'Continuar da última fase':'Nenhum save encontrado';}
  raf=requestAnimationFrame(loop);
  return destroy;
 }
