@@ -1,7 +1,8 @@
+import {TERMO_WORDS} from './termo-words.js';
 import {collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountTermo({root,getUser,getDb,addCoins}){
- let gone=false,sub=null,loading=false,state=null;
+ let gone=false,sub=null,loading=false,state=null,practiceAnswer=null;
  root.innerHTML=
  '<section class="arcade-game termo-game">'+
  '<div class="arcade-game-heading"><span class="eyebrow">PALAVRA DO DIA · COMPETIÇÃO ONLINE</span><h2>TERMO <em>ONLINE</em></h2><p>Uma palavra de cinco letras para toda a comunidade, seis tentativas e um placar de vencedores.</p></div>'+
@@ -23,6 +24,12 @@ export function mountTermo({root,getUser,getDb,addCoins}){
    localStorage.setItem(key,String(total));
   }
  }
+ function localMarks(input,target){
+  const marks=Array(5).fill('absent'),counts={};
+  for(let i=0;i<5;i++){if(input[i]===target[i])marks[i]='correct';else counts[target[i]]=(counts[target[i]]||0)+1;}
+  for(let i=0;i<5;i++){if(marks[i]!=='correct'&&counts[input[i]]>0){marks[i]='present';counts[input[i]]--;}}
+  return marks;
+ }
  function paint(){
   const guesses=state?.guesses||[];
   const board=el('#termo-board');if(!board)return;
@@ -37,7 +44,7 @@ export function mountTermo({root,getUser,getDb,addCoins}){
   const disabled=state?.status!=='playing'||loading;
   el('#termo-form input').disabled=disabled;
   el('#termo-form button').disabled=disabled;
-  if(state?.status==='won')info('🎉 Você acertou! +60 LCoins registrados na sua conta. Veja o placar!');
+  if(state?.status==='won')info(practiceAnswer?'🎉 Palavra descoberta! Modo treino não concede LCoins.':'🎉 Você acertou! +60 LCoins registrados na sua conta. Veja o placar!');
   else if(state?.status==='lost')info('Fim das tentativas! A resposta era '+String(state.answer||'?????').toUpperCase()+'. Um novo desafio amanhã.');
   else info('Desafio '+String(state?.date||'')+' · '+String(state?.attemptsLeft??6)+' tentativas restantes.');
  }
@@ -62,7 +69,18 @@ export function mountTermo({root,getUser,getDb,addCoins}){
  async function load(){
   loading=true;
   try{const response=await call('status');if(gone)return;state=response;grant(response.earnedTotal);paint();scoreboard(response.date);}
-  catch(error){if(!gone){info(error.message);el('#termo-form button').disabled=true;}}
+  catch(error){if(!gone){
+   info(error.message+' Você pode jogar o modo treino sem moedas enquanto o servidor online não estiver pronto.');
+   el('#termo-form button').disabled=true;
+   const practice=document.createElement('button');practice.type='button';practice.className='btn';practice.textContent='🎮 Jogar treino local (sem LCoins)';
+   practice.id='termo-practice';
+   el('#termo-info').after(practice);
+   practice.addEventListener('click',()=>{
+    practice.remove();practiceAnswer=TERMO_WORDS[Math.floor(Math.random()*TERMO_WORDS.length)];
+    state={status:'playing',guesses:[],date:'Treino local',attemptsLeft:6,reward:0,answer:null};
+    paint();
+   });
+  }}
   finally{loading=false;}
  }
  const form=el('#termo-form');
@@ -73,7 +91,13 @@ export function mountTermo({root,getUser,getDb,addCoins}){
   const guess=input.value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   if(!/^[a-z]{5}$/.test(guess)){info('Digite cinco letras.');return;}
   loading=true;el('#termo-form button').disabled=true;
-  try{const response=await call('guess',guess);if(gone)return;state=response;grant(response.earnedTotal);input.value='';paint();}
+  try{let response;
+   if(practiceAnswer){
+    const guesses=(state.guesses||[]).concat([{word:guess,marks:localMarks(guess,practiceAnswer)}]);
+    const status=guess===practiceAnswer?'won':guesses.length>=6?'lost':'playing';
+    response={status,guesses,date:'Treino local',attemptsLeft:6-guesses.length,answer:status==='playing'?null:practiceAnswer,reward:0,earnedTotal:0};
+   }else response=await call('guess',guess);
+   if(gone)return;state=response;if(!practiceAnswer)grant(response.earnedTotal);input.value='';paint();}
   catch(error){if(!gone)info(error.message);}
   finally{loading=false;if(!gone&&state?.status==='playing'){el('#termo-form button').disabled=false;input.focus();}}
  };
