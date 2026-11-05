@@ -56,9 +56,10 @@ export function calculateOnlineBattle(match,turns,catalogue){
  }
  return {teams,active,winner,turnUid:expected,processed,log};
 }
-export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt,notify,onReward}){
+export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt,notify,onReward,onMatchSettled}){
  let players=[],matches=new Map(),selected=null,turns=[],unsubs=[],roomUnsubs=[];
  let warnedRules=false;
+ const autoRankingAttempts=new Set();
  const root=() => document.getElementById('pokemon-online-panel');
  const message=s=>notify?.(s);
  const mine=()=>getTeam().filter(id=>catalogue.some(p=>p.id===id)).slice(0,3);
@@ -90,6 +91,10 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
   // duplicado quando snapshots chegam repetidos ou o usuário reabre a sala.
   if(state.winner && state.processed===match.turnNo && turns.length===match.turnNo){
    onReward?.({matchId:match.id,winnerUid:state.winner,hostUid:match.hostUid,guestUid:match.guestUid});
+   if(!autoRankingAttempts.has(match.id)){
+    autoRankingAttempts.add(match.id);
+    Promise.resolve(onMatchSettled?.(match.id)).catch(err=>console.warn('Ranking global pendente:',err));
+   }
   }
   const owner=uid,other=uid===match.hostUid?match.guestUid:match.hostUid;
   const me=state.teams[owner]?.[state.active[owner]],enemy=state.teams[other]?.[state.active[other]];
@@ -98,7 +103,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
   const pe=p=>Math.max(0,Math.floor(p.pe/100*100));
   const fighterMarkup=(p,who,own)=>'<div class="pvp-fighter"><div class="pvp-hud"><b>'+esc(who)+' · '+esc(p.name)+'</b><span>HP '+p.hpNow+'/'+p.hp+'</span><div class="pvp-meter"><i style="width:'+pct(p)+'%"></i></div><span>PE '+p.pe+'/100</span><div class="pvp-meter pe"><i style="width:'+pe(p)+'%"></i></div></div><img src="'+esc(getArt(p))+'" alt="'+esc(p.name)+'" loading="lazy"></div>';
   const myTurn=match.turnUid===uid&&state.processed===match.turnNo&&!state.winner;
-  const actions=state.winner?'<strong class="pvp-outcome">'+(state.winner===uid?'Você venceu!':'Você perdeu!')+' · '+(state.winner===uid?'+100 LCoins pela vitória!':'+10 LCoins pela participação!')+' (carteira deste navegador).</strong>':
+  const actions=state.winner?'<strong class="pvp-outcome">'+(state.winner===uid?'Você venceu!':'Você perdeu!')+' · '+(state.winner===uid?'+100 LCoins pela vitória!':'+10 LCoins pela participação!')+' (carteira deste navegador). <button type="button" class="btn" data-pvp-sync="'+esc(match.id)+'">↻ Sincronizar ranking semanal</button></strong>':
     '<div class="pvp-actions"><p>'+(myTurn?'É a sua vez!':'Aguardando o adversário...')+'</p>'+
     me.moves.map((m,i)=>'<button class="btn" data-pvp-move="'+i+'" '+(!myTurn||me.pe<charge(m)?'disabled':'')+'>'+esc(m.name)+' · '+charge(m)+' PE</button>').join('')+
     '<button class="btn" data-pvp-rest '+(!myTurn?'disabled':'')+'>Descansar +45 PE</button>'+
@@ -178,6 +183,7 @@ export function createPokemonOnline({db,uid,displayName,getTeam,catalogue,getArt
   const no=e.target.closest('[data-pvp-reject]');if(no){answer(no.dataset.pvpReject,false);return;}
   const open=e.target.closest('[data-pvp-open]');if(open){openRoom(open.dataset.pvpOpen);return;}
   if(e.target.closest('[data-pvp-leave]')){clearRoom();return;}
+  const sync=e.target.closest('[data-pvp-sync]');if(sync){Promise.resolve(onMatchSettled?.(sync.dataset.pvpSync)).then(()=>message('Resultado confirmado no ranking!')).catch(e=>message('Não foi possível sincronizar: '+e.message));return;}
   const attack=e.target.closest('[data-pvp-move]');if(attack){act('attack',Number(attack.dataset.pvpMove));return;}
   const swap=e.target.closest('[data-pvp-swap]');if(swap){act('switch',Number(swap.dataset.pvpSwap));return;}
   if(e.target.closest('[data-pvp-rest]'))act('rest',0);
