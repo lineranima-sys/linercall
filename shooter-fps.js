@@ -280,7 +280,9 @@ function castRay(x,y,angle){
  }
  function drawEnemies(fov,depth,now){
   const visible=[];
-  for(const e of enemies){
+  const remote=isOnline?online.getOpponent():null;
+  const fighters=isOnline?remote?[{...remote,isPlayer:true,hpMax:100}]:[]:enemies;
+  for(const e of fighters){
    const dx=e.x-px,dy=e.y-py,dist=Math.hypot(dx,dy);
    const offset=angleDelta(Math.atan2(dy,dx),look);
    if(Math.abs(offset)>fov/2+.23||dist<.12)continue;
@@ -295,11 +297,11 @@ function castRay(x,y,angle){
    const col=clamp(Math.floor(x/COLS),0,depth.length-1);
    if(depth[col]<e.dist-.1)continue;
    const body=ctx.createLinearGradient(0,top,0,ground);
-   body.addColorStop(0,'#f7c17b');body.addColorStop(1,'#97582f');
+   body.addColorStop(0,e.isPlayer?'#69e5fa':'#f7c17b');body.addColorStop(1,e.isPlayer?'#315a90':'#97582f');
    ctx.fillStyle='#20252a';ctx.fillRect(x-width*.4,top+height*.34,width*.8,height*.5);
    ctx.fillStyle=body;
    ctx.fillRect(x-width*.32,top+height*.19,width*.64,height*.58);
-   ctx.fillStyle='#e7a85e';ctx.fillRect(x-width*.28,top,width*.56,height*.27);
+   ctx.fillStyle=e.isPlayer?'#b0eeff':'#e7a85e';ctx.fillRect(x-width*.28,top,width*.56,height*.27);
    ctx.fillStyle='#263d4b';ctx.fillRect(x-width*.22,top+height*.10,width*.44,height*.07);
    ctx.fillStyle='#9ff7ff';
    ctx.fillRect(x-width*.17,top+height*.12,width*.34,height*.035);
@@ -308,7 +310,8 @@ function castRay(x,y,angle){
    ctx.fillRect(x+width*.10,ground-height*.15,width*.18,height*.15);
    ctx.fillStyle='#131d26';ctx.fillRect(x-width*.4,top+height*.32,width*.15,height*.25);ctx.fillRect(x+width*.25,top+height*.32,width*.15,height*.25);
    ctx.fillStyle='#1f2934';ctx.fillRect(x-width*.35,top-height*.08,width*.70,height*.075);
-   ctx.fillStyle='#80ecbe';ctx.fillRect(x-width*.35,top-height*.08,width*.70*(e.hp/65),height*.075);
+   ctx.fillStyle=e.isPlayer?'#69cbff':'#80ecbe';ctx.fillRect(x-width*.35,top-height*.08,width*.70*(e.hp/(e.hpMax||65)),height*.075);
+  if(e.isPlayer){ctx.fillStyle='#ffffff';ctx.font='bold '+Math.max(8,Math.min(16,height*.11))+'px sans-serif';ctx.textAlign='center';ctx.fillText(String(e.name||'Rival').slice(0,24),x,top-height*.12);}
   }
  }
  function gunView(now){
@@ -350,14 +353,24 @@ function castRay(x,y,angle){
  function tick(now){
   if(!playing)return;
   const dt=clamp((now-lastFrame)/1000,0,.05);lastFrame=now;
-  const remaining=DURATION-(now-startTime)/1000;
-  if(remaining<=0){finish(kills>=TARGET&&life>0);render(now);return;}
+  const room=isOnline?online.getRoom():null;
+  const remaining=isOnline?Math.max(0,150-(Date.now()-(room?.startedAt?.toMillis?.()||Date.now()))/1000):DURATION-(now-startTime)/1000;
+  if(isOnline&&room?.status==='finished'){finish(room.winnerUid===user.uid);render(now);return;}
+  if(!isOnline&&remaining<=0){finish(kills>=TARGET&&life>0);render(now);return;}
+  if(isOnline&&remaining<=0&&Date.now()-lastOnlineStatus>3000){lastOnlineStatus=Date.now();online.status().catch(error=>setHint(error.message));}
   if(reloadEnds&&now>=reloadEnds){
-   const g=gun(),amount=Math.min(g.mag-g.ammo,g.reserve);
-   g.ammo+=amount;g.reserve-=amount;reloadEnds=0;
-   setHint('Arma recarregada!');
+   if(!isOnline){
+    const g=gun(),amount=Math.min(g.mag-g.ammo,g.reserve);
+    g.ammo+=amount;g.reserve-=amount;
+    setHint('Arma recarregada!');
+   }
+   reloadEnds=0;
   }
-  move(dt);think(dt,now);
+  move(dt);
+  if(isOnline){
+   online.sendPosition({x:px,y:py,angle:look,weapon:current});
+   if(life<=0&&room?.status!=='finished')setHint('Você foi eliminado! Aguardando resultado do servidor...');
+  }else think(dt,now);
   if(shooting)fire(now);
   render(now);updateHud(remaining);
   if(playing)raf=requestAnimationFrame(tick);
@@ -406,7 +419,8 @@ function castRay(x,y,angle){
  }
  function contextMenu(e){e.preventDefault();}
  function click(e){
-  if(e.target.closest('[data-shoot-start]')){rewarded=false;start();}
+  if(e.target.closest('[data-shoot-start]')){if(!isOnline||!playing){rewarded=false;start();}}
+  else if(e.target.closest('[data-shoot-back-hub]')){onExit?.();}
   else if(e.target.closest('[data-shoot-weapon]')){const index=Number(e.target.closest('[data-shoot-weapon]').dataset.shootWeapon);if(playing&&Number.isInteger(index)&&index>=0&&index<guns.length){current=index;scope=false;reloadEnds=0;updateHud(DURATION-(performance.now()-startTime)/1000);}}
   else if(e.target.closest('[data-shoot-reload]'))startReload();
   else if(e.target.closest('[data-shoot-scope]'))scope=current===2?!scope:false;
@@ -428,7 +442,8 @@ function castRay(x,y,angle){
  el.addEventListener('pointerup',touchUp);
  el.addEventListener('pointercancel',touchUp);
  el.addEventListener('click',click);
- look=-Math.PI/2;render(performance.now());updateHud();
+ look=arena.spawn[0][2];render(performance.now());updateHud();
+ if(autoStart)start();
  return ()=>{
   playing=false;done=true;cancelAnimationFrame(raf);
   if(document.pointerLockElement===canvas)document.exitPointerLock?.();
