@@ -43,3 +43,5 @@ Não foi possível realizar neste ambiente uma sessão multijogador real ou test
 - `shooter-fps.js` substitui o SHOOT’E R! visto de cima por um **FPS de raycasting em primeira pessoa**, com cenário tipo labirinto, inimigos robóticos renderizados em perspectiva, controle de mouse por Pointer Lock, movimento WASD, tiro pelo botão esquerdo, zoom do fuzil com direito, recarga em R e troca de quatro armas em 1–4. Sem multiplayer (ainda treino solo).
 - Interface e CSS atualizados, com overlay de início e fim, HUD, mira, zoom e informação de controles.
 - Premiação e regras anteriores preservadas; essa revisão não altera a carteira local e não configura servidores multiplayer.
+
+- SHOOT’E R! suporta controles touch com movimento, tiro, zoom, troca de armas e arrastar a câmera.
