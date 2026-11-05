@@ -1,3 +1,4 @@
+import { createPokemonOnline } from './pokemon-online.js?v=20261104';
 import { mountStory } from './story-game.js?v=20261104';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104';
 
@@ -617,6 +618,7 @@ function listenUsers() {
         Date.now() - user.lastSeen.toDate().getTime() < 3 * 60 * 1000
       );
 
+    pokemonOnline?.setPlayers(active);
     $('online-count').textContent = active.length;
 
     $('online-members').innerHTML = active.length
@@ -834,6 +836,7 @@ const POKEMON_CATALOG = [
 ];
 
 let pokemonArena = null;
+let pokemonOnline = null;
 
 function pokemonStorageKey() {
   return 'linercall-pokemon-v1-' + (currentUser?.uid || 'guest');
@@ -864,6 +867,9 @@ function pokemonById(id) {
 function initPokemonArena() {
   if (!currentUser) return;
   pokemonArena = loadPokemonArena();
+  if (pokemonOnline) pokemonOnline.destroy();
+  pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast});
+  pokemonOnline.start();
   if (String(profile?.displayName||'').trim().toLocaleLowerCase('pt-BR') === 'tom' && !localStorage.getItem('linercall-tom-coins-reset-v1')) { pokemonArena.coins=0; localStorage.setItem('linercall-tom-coins-reset-v1','1'); savePokemonArena(); }
   renderPokemonArena();
 }
@@ -919,7 +925,9 @@ function renderPokemonArena() {
     <button class="btn btn-primary pokemon-battle-start" data-pokemon-battle ${team.length!==3 || pokemonArena.battle?'disabled':''}>⚔ INICIAR BATALHA</button>
     <div class="pokemon-stats"><div><b>${pokemonArena.wins}</b><small>VITÓRIAS</small></div><div><b>${pokemonArena.losses || 0}</b><small>DERROTAS</small></div><div><b>${pokemonArena.battles || 0}</b><small>BATALHAS</small></div><div><b>${pokemonArena.coins}</b><small>MOEDAS</small></div></div>
     <div class="pokemon-history"><b>Últimas batalhas</b>${history || '<small class="muted">Seu histórico aparecerá aqui.</small>'}</div>
+    <div id="pokemon-online-panel" class="pokemon-online-panel panel"></div>
     <div id="pokemon-battle-stage" class="pokemon-battle-stage ${pokemonArena.battle?'':'hidden'}"></div>`;
+  pokemonOnline?.render();
   if (pokemonArena.battle) renderPokemonBattle();
 }
 function pokemonTypeMultiplier(moveType, targetType) {
@@ -1869,6 +1877,7 @@ if (configured) {
         });
 
       } else {
+        pokemonOnline?.destroy(); pokemonOnline=null;
         currentUser = null;
         profile = null;
         cleanupListeners();
