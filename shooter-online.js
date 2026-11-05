@@ -22,7 +22,8 @@ export function createShooterOnline({db,user,onChange,onMessage,onWallet}){
   const payload=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(payload.error||'Erro no servidor do SHOOT’E R!.');
   if(typeof payload.earnedTotal==='number')onWallet?.(payload.earnedTotal);
-  if(payload.room&&code===payload.room.id){room=payload.room;onChange?.();}
+  // O snapshot Firestore preserva Timestamp.toMillis(); a resposta JSON da API não.
+  if(payload.room&&code===payload.room.id&&!room){room=payload.room;onChange?.();}
   return payload;
  }
  function watch(id){
@@ -71,8 +72,8 @@ export function createShooterOnline({db,user,onChange,onMessage,onWallet}){
   const now=Date.now(),pose={x:Number(x.toFixed(3)),y:Number(y.toFixed(3)),
    angle:Number(angle.toFixed(4)),weapon,updatedAt:serverTimestamp()};
   latestPose=pose;
-  if(!force&&now-lastMove<230)return pendingPosition;
-  lastMove=now;
+  if(!force&&(now-lastMove<230||movementPending))return pendingPosition;
+  lastMove=now;movementPending=true;
   const id=code;
   // Enfileirar as atualizações, para os snapshots não chegarem fora de ordem.
   pendingPosition=pendingPosition.catch(()=>{}).then(()=>
@@ -80,7 +81,7 @@ export function createShooterOnline({db,user,onChange,onMessage,onWallet}){
   ).catch(error=>{
    if(Date.now()-lastPing>5000){lastPing=Date.now();onMessage?.('Falha na posição: '+(error.code||error.message));}
    if(force)throw error;
-  });
+  }).finally(()=>{movementPending=false;});
   return pendingPosition;
  }
  function getOpponent(){
