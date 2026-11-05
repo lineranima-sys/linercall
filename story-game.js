@@ -1,6 +1,6 @@
 // Herói em um mundo Luminoso · Capítulo 1 — aventura 2D original em Canvas.
 // A arte é desenhada no próprio jogo: não exige imagens externas.
-const CW=480, CH=270, FLOOR=220;
+const CW=480, CH=270, FLOOR=220, HERO_H=36, HERO_W=30;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const r01=n=>{const f=Math.sin(n*13.713+7.19)*43758.5453;return f-Math.floor(f);};
 const levels=[
@@ -9,21 +9,47 @@ const levels=[
  {name:'Montanha Sagrada',length:2400,kind:'mountain',ground:[[0,820],[895,1260],[1335,1710],[1785,2440]],platforms:[[815,178,90],[1255,169,90],[1703,178,90]],mobs:[990,1160,1430,1650,1890,2010]},
  {name:'O castelo de Malacord',length:2380,kind:'castle',ground:[[0,2420]],platforms:[],mobs:[]}
 ];
-const heroPixels=['...HHHH....','..HHHHHH...','..HSSSSH...','..HSESSH...','...SSSS....','..CCCCC....','..CCCCCC...','..CCYCCC...','..CCCCC....','...BB.BB...','...BB.BB...','..BBB.BBB..'];
-const bardoPixels=['..PPPPP...','..PSSSP...','...SSS....','..GGGGG...','..GGGGG.O.','..GGGGG/O.','...DDDDD..','...DD.DD..','...DD.DD..'];
-const goblinPixels=['..GGGGG..','.GGGGGGG.','GGEGGEGGG','GGGGGGGGG','.GTTTTTG.','..RRRRR..','..RR.RR..'];
-const colors={H:'#6e3b35',S:'#f7c69b',E:'#182b4c',C:'#4677bc',Y:'#f7ca63',B:'#40324e',P:'#76543b',G:'#4eb77a',D:'#60416e',O:'#f3be6a',R:'#674461',T:'#e1bc93'};
-export function mountStory(root,onExit){
- let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0;
+// Sprites originais de 2px, agora com poses distintas e silhuetas legíveis.
+const heroIdle=[
+ '.....PPPP......','....PHHHHP.....','...PHHHHHHP....','...HSSSSSSH....',
+ '...HSESESHH....','...HSSSSSSH....','....HHHSS......','...CCAAACC.....',
+ '..CCCAALACC....','..CCCAALACC....','...CAAAACC.....','...CAYYACC.....',
+ '....AAAAC......','....ADDAA......','....DBBDB......','....DBBDB......',
+ '...DBBBDBB.....','...DBB.DBB.....'
+];
+const heroWalkA=heroIdle.map((row,i)=>i>=14?['....DBBD.......','...DBBBDB......','..DBB..DBB.....','..BB....BB.....'][i-14]:row);
+const heroWalkB=heroIdle.map((row,i)=>i>=14?['.....DBBDB.....','.....DBBDB.....','.....DBBBDB....','.....BB.BB.....'][i-14]:row);
+const heroJump=heroIdle.map((row,i)=>i>=14?['....DBBDBB.....','...DBB...DB....','..BB.....BB....','..B.......B....'][i-14]:row);
+const heroAttack=heroIdle.map((row,i)=>i>=7&&i<=11?['..CCAAALAAAA...','..CCAAALAAAA...','..CCAAALAAAA...','...CAAAA......','....CAYY......'][i-7]:row);
+const bardIdle=[
+ '....PPPPPP.....','...PPPPPPPP....','...PPTTPPPP....','....PSSSSP.....',
+ '....PSEESP.....','.....SSSS......','...GGBGGGG.....','..GGGBGGGGG....',
+ '..GGGBGGGGG....','...GGGBGGGG....','....GGBGG......','....DGDDD......',
+ '....DDDDD......','....DDD.DD.....','....DD...DD....','....DD...DD....',
+ '...DDD...DDD...','...DDD...DDD...'
+];
+const bardWalk=bardIdle.map((row,i)=>i>=14?['...DDD....DD...','..DDD.....DDD..','..DD.......DD..','..DD.......DD..'][i-14]:row);
+const goblinIdle=[
+ '...GGGGGG......','..GGGGGGGG.....','.GGEGGEGGG.....','.GGGGGGGGG.....',
+ '..GGTTTTGG.....','...RRRRRR......','..RRRYYRRR.....','..RRRRRRRR.....',
+ '...RR..RR......','..BBB..BBB.....','..BBB..BBB.....','..BB....BB.....'
+];
+const colors={H:'#684336',P:'#c75864',S:'#f8cda4',E:'#252842',C:'#263a67',A:'#4486a3',L:'#8ce6e0',Y:'#f5d277',D:'#4b354f',B:'#272f46',G:'#39795e',R:'#526947',T:'#eddd9c'};
+export function mountStory(root,onExit,uid='guest'){
+ let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0,menu=true,intro=false,lastSave=0,bardX=0,bardY=FLOOR-36;
  const key={left:false,right:false};
  const flags={guards:false,fishNotice:false,fish:false,key:false,dragon:false,wedding:false,potion:false,princess:false,explosion:false,clone:false,bardo:false,rescue:false,win:false};
- const player={x:40,y:FLOOR-24,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
+ const player={x:40,y:FLOOR-HERO_H,vx:0,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
+ const dragonImage=new Image();dragonImage.src='./assets/dragon-pixel.svg';
+ const saveKey='linercall-luminous-save-v2-'+uid;
  let mobs=[];
  function build(){
   root.innerHTML='<div class="luminous-shell"><header class="luminous-header"><div><span>LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>Herói em um mundo Luminoso</h2><p>Capítulo 1 · Uma aventura de plataforma 2D pixel art</p></div><button class="btn" data-story-exit-new>← Minigames</button></header>'+
    '<div class="luminous-hud"><b id="luminous-zone">A longa estrada</b><span id="luminous-hp">♥ ♥ ♥ ♥ ♥</span><b id="luminous-distance">0%</b></div>'+
+   '<div class="luminous-objective" id="luminous-objective">Objetivo: Começar uma nova aventura</div>'+
    '<div class="luminous-screen"><canvas id="luminous-canvas" width="480" height="270" aria-label="Jogo de plataforma 2D em pixel art"></canvas>'+
-   '<div class="luminous-dialog" id="luminous-dialog"><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
+   '<div id="luminous-menu" class="luminous-menu"><div class="luminous-menu-card"><span class="eyebrow">LINERCALL APRESENTA</span><h2>HERÓI EM UM MUNDO <em>LUMINOSO</em></h2><span class="luminous-chapter">CAPÍTULO 1 · A CARTA DO BARDO</span><div class="luminous-menu-actions"><button type="button" data-story-continue class="btn btn-primary">▶ Continuar aventura</button><button type="button" data-story-new class="btn">✦ Novo jogo</button><button type="button" data-story-controls class="btn">⌨ Como jogar</button></div><small>Seu progresso fica salvo neste dispositivo.</small></div></div>'+
+   '<div class="luminous-dialog hidden" id="luminous-dialog" role="dialog" aria-live="polite"><div class="luminous-dialog-head"><span class="luminous-portrait" id="luminous-portrait">✦</span><div><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3></div></div><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
    '<div class="luminous-touch"><div><button data-story-hold="left">◀</button><button data-story-hold="right">▶</button></div><div><button data-story-act="jump">▲ PULAR</button><button data-story-act="attack">⚔ ATACAR</button></div></div>'+
    '<p class="luminous-instructions">A / D ou ← → mover · Espaço pular · X atacar ou interagir · O jogo é gratuito durante os testes.</p></div>';
  }
@@ -40,8 +66,8 @@ export function mountStory(root,onExit){
  }
  function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();}
  function initActors(){
-  player.x=35;player.y=FLOOR-24;player.vy=0;player.hp=5;player.iframes=0;player.peace=0;
-  mobs=levels[scene].mobs.map((x,i)=>({x,hp:2,alive:true,seed:i+scene*13}));
+  player.x=35;player.y=FLOOR-HERO_H;player.vy=0;player.hp=5;player.iframes=0;player.peace=0;bardX=player.x-48;bardY=player.y;
+  mobs=levels[scene].mobs.map((x,i)=>({x,home:x,hp:2,alive:true,dir:i%2?1:-1,aware:false,seed:i+scene*13}));
  }
  function nextLevel(who,title,body){
   scene++;initActors();dialogue(who,title,body);
