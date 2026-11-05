@@ -474,6 +474,7 @@ function setPresence(activity,label){
     .catch(error=>console.warn('Presença não atualizada:',error));
 }
 function switchView(name) {
+  if (name !== 'games' && miniGamePage === 'story') backToMiniGames();
   const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
   const state=activities[name]||['browsing','Navegando'];
   setPresence(state[0],state[1]);
@@ -665,6 +666,18 @@ function currentIsoWeekKey(date = new Date()) {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+function renderLocalBattleRecord() {
+  const container=$('ranking-list');
+  if(!container)return;
+  let record=$('ranking-local-record');
+  if(!record){record=document.createElement('div');record.id='ranking-local-record';record.className='ranking-local-record';container.parentNode?.appendChild(record);}
+  const history=pokemonArena?.history||[];
+  const week=currentIsoWeekKey();
+  const local=history.filter(h=>h.date && currentIsoWeekKey(new Date(h.date))===week);
+  const wins=local.filter(h=>h.win).length,losses=local.filter(h=>!h.win).length;
+  record.innerHTML='<b>Seu registro local da semana</b><p>'+wins+' vitórias · '+losses+' derrotas</p>'+
+  '<small>Salvo neste navegador. O ranking global requer validação pelo servidor para evitar resultados falsos.</small>';
+}
 function listenRanking() {
   const weekKey = currentIsoWeekKey();
   stopListeners.push(onSnapshot(collection(db, 'users'), snap => {
@@ -700,6 +713,7 @@ function listenRanking() {
       </div>
     `).join('') || '<p class="muted">O ranking semanal começa a aparecer quando resultados validados forem registrados.</p>';
 
+    renderLocalBattleRecord();
     const period = $('ranking-period');
     if (period) period.textContent = `SEMANA ${weekKey} · ZERA AUTOMATICAMENTE NA PRÓXIMA SEMANA`;
   }, error => {
@@ -1072,24 +1086,11 @@ async function finishPokemonBattle(won) {
   savePokemonArena();
   renderPokemonBattle();
 
-  // Registra o resultado semanal no perfil Firestore para alimentar o ranking.
-  if (currentUser && db) {
-    const weekKey = currentIsoWeekKey();
-    const previous = profile?.weekKey === weekKey ? profile : {};
-    const update = {
-      weekKey,
-      weeklyWins: (Number(previous.weeklyWins) || 0) + (won ? 1 : 0),
-      weeklyLosses: (Number(previous.weeklyLosses) || 0) + (won ? 0 : 1)
-    };
-    try {
-      await updateDoc(doc(db, 'users', currentUser.uid), update);
-      profile = { ...profile, ...update };
-      toast(won ? 'Vitória registrada no ranking semanal!' : 'Derrota registrada. Continue tentando!');
-    } catch (error) {
-      console.error('Não foi possível registrar resultado semanal:', error);
-      toast('A batalha foi salva, mas o ranking recusou o registro.');
-    }
-  }
+  // O resultado é salvo uma única vez no histórico local. Não alteramos ranking
+  // público pelo navegador: isso permitiria falsificar vitórias e moedas.
+  renderLocalBattleRecord();
+  toast(won ? 'Vitória! +21 LCoins. Resultado salvo neste navegador.' : 'Derrota registrada no histórico. +0 LCoins.');
+
 }
 
 function renderPokemonBattle() {
