@@ -619,6 +619,7 @@ function listenUsers() {
         Date.now() - user.lastSeen.toDate().getTime() < 3 * 60 * 1000
       );
 
+    latestOnlinePlayers=active;
     pokemonOnline?.setPlayers(active);
     $('online-count').textContent = active.length;
 
@@ -851,6 +852,7 @@ const POKEMON_CATALOG = [
 
 let pokemonArena = null;
 let pokemonOnline = null;
+let latestOnlinePlayers = [];
 
 function pokemonStorageKey() {
   return 'linercall-pokemon-v1-' + (currentUser?.uid || 'guest');
@@ -884,6 +886,7 @@ function initPokemonArena() {
   if (pokemonOnline) pokemonOnline.destroy();
   pokemonOnline=createPokemonOnline({db,uid:currentUser.uid,displayName:profile?.displayName||'Jogador',getTeam:()=>pokemonArena?.team||[],catalogue:POKEMON_CATALOG,getArt:pokemonArt,notify:toast});
   pokemonOnline.start();
+  pokemonOnline.setPlayers(latestOnlinePlayers);
   if (String(profile?.displayName||'').trim().toLocaleLowerCase('pt-BR') === 'tom' && !localStorage.getItem('linercall-tom-coins-reset-v1')) { pokemonArena.coins=0; localStorage.setItem('linercall-tom-coins-reset-v1','1'); savePokemonArena(); }
   renderPokemonArena();
 }
@@ -1878,7 +1881,7 @@ if (configured) {
         });
 
       } else {
-        pokemonOnline?.destroy(); pokemonOnline=null;
+        pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
         currentUser = null;
         profile = null;
         cleanupListeners();
