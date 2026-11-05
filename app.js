@@ -1,3 +1,4 @@
+import { mountStory } from './story-game.js?v=20261104';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
@@ -881,7 +882,7 @@ function showMiniGamePage(page) {
   const pokemonContent = $('pokemon-arena-content');
   const gameStage = $('game-stage');
   if (pokemonContent) pokemonContent.classList.toggle('hidden', page !== 'pokemon');
-  if (gameStage) { if (gameStage.parentElement !== root) root?.appendChild(gameStage); gameStage.classList.toggle('hidden', page === 'home' || page === 'pokemon'); }
+  if (gameStage) { if (gameStage.parentElement !== root) root?.appendChild(gameStage); gameStage.classList.toggle('hidden', page === 'home' || page === 'pokemon' || page === 'story'); }
   if (page === 'pokemon') renderPokemonArena();
   if (page === 'dice') showDice();
   if (page === 'reaction') showReaction();
@@ -1714,109 +1715,20 @@ function toggleMyList(id) {
 }
 
 
-/* ========================================
-   MODO HISTÓRIA — CAPÍTULO 1
-   ======================================== */
-let storyGame=null, storyFrame=0, storyLoop=0;
-const STORY_BEATS=[
- ['A CARTA DO BARDO','O herói sem nome está longe de sua vila quando uma carta chega: “A princesa foi capturada. Malacord tomou o castelo. Preciso de você. — seu velho amigo, o Bardo”.'],
- ['A LONGA ESTRADA','A jornada começa. Criaturas do Malacord ocupam as estradas, florestas e pontes. O herói terá de atravessar todo o caminho até o reino.'],
- ['O CASTELO FECHADO','Estátuas e fontes do herói enfeitam a cidade. Mas os guardas não o deixam passar: dizem que o verdadeiro herói já está lá dentro — e que este é um impostor.'],
- ['O PLANO DO BARDO','O Bardo explica que subiu a Montanha Sagrada. No topo existe um dragão antigo. Talvez possam entrar no castelo pelo alto.'],
- ['A CHAVE E O PEIXE','Perto do caminho, o Bardo é surpreendido por um peixe monstruoso. Derrote-o! No fim, o Bardo toca uma canção que o faz dormir. A chave aparece dentro dele.'],
- ['A MONTANHA SAGRADA','Goblins de Malacord guardam a subida. No topo, um dragão protege uma pilha de moedas e ameaça devorar os dois.'],
- ['MOEDAS DE CHOCOLATE','O herói desliza pela montanha e revela a embalagem aberta: as moedas eram de chocolate! Malacord enganou o dragão. Envergonhado, ele aceita ajudar — desde que ninguém conte.'],
- ['O CASTELO POR CIMA','O dragão os leva ao topo do castelo. Eles prometem recompensá-lo com moedas verdadeiras e pedem que espere encostado à árvore da montanha.'],
- ['O CASAMENTO','Uma escada leva à torre. Lá embaixo, Malacord veste roupa de casamento: pretende se casar com a princesa. O herói e o Bardo se separam para procurá-la.'],
- ['A POÇÃO','O herói encontra um baú com o mapa do casamento e uma poção. Sem saber o que faz, derrama o líquido na espada. Ela se transforma em uma espada flamejante!'],
- ['A PRINCESA SABE','No calabouço, o Bardo encontra a princesa. Ela percebe o perigo: “Não é isso que o Malacord quer! Que ele derrame uma poção os caramba!”'],
- ['A ESPADA EXPLODE','O herói chega ao salão. A espada pisca — e explode. A névoa toma o lugar. A princesa é acorrentada e surge uma cópia nebulosa do herói.'],
- ['O HERÓI CONTRA SI MESMO','A cada golpe do herói, a névoa imita o ataque. A solução é parar de lutar. Quando o herói abaixa a espada e não ataca, a cópia se desfaz em pó.'],
- ['O ÚLTIMO GOLPE','Malacord voa com uma pancada de alaúde do Bardo — que luta mesmo com a mão machucada. O vilão cai desacordado.'],
- ['UM RESGATE IMPROVÁVEL','A chave está presa ao braço da princesa. As grades vão pegar fogo em 1 minuto. O herói pensa em cortar o braço… mas percebe que pode cortar as cordas que prendem as grades!'],
- ['FIM DO CAPÍTULO 1','A princesa está livre. Malacord é levado ao calabouço. Ao acordar, ele se autointitula… GANONDORF!']
-];
-function storyMarkup(){
- return `<div class="story-shell"><div class="story-top"><div><span class="eyebrow">LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>O HERÓI SEM NOME</h2><p>Uma aventura de plataforma, monstros, mistérios e decisões duvidosas.</p></div><div class="story-price"><b>2.500</b><small> LCoins · PREÇO FUTURO</small><strong>GRÁTIS PARA TESTAR</strong></div></div>
- <div class="story-hud"><span id="story-status">A caminho da vila…</span><span id="story-progress">0%</span></div>
- <canvas id="story-canvas" width="960" height="420" aria-label="Jogo de plataforma pixel art"></canvas>
- <div class="story-controls"><button data-story-left>◀</button><button data-story-jump>▲</button><button data-story-attack>⚔</button><button data-story-right>▶</button></div>
- <div class="story-dialogue" id="story-dialogue"><b>Uma carta chegou.</b><p>Use ← → para andar, Espaço para pular e X para atacar. Atravesse a estrada e enfrente os monstros de Malacord.</p></div>
- <div class="story-actions"><small>Controles: ← → mover · Espaço pular · X atacar</small><button class="btn btn-primary" data-story-next>Começar aventura →</button><button class="btn" data-story-exit>Voltar aos minigames</button></div></div>`;
+/* Modo história: engine 2D separada, com controles e limpeza próprios. */
+let stopStorySession = null;
+function startStory() {
+  if (miniGamePage !== 'story') { showMiniGamePage('story'); return; }
+  stopStory();
+  const stage=$('minigame-stage');
+  if(!stage)return;
+  let root=$('story-game-content');
+  if(!root){root=document.createElement('div');root.id='story-game-content';stage.appendChild(root);}
+  stopStorySession=mountStory(root,backToMiniGames);
 }
-function startStory(){
- showMiniGamePage('story');
- const stage=$('minigame-stage'); if(!stage)return;
- let root=$('story-game-content'); if(!root){root=document.createElement('div');root.id='story-game-content';stage.appendChild(root);}
- root.innerHTML=storyMarkup();
- storyGame={x:60,y:300,vx:0,vy:0,ground:true,world:0,hp:5,score:0,scene:0,dialogue:true,keys:{},attack:0,enemy:[],finished:false};
- for(let i=0;i<26;i++)storyGame.enemy.push({x:480+i*205,y:326,alive:true,type:i%3});
- storyGame.enemy.push({x:5350,y:326,alive:true,boss:true});
- storyRender();
- if(storyLoop)cancelAnimationFrame(storyLoop);
- storyTick();
+function stopStory() {
+  if(stopStorySession){stopStorySession();stopStorySession=null;}
 }
-function storySay(title,body,button='Continuar →'){
- const box=$('story-dialogue');if(!box)return;
- box.innerHTML='<b>'+safeText(title)+'</b><p>'+safeText(body)+'</p><button class="btn btn-primary" data-story-resume>'+button+'</button>';
- storyGame.dialogue=true;storyGame.keys={};
-}
-function storyRender(){
- const canvas=$('story-canvas');if(!canvas||!storyGame)return;
- const c=canvas.getContext('2d'),g=storyGame,w=canvas.width,h=canvas.height,cam=Math.max(0,g.x-250);
- c.imageSmoothingEnabled=false;
- const sky=c.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#04b9f3');sky.addColorStop(1,'#8beaff');c.fillStyle=sky;c.fillRect(0,0,w,h);
- c.fillStyle='#fff7b0';c.beginPath();c.arc(770,65,47,0,Math.PI*2);c.fill();
- for(let i=0;i<9;i++){let x=((i*210-cam*.22)%(w+180)+w+180)%(w+180)-80;c.fillStyle='#d7fbff';c.fillRect(x,100+(i%3)*22,95,18);c.fillRect(x+18,86+(i%3)*22,42,25);}
- c.fillStyle='#4b9a4b';c.fillRect(0,340,w,80);c.fillStyle='#80d84c';for(let x=0;x<w;x+=13)c.fillRect(x,334+(x%3)*2,8,9);
- c.fillStyle='#805334';c.fillRect(0,370,w,50);c.fillStyle='#b9874e';for(let x=0;x<w;x+=28)c.fillRect(x,379,14,4);
- // árvores e flores
- for(let i=0;i<20;i++){let x=((i*170-cam*.65)%(w+100)+w+100)%(w+100)-30;c.fillStyle='#76502f';c.fillRect(x+15,275,14,65);c.fillStyle='#278b42';c.fillRect(x,240,45,42);c.fillStyle='#46bb4c';c.fillRect(x+8,225,28,28);}
- // marco distante
- if(g.world>850){c.fillStyle='#7b7b9e';c.fillRect(760,235,130,105);c.fillStyle='#e2c47a';c.fillRect(790,205,70,35);}
- // inimigos
- g.enemy.forEach(e=>{if(!e.alive)return;let x=e.x-cam;if(x<-40||x>w+40)return;c.fillStyle=e.boss?'#702b83':'#527b37';c.fillRect(x,300,e.boss?52:30,38);c.fillStyle='#f2d7a0';c.fillRect(x+6,310,7,7);c.fillRect(x+19,310,7,7);c.fillStyle='#301d30';c.fillRect(x+8,312,3,3);c.fillRect(x+21,312,3,3);});
- // herói
- let px=g.x-cam;c.fillStyle='#874c31';c.fillRect(px+4,g.y-12,24,24);c.fillStyle='#e6a16b';c.fillRect(px+7,g.y-8,19,17);c.fillStyle='#5c3927';c.fillRect(px+5,g.y-15,22,8);c.fillStyle='#f6d75e';c.fillRect(px+7,g.y+8,20,7);c.fillStyle='#3565a4';c.fillRect(px+4,g.y+17,9,15);c.fillRect(px+18,g.y+17,9,15);c.fillStyle='#fff';c.fillRect(px+18,g.y-4,4,4);
- if(g.attack>0){c.fillStyle='#fff1a1';c.fillRect(px+27,g.y+1,28,5);c.fillRect(px+45,g.y-5,5,18);}
- c.fillStyle='#17304a';c.fillRect(18,18,180,14);c.fillStyle='#f15e67';c.fillRect(20,20,g.hp*32,10);c.fillStyle='#fff';c.font='14px monospace';c.fillText('♥ '+g.hp+'   ✦ '+g.score,20,53);
- c.fillStyle='rgba(8,20,36,.7)';c.fillRect(0,398,w,22);c.fillStyle='#fff';c.font='12px monospace';c.fillText('ESTRADA DE MALACORD  ·  '+Math.min(100,Math.floor(g.world/55))+'%',12,414);
- const prog=$('story-progress');if(prog)prog.textContent=Math.min(100,Math.floor(g.world/55))+'%';
-}
-function storyTick(){
- if(!storyGame||storyGame.finished)return;
- const g=storyGame;
- if(!g.dialogue){
-  let dir=(g.keys.right?1:0)-(g.keys.left?1:0);g.vx=dir*3.3;g.x=Math.max(0,g.x+g.vx);g.world=g.x;g.vy+=.55;g.y+=g.vy;
-  if(g.y>=300){g.y=300;g.vy=0;g.ground=true;}
-  if(g.attack>0){g.attack--;g.enemy.forEach(e=>{if(e.alive&&Math.abs(e.x-g.x)<72){e.alive=false;g.score+=e.boss?500:25;}});}
-  g.enemy.forEach(e=>{if(e.alive&&Math.abs(e.x-g.x)<28&&g.y>=295){if(!g.hitLock){g.hp--;g.hitLock=50;if(g.hp<=0){g.hp=5;g.x=Math.max(0,g.x-220);storySay('Recuar não é desistir!','O herói recupera o fôlego em um ponto seguro. Tente novamente.');}}}});
-  if(g.hitLock)g.hitLock--;
-  const milestones=[900,1800,2650,3500,4300,5100];
-  const next=milestones[g.scene];
-  if(next&&g.x>=next){g.scene++;g.dialogue=true;const lines=[
-   ['A VILA DO HERÓI','As fontes e estátuas mostram o rosto do herói. Os guardas, porém, juram que ele é uma fraude. O Bardo aparece e conta seu plano.'],
-   ['O PEIXE MONSTRUOSO','O Bardo é agarrado por um peixe enorme! Acerte-o três vezes. O Bardo tocará uma canção para fazê-lo dormir.'],
-   ['A MONTANHA','Goblins cercam a trilha. O dragão do topo está guardando moedas que Malacord lhe deu.'],
-   ['CHOCOLATE?!','A embalagem aberta entrega o truque. O dragão aceita ajudar, mas exige segredo.'],
-   ['O CASTELO','Vocês entram pelo alto. Malacord planeja se casar com a princesa. Procurem a torre e o calabouço.'],
-   ['O SALÃO FINAL','A espada flamejante explode e a névoa cria um clone. Não ataque: a névoa copia cada golpe!']
-  ][g.scene-1];storySay(lines[0],lines[1]);}
-  if(g.x>5400){g.finished=true;storySay('CAPÍTULO CONCLUÍDO','A princesa foi salva, Malacord está no calabouço e o vilão acorda se autointitulando… GANONDORF!','Jogar novamente');}
- }
- storyRender();storyLoop=requestAnimationFrame(storyTick);
-}
-function storyKeyDown(e){
- if(!storyGame)return;
- const k=e.key.toLowerCase();if(['arrowleft','arrowright',' ','x'].includes(k))e.preventDefault();
- if(k==='arrowleft'||k==='a')storyGame.keys.left=true;
- if(k==='arrowright'||k==='d')storyGame.keys.right=true;
- if(k===' '||k==='arrowup'||k==='w'){if(storyGame.ground&&!storyGame.dialogue){storyGame.vy=-10;storyGame.ground=false;}}
- if(k==='x'||k==='z'){if(!storyGame.dialogue)storyGame.attack=12;}
-}
-function storyKeyUp(e){if(!storyGame)return;const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')storyGame.keys.left=false;if(k==='arrowright'||k==='d')storyGame.keys.right=false;}
-window.addEventListener('keydown',storyKeyDown);window.addEventListener('keyup',storyKeyUp);
-function stopStory(){if(storyLoop)cancelAnimationFrame(storyLoop);storyLoop=0;storyGame=null;}
 
 // ========================================
 // EVENTOS
@@ -1845,14 +1757,7 @@ function setupEvents() {
 
   // Delegação também atende ao botão LightyFlix, criado dinamicamente.
   document.addEventListener('click', event => {
-    const storyStart=event.target.closest('#play-story'); if(storyStart)startStory();
-    if(event.target.closest('[data-story-exit]'))backToMiniGames();
-    if(event.target.closest('[data-story-next]')){const box=$('story-dialogue');if(box){box.innerHTML='<b>A aventura começa!</b><p>Avance pela estrada. Pule obstáculos e use X para atacar os monstros.</p>';storyGame.dialogue=false;}}
-    if(event.target.closest('[data-story-resume]')){if(storyGame?.finished){startStory();}else if(storyGame){storyGame.dialogue=false;const box=$('story-dialogue');if(box)box.innerHTML='<b>Continue!</b><p>← → mover · Espaço pular · X atacar.</p>';}}
-    if(event.target.closest('[data-story-left]')&&storyGame)storyGame.keys.left=true;
-    if(event.target.closest('[data-story-right]')&&storyGame)storyGame.keys.right=true;
-    if(event.target.closest('[data-story-jump]')&&storyGame&&!storyGame.dialogue&&storyGame.ground){storyGame.vy=-10;storyGame.ground=false;}
-    if(event.target.closest('[data-story-attack]')&&storyGame&&!storyGame.dialogue)storyGame.attack=12;
+    const storyStart=event.target.closest('#play-story'); if(storyStart)showMiniGamePage('story');
     const navButton = event.target.closest('.nav-item[data-view]');
     if (navButton) { switchView(navButton.dataset.view); if (navButton.dataset.view === 'shop') renderShop(); }
   });
