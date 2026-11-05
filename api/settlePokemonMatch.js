@@ -27,7 +27,7 @@ export default async function handler(req,res){
   if(!matchDoc.exists)return res.status(404).json({error:'Partida não encontrada.'});
   const match=matchDoc.data();
   if(![match.hostUid,match.guestUid].includes(decoded.uid))return res.status(403).json({error:'Você não participou desta partida.'});
-  const verified=verifyPokemonMatch(match,turnDocs.docs.map(d=>d.data()));
+  const verified=verifyPokemonMatch({...match,id:matchId},turnDocs.docs.map(d=>d.data()));
   if(!verified)return res.status(409).json({error:'A partida ainda não terminou ou seus turnos são inválidos.'});
   const settledRef=firestore.collection('settledPokemonMatches').doc(matchId);
   const result=await firestore.runTransaction(async tx=>{
