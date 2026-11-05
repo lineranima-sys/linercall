@@ -1030,3 +1030,20 @@ body > #toast.show{opacity:1;transform:translate(-50%,0)}
 #music-import input[type=file]{font-size:10px}
 #music-import button{grid-column:1/-1;justify-self:start}
 @media(max-width:640px){.shooter-fps .shooter-hud span{font-size:10px}#music-import{grid-template-columns:1fr}.shoot-fps-paused span{letter-spacing:1px}}
+
+
+/* Controles de tela para FPS no celular: não dependem de teclado/mouse. */
+.shoot-touch-controls{display:none;margin:12px 0;padding:12px;background:#18283a;border:1px solid #536c86;border-radius:12px}
+.shoot-touch-controls button{min-width:55px;min-height:51px;border:1px solid #6c8396;border-radius:10px;background:linear-gradient(145deg,#30495f,#1b3148);color:#edf7ff;font-size:18px;font-weight:800;touch-action:none;user-select:none}
+.shoot-touch-controls button:active{background:#6689a1;transform:translateY(1px)}
+.shoot-touch-weaponbar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.shoot-touch-weaponbar button{font-size:11px;flex:1;min-width:62px;min-height:36px}
+.shoot-touch-nav{display:grid;justify-items:center;gap:3px}
+.shoot-touch-nav>div{display:flex;gap:4px}
+.shoot-touch-actions{display:flex;gap:8px;flex-direction:column;align-items:stretch;justify-content:center}
+.shoot-touch-actions [data-hold-fire]{color:#fff3c5;background:linear-gradient(145deg,#b94f2f,#7c3434);border-color:#e78b54}
+.shoot-touch-actions [data-hold-scope]{font-size:13px}
+.shoot-touch-controls>small{grid-column:1/-1;display:block;color:#b9cddb;font-size:10px;margin-top:10px}
+@media(pointer:coarse),(max-width:720px){
+ .shoot-touch-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+}
