@@ -931,9 +931,9 @@ function pokemonTypeMultiplier(moveType, targetType) {
 
 function createBattlePokemon(id) {
   const base = pokemonById(id);
-  const isEnemy = ['gengar','venusaur','lucario','snorlax','charizard','blastoise'].includes(id);
+  const isEnemy = arguments[1] === true;
   const hp = isEnemy ? Math.round(base.hp * 1.5) : base.hp;
-  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.35) : base.atk, def: isEnemy ? Math.round(base.def * 1.2) : base.def, hpNow: hp };
+  return { ...base, hp, atk: isEnemy ? Math.round(base.atk * 1.35) : base.atk, def: isEnemy ? Math.round(base.def * 1.2) : base.def, hpNow: hp, pe: 70, maxPE: 100 };
 }
 
 function startPokemonBattle() {
@@ -943,7 +943,7 @@ function startPokemonBattle() {
   const enemyIds = shuffled.slice(0, 3);
   pokemonArena.battle = {
     player: pokemonArena.team.map(createBattlePokemon),
-    enemy: enemyIds.map(createBattlePokemon),
+    enemy: enemyIds.map(id => createBattlePokemon(id, true)),
     playerActive: 0,
     enemyActive: 0,
     log: ['A batalha começou! Escolha um golpe.'],
@@ -960,6 +960,16 @@ function currentBattlePokemon(side) {
   return side === 'player' ? battle.player[battle.playerActive] : battle.enemy[battle.enemyActive];
 }
 
+function pokemonMoveCost(move) { return Number(move?.power) >= 22 ? 48 : 20; }
+function restPokemonInBattle() {
+  const b=pokemonArena?.battle;
+  if(!b||b.finished||b.turn!=='player')return;
+  const p=currentBattlePokemon('player');
+  p.pe=Math.min(p.maxPE||100,(p.pe||0)+45);
+  b.log.unshift(`${p.name} descansou e recuperou 45 PE. O turno passou ao rival.`);
+  b.turn='enemy';renderPokemonBattle();
+  setTimeout(pokemonEnemyTurn,650);
+}
 function performPokemonMove(moveIndex) {
   const b = pokemonArena?.battle;
   if (!b || b.finished || b.turn !== 'player') return;
@@ -968,6 +978,9 @@ function performPokemonMove(moveIndex) {
   const move = attacker.moves[moveIndex];
   if (!attacker || !defender || !move || attacker.hpNow <= 0) return;
 
+  const cost = pokemonMoveCost(move);
+  if (attacker.pe < cost) { toast('PE insuficiente! Use Descansar ou escolha outro golpe.'); return; }
+  attacker.pe -= cost;
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
@@ -994,8 +1007,16 @@ function pokemonEnemyTurn() {
   const attacker = currentBattlePokemon('enemy');
   const defender = currentBattlePokemon('player');
   if (!attacker || !defender) return;
-  const livingMoves = attacker.moves;
+  const livingMoves = attacker.moves.filter(m => pokemonMoveCost(m) <= attacker.pe);
+  if (!livingMoves.length) {
+    attacker.pe = Math.min(attacker.maxPE, attacker.pe + 45);
+    b.log.unshift(`${attacker.name} descansou e recuperou 45 PE!`);
+    b.turn = 'player';
+    renderPokemonBattle();
+    return;
+  }
   const move = [...livingMoves].sort((x,y)=>pokemonTypeMultiplier(y.type,defender.type)-pokemonTypeMultiplier(x.type,defender.type) || y.power-x.power)[0];
+  attacker.pe -= pokemonMoveCost(move);
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
   const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
@@ -1034,7 +1055,6 @@ async function finishPokemonBattle(won) {
     pokemonArena.coins += 21;
     pokemonArena.wins = (Number(pokemonArena.wins) || 0) + 1;
   } else {
-    pokemonArena.coins += 21;
     pokemonArena.losses = (Number(pokemonArena.losses) || 0) + 1;
   }
   b.result = won ? 'win' : 'loss';
@@ -1068,17 +1088,18 @@ function renderPokemonBattle() {
   if (!root || !b) return;
   const player = currentBattlePokemon('player'), enemy = currentBattlePokemon('enemy');
   const bar = p => Math.max(0,Math.round(p.hpNow/p.hp*100));
+  const pe = p => Math.max(0,Math.round((p.pe||0)/(p.maxPE||100)*100));
   root.innerHTML = `
     <div class="pokemon-battle-heading"><div><span class="eyebrow">ARENA · BATALHA POR TURNOS</span><h2>${b.finished ? (b.result === 'win' ? 'VITÓRIA!' : 'DERROTA') : 'A BATALHA COMEÇOU!'}</h2><p class="battle-turn-label">${b.finished ? 'Resultado final' : (b.turn === 'player' ? 'Sua vez: escolha um ataque.' : 'Turno do adversário…')}</p></div><span class="pixel-badge">PVE</span></div>
     <div class="pokemon-arena-scene ${b.finished ? (b.result === 'win' ? 'arena-victory' : 'arena-defeat') : ''}">
-      <div class="arena-fighter arena-enemy ${enemy.hpNow <= 0 ? 'pokemon-fainted' : ''}"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
+      <div class="arena-fighter arena-enemy ${enemy.hpNow <= 0 ? 'pokemon-fainted' : ''}"><div class="arena-fighter-meta"><b>${enemy.name}</b><small>${enemy.type}</small><div class="pokemon-hp" role="progressbar" aria-valuenow="${enemy.hpNow}" aria-valuemax="${enemy.hp}"><i style="width:${bar(enemy)}%"></i></div><small>HP ${enemy.hpNow}/${enemy.hp}</small><div class="pokemon-pe"><i style="width:${pe(enemy)}%"></i></div><small>PE ${enemy.pe||0}/${enemy.maxPE||100}</small></div><img src="${pokemonArt(enemy)}" alt="${enemy.name}"></div>
       <div class="arena-spike-band"><span>VS</span></div>
-      <div class="arena-fighter arena-player ${player.hpNow <= 0 ? 'pokemon-fainted' : ''}"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small></div></div>
+      <div class="arena-fighter arena-player ${player.hpNow <= 0 ? 'pokemon-fainted' : ''}"><img src="${pokemonArt(player)}" alt="${player.name}"><div class="arena-fighter-meta"><b>${player.name}</b><small>${player.type}</small><div class="pokemon-hp" role="progressbar" aria-valuenow="${player.hpNow}" aria-valuemax="${player.hp}"><i style="width:${bar(player)}%"></i></div><small>HP ${player.hpNow}/${player.hp}</small><div class="pokemon-pe"><i style="width:${pe(player)}%"></i></div><small>PE ${player.pe||0}/${player.maxPE||100}</small></div></div>
       ${b.finished ? `<div class="arena-result-stamp ${b.result}">${b.result === 'win' ? 'VITÓRIA!' : 'DERROTA'}</div>` : ''}
     </div>
     ${b.faintNotice && !b.finished ? `<div class="pokemon-faint-notice">${safeText(b.faintNotice)}</div>` : ''}
-    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +21 moedas.':'💤 Seus Pokémon foram derrotados. +21 moedas pela batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
-      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power}</small></button>`).join('')}</div></div>
+    ${b.finished ? `<div class="pokemon-result ${b.result}">${b.enemy.every(p=>p.hpNow<=0)?'🏆 Você venceu! +21 moedas.':'💤 Seus Pokémon foram derrotados. Nenhuma moeda nesta batalha.'}</div><button class="btn btn-primary" data-pokemon-close-battle>Voltar à equipe</button>` : `
+      <div class="pokemon-controls"><div><b>ATAQUES</b><div class="pokemon-moves">${player.moves.map((m,i)=>`<button class="pokemon-move-btn" data-pokemon-move="${i}" ${b.turn !== 'player' || (player.pe||0)<pokemonMoveCost(m) ? 'disabled' : ''}><b>${m.name}</b><small>${m.type} · força ${m.power} · ${pokemonMoveCost(m)} PE</small></button>`).join('')}</div><button class="pokemon-rest-btn" data-pokemon-rest ${b.turn!=='player'?'disabled':''}>🌿 Descansar — recuperar 45 PE (gasta 1 turno)</button></div>
       <div><b>TROCAR POKÉMON</b><div class="pokemon-switches">${b.player.map((p,i)=>`<button data-pokemon-switch="${i}" ${p.hpNow<=0||i===b.playerActive||b.turn!=='player'?'disabled':''}>${p.name} · ${p.hpNow} HP</button>`).join('')}</div></div></div>`}
     <div class="pokemon-battle-log"><b>REGISTRO</b>${b.log.slice(0,4).map(line=>`<p>${safeText(line)}</p>`).join('')}</div>`;
 }
@@ -1340,17 +1361,17 @@ function showDice() {
 }
 
 
-let tetrisTimer=null,tetrisBoard=[],tetrisPiece=null,tetrisScore=0,tetrisOver=false;
+let tetrisTimer=null,tetrisBoard=[],tetrisPiece=null,tetrisScore=0,tetrisOver=false,tetrisEarned=0;
 const TETRIS_SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]]];
 function stopTetris(){if(tetrisTimer)clearInterval(tetrisTimer);tetrisTimer=null;document.removeEventListener('keydown',tetrisKeyHandler);}
 function newTetrisPiece(){const shape=TETRIS_SHAPES[Math.floor(Math.random()*TETRIS_SHAPES.length)].map(row=>row.slice());return {shape,x:Math.floor((10-shape[0].length)/2),y:0};}
 function tetrisCollides(piece,x=piece.x,y=piece.y,shape=piece.shape){return shape.some((row,dy)=>row.some((v,dx)=>v&&(x+dx<0||x+dx>=10||y+dy>=20||(y+dy>=0&&tetrisBoard[y+dy][x+dx]))));}
 function drawTetris(){const root=$('game-content');if(!root)return;const cells=tetrisBoard.map(row=>row.slice());if(tetrisPiece) tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0&&tetrisPiece.y+dy<20)cells[tetrisPiece.y+dy][tetrisPiece.x+dx]=2;}));root.querySelector('#tetris-grid').innerHTML=cells.flat().map(v=>'<i class="tetris-cell '+(v===2?'falling':v===1?'filled':'')+'"></i>').join('');root.querySelector('#tetris-score').textContent=tetrisScore;}
-function lockTetris(){tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0)tetrisBoard[tetrisPiece.y+dy][tetrisPiece.x+dx]=1;}));let cleared=0;tetrisBoard=tetrisBoard.filter(row=>{if(row.every(Boolean)){cleared++;return false;}return true;});while(tetrisBoard.length<20)tetrisBoard.unshift(Array(10).fill(0));tetrisScore+=cleared*[0,100,300,500,800][cleared];tetrisPiece=newTetrisPiece();if(tetrisCollides(tetrisPiece)){tetrisOver=true;stopTetris();$('game-content').insertAdjacentHTML('beforeend','<p class="tetris-over">Fim de jogo · Pontuação: '+tetrisScore+'</p><button class="btn btn-primary" id="tetris-restart">Jogar novamente</button>');}}
+function lockTetris(){tetrisPiece.shape.forEach((row,dy)=>row.forEach((v,dx)=>{if(v&&tetrisPiece.y+dy>=0)tetrisBoard[tetrisPiece.y+dy][tetrisPiece.x+dx]=1;}));let cleared=0;tetrisBoard=tetrisBoard.filter(row=>{if(row.every(Boolean)){cleared++;return false;}return true;});while(tetrisBoard.length<20)tetrisBoard.unshift(Array(10).fill(0));tetrisScore+=cleared*[0,100,300,500,800][cleared];if(cleared&&pokemonArena){const reward=cleared*23;pokemonArena.coins=(Number(pokemonArena.coins)||0)+reward;tetrisEarned+=reward;savePokemonArena();toast('+'+reward+' LCoins por '+cleared+' linha'+(cleared>1?'s':'')+'!');}tetrisPiece=newTetrisPiece();if(tetrisCollides(tetrisPiece)){tetrisOver=true;stopTetris();$('game-content').insertAdjacentHTML('beforeend','<p class="tetris-over">Fim de jogo · Pontuação: '+tetrisScore+'</p><button class="btn btn-primary" id="tetris-restart">Jogar novamente</button>');}}
 function moveTetris(dx,dy){if(!tetrisPiece||tetrisOver)return;if(!tetrisCollides(tetrisPiece,tetrisPiece.x+dx,tetrisPiece.y+dy)){tetrisPiece.x+=dx;tetrisPiece.y+=dy;}else if(dy>0)lockTetris();drawTetris();}
 function rotateTetris(){if(!tetrisPiece||tetrisOver)return;const shape=tetrisPiece.shape[0].map((_,i)=>tetrisPiece.shape.map(row=>row[i]).reverse());if(!tetrisCollides(tetrisPiece,tetrisPiece.x,tetrisPiece.y,shape))tetrisPiece.shape=shape;drawTetris();}
 function tetrisKeyHandler(e){if(!['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key))return;e.preventDefault();if(e.key==='ArrowLeft')moveTetris(-1,0);else if(e.key==='ArrowRight')moveTetris(1,0);else if(e.key==='ArrowDown')moveTetris(0,1);else if(e.key==='ArrowUp')rotateTetris();else if(e.key===' ')while(!tetrisCollides(tetrisPiece,tetrisPiece.x,tetrisPiece.y+1))tetrisPiece.y++;if(e.key===' ')lockTetris();drawTetris();}
-function showTetris(){stopTetris();tetrisBoard=Array.from({length:20},()=>Array(10).fill(0));tetrisPiece=newTetrisPiece();tetrisScore=0;tetrisOver=false;$('game-stage').classList.remove('hidden');$('game-title').textContent='Tetris';$('game-content').innerHTML='<div class="tetris-wrap"><div class="tetris-info">Pontos: <b id="tetris-score">0</b><p>← → mover · ↑ girar · ↓ descer · Espaço: queda</p></div><div id="tetris-grid" class="tetris-grid" role="grid"></div><div class="tetris-mobile"><button data-tetris="left">←</button><button data-tetris="rotate">↻</button><button data-tetris="right">→</button><button data-tetris="down">↓</button></div><button class="btn" data-minigame-back>Voltar aos minigames</button></div>';document.addEventListener('keydown',tetrisKeyHandler);$('game-content').addEventListener('click',e=>{const b=e.target.closest('[data-tetris]');if(!b)return;({left:()=>moveTetris(-1,0),right:()=>moveTetris(1,0),down:()=>moveTetris(0,1),rotate:rotateTetris})[b.dataset.tetris]?.();});$('game-content').addEventListener('click',e=>{if(e.target.id==='tetris-restart')showTetris();});drawTetris();tetrisTimer=setInterval(()=>moveTetris(0,1),650);}
+function showTetris(){stopTetris();tetrisBoard=Array.from({length:20},()=>Array(10).fill(0));tetrisPiece=newTetrisPiece();tetrisScore=0;tetrisEarned=0;tetrisOver=false;$('game-stage').classList.remove('hidden');$('game-title').textContent='Tetris';$('game-content').innerHTML='<div class="tetris-wrap"><div class="tetris-info">Pontos: <b id="tetris-score">0</b><p>23 LCoins por linha completa · as moedas são salvas na carteira.</p><p>← → mover · ↑ girar · ↓ descer · Espaço: queda</p></div><div id="tetris-grid" class="tetris-grid" role="grid"></div><div class="tetris-mobile"><button data-tetris="left">←</button><button data-tetris="rotate">↻</button><button data-tetris="right">→</button><button data-tetris="down">↓</button></div><button class="btn" data-minigame-back>Voltar aos minigames</button></div>';document.addEventListener('keydown',tetrisKeyHandler);$('game-content').addEventListener('click',e=>{const b=e.target.closest('[data-tetris]');if(!b)return;({left:()=>moveTetris(-1,0),right:()=>moveTetris(1,0),down:()=>moveTetris(0,1),rotate:rotateTetris})[b.dataset.tetris]?.();});$('game-content').addEventListener('click',e=>{if(e.target.id==='tetris-restart')showTetris();});drawTetris();tetrisTimer=setInterval(()=>moveTetris(0,1),650);}
 
 // ========================================
 // MINIGAME: REFLEXO
@@ -1866,6 +1887,7 @@ function setupEvents() {
     const move = event.target.closest('[data-pokemon-move]');
     if (move) performPokemonMove(Number(move.dataset.pokemonMove));
 
+    if (event.target.closest('[data-pokemon-rest]')) restPokemonInBattle();
     const swap = event.target.closest('[data-pokemon-switch]');
     if (swap) switchPokemonInBattle(Number(swap.dataset.pokemonSwitch));
 
