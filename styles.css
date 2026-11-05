@@ -1047,3 +1047,49 @@ body > #toast.show{opacity:1;transform:translate(-50%,0)}
 @media(pointer:coarse),(max-width:720px){
  .shoot-touch-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 }
+
+
+/* SHOOT’E R! — menu, modos e votação de mapas temáticos */
+.shooter-hub{max-width:1160px;margin:0 auto}
+.shooter-hub-heading{padding:12px 0 15px}
+.shooter-hub-heading p{color:#cad8e7;font-size:14px;max-width:690px}
+.shooter-hub h3{font-size:21px;margin:18px 0 9px}
+.shooter-hub>p{color:#c2cedd;font-size:13px}
+.shoot-mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px;margin:20px 0}
+.shoot-mode-card{display:flex;align-items:flex-start;flex-direction:column;gap:13px;text-align:left;min-height:217px;border-radius:19px;padding:25px 21px;border:1px solid #5c7491;color:#fff;transition:transform .16s,border-color .16s,box-shadow .16s}
+.shoot-mode-card:hover{transform:translateY(-4px);border-color:#f0c77f;box-shadow:0 12px 30px #0005}
+.shoot-mode-card span{font-size:46px}
+.shoot-mode-card b{font-size:23px}
+.shoot-mode-card small{font-size:12px;color:#d9e4f2;line-height:1.55}
+.shoot-mode-card.solo{background:linear-gradient(140deg,#385b5f,#172b3f)}
+.shoot-mode-card.multi{background:linear-gradient(140deg,#754334,#332238)}
+.shoot-mode-card.help{background:linear-gradient(140deg,#434b7b,#18243c)}
+.shoot-map-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:19px 0}
+.shoot-map-card{min-width:0;text-align:left;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#1b2940;color:#f5f9ff;border:2px solid #40516c;transition:transform .15s,border-color .15s}
+.shoot-map-card:hover{transform:translateY(-2px);border-color:#a0d8fb}
+.shoot-map-card.selected{border-color:#ffcd72;box-shadow:0 0 0 2px #bd894929,inset 0 0 15px #ebbb6d17;background:#2c3046}
+.shoot-map-card b{font-size:15px;color:#fff}
+.shoot-map-card small{font-size:11px;color:#ffda9a}
+.shoot-map-card span{font-size:10px;line-height:1.55;color:#afc5dc;flex:1}
+.shoot-map-preview{width:100%;max-height:140px;aspect-ratio:18/17;overflow:hidden;background:var(--map-floor,#3a4e60);border:1px solid #8095a555;border-radius:9px;display:flex;flex-direction:column;align-self:center}
+.shoot-map-minirow{display:flex;flex:1;width:100%;line-height:0}
+.shoot-map-minirow i{display:block;flex:1;min-width:0;border:0}
+.shoot-map-minirow i.solid{background:var(--map-wall,#8ca4bc);box-shadow:inset 0 0 0 1px #0003}
+.shoot-map-minirow i.floor{background:transparent}
+.shoot-hub-actions{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+.shoot-hub-actions .btn{padding:12px 18px}
+.shoot-room-actions{display:flex;align-items:center;flex-wrap:wrap;gap:13px;margin:18px 0}
+#shoot-join-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#shoot-join-form input{background:#121e33;color:#fff;border:1px solid #7188aa;border-radius:9px;padding:12px;width:160px;letter-spacing:3px;font-weight:800;text-align:center;text-transform:uppercase;font-size:14px}
+.shoot-lobby-status{display:flex;flex-wrap:wrap;align-items:center;gap:12px;border:1px solid #617590;background:#1b2b42;padding:14px;border-radius:12px;font-size:12px}
+.shoot-lobby-status b{color:#ffdf8f;font-size:14px}
+.shoot-votes{display:flex;align-items:center;gap:15px;flex-wrap:wrap;background:#152b3d;padding:15px;border-radius:10px;color:#d2e5e8;font-size:12px}
+.shoot-votes b{color:#ffda8b}
+.shoot-tutorial{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:15px 0}
+.shoot-tutorial section{background:#192a3b;border:1px solid #476383;border-radius:12px;padding:16px}
+.shoot-tutorial b{color:#ffd78d;font-size:15px}
+.shoot-tutorial p{font-size:12px;line-height:1.65;color:#bfd5e6}
+.shoot-map-grid.chosen .shoot-map-card:not(.selected){opacity:.42}
+.shooter-hub #shooter-hub-info:empty{display:none}
+@media(max-width:960px){.shoot-map-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shoot-mode-grid{gap:10px}.shoot-mode-card{min-height:195px;padding:18px}}
+@media(max-width:620px){.shoot-mode-grid{grid-template-columns:1fr}.shoot-mode-card{min-height:145px;padding:16px}.shoot-mode-card span{font-size:28px}.shoot-map-grid{gap:8px}.shoot-map-card{padding:8px}.shoot-map-card b{font-size:12px}.shoot-map-card span{font-size:10px}.shoot-tutorial{grid-template-columns:1fr}.shoot-lobby-status{flex-direction:column;align-items:flex-start}}
