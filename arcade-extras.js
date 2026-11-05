@@ -242,8 +242,8 @@ export function mountShooter({root,user,addCoins}){
   const remaining=DURATION-(now-started)/1000;
   if(remaining<=0){end(player.hp>0);return;}
   if(reloadUntil&&now>=reloadUntil){const gun=weapons[slot],amount=Math.min(gun.mag-gun.ammo,gun.reserve);gun.ammo+=amount;gun.reserve-=amount;reloadUntil=0;}
-  let dx=Number(pressed.has('d')||pressed.has('ArrowRight'))-Number(pressed.has('a')||pressed.has('ArrowLeft'));
-  let dy=Number(pressed.has('s')||pressed.has('ArrowDown'))-Number(pressed.has('w')||pressed.has('ArrowUp'));
+  let dx=Number(pressed.has('d')||pressed.has('arrowright'))-Number(pressed.has('a')||pressed.has('arrowleft'));
+  let dy=Number(pressed.has('s')||pressed.has('arrowdown'))-Number(pressed.has('w')||pressed.has('arrowup'));
   const mag=Math.hypot(dx,dy)||1;dx/=mag;dy/=mag;
   if(!blocked(player.x+dx*220*dt,player.y))player.x+=dx*220*dt;
   if(!blocked(player.x,player.y+dy*220*dt))player.y+=dy*220*dt;
