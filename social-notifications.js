@@ -4,20 +4,20 @@ const pairs=(a,b)=>[a,b].sort().join('_');
 const ms=t=>t?.toMillis?.()||0;
 export function createNotifications({db,uid,openDM,openArena,openFriends,openOffer}){
  const button=document.getElementById('notification-toggle'),panel=document.getElementById('notification-panel'),badge=document.getElementById('notification-count');
- let friends=[],requests=[],invites=[],offers=[],dm=new Map(),subs=new Map(),globalSubs=[],active=null,opened=false;
+ let friends=[],requests=[],invites=[],offers=[],dm=new Map(),subs=new Map(),globalSubs=[],active=null,opened=false,prefs=null;
  const seenKey='linercall-notice-seen-'+uid;
  let seen={};try{seen=JSON.parse(localStorage.getItem(seenKey)||'{}');}catch{}
  const save=(key,v)=>{try{localStorage.setItem(key,JSON.stringify(v));}catch{}};
  const key=other=>'linercall-dm-read-'+uid+'-'+pairs(uid,other);
  const read=other=>{try{return Number(JSON.parse(localStorage.getItem(key(other))||'0'))||0;}catch{return 0;}};
- const unread=other=>(dm.get(other)||[]).filter(m=>m.uid!==uid&&m.time>read(other)).length;
+ const unread=other=>prefs?.isMuted(other)?0:(dm.get(other)||[]).filter(m=>m.uid!==uid&&m.time>read(other)).length;
  const markRead=other=>{if(!other)return;save(key(other),Math.max(Date.now(),...(dm.get(other)||[]).map(m=>m.time)));render();};
  const setActive=other=>{active=other||null;if(active)markRead(active);render();};
  function rows(){
   return [
    ...friends.filter(f=>unread(f.uid)).map(f=>({type:'dm',id:f.uid,name:f.name,info:unread(f.uid)+' nova(s) mensagem(ns)',count:unread(f.uid),icon:'✉'})),
-   ...invites.filter(m=>!seen['battle:'+m.id]).map(m=>({type:'battle',id:m.id,name:m.hostName,info:'Convite para batalha Pokémon',count:1,icon:'⚔'})),
-   ...requests.filter(m=>!seen['friend:'+m.id]).map(m=>({type:'friend',id:m.id,name:m.name,info:'Pedido de amizade',count:1,icon:'♡'})),
+   ...invites.filter(m=>!seen['battle:'+m.id]&&!prefs?.hasBlocked(m.hostUid)).map(m=>({type:'battle',id:m.id,name:m.hostName,info:'Convite para batalha Pokémon',count:1,icon:'⚔'})),
+   ...requests.filter(m=>!seen['friend:'+m.id]&&!prefs?.hasBlocked(m.uid)).map(m=>({type:'friend',id:m.id,name:m.name,info:'Pedido de amizade',count:1,icon:'♡'})),
    ...offers.filter(m=>!seen['offer:'+m.id]).map(m=>({type:'offer',id:m.id,name:m.title,info:m.description||'Nova oferta',count:1,icon:'✦'}))
   ];
  }
@@ -53,6 +53,7 @@ export function createNotifications({db,uid,openDM,openArena,openFriends,openOff
   });render();
  }
  const setRequests=list=>{requests=list||[];render();};
+ const setPreferences=next=>{prefs=next||null;render();};
  function mark(id){seen[id]=true;save(seenKey,seen);render();}
  function markCategory(type){
   for(const r of rows())if(r.type===type&&type!=='dm')seen[type+':'+r.id]=true;
@@ -86,5 +87,5 @@ export function createNotifications({db,uid,openDM,openArena,openFriends,openOff
   subs.forEach(stop=>stop());subs.clear();globalSubs.forEach(stop=>stop());globalSubs=[];
   dm.clear();friends=[];requests=[];invites=[];offers=[];active=null;opened=false;render();
  }
- return {start,destroy,setFriends,setRequests,setActive,markRead,markCategory,getUnread:unread,render};
+ return {start,destroy,setFriends,setRequests,setPreferences,setActive,markRead,markCategory,getUnread:unread,render};
 }
