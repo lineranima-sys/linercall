@@ -505,6 +505,7 @@ async function searchFriend(){
 }
 async function sendFriendRequest(uid,name){
   if(!uid||uid===currentUser.uid)return;
+  if(socialControls?.hasBlocked(uid))return toast('Desbloqueie esta pessoa antes de enviar um pedido.');
   try{
     const existing=await getDocs(query(collection(db,'friendships'),where('uids','array-contains',currentUser.uid)));
     if(existing.docs.some(d=>d.data().uids.includes(uid))){toast('Vocês já são amigos.');return;}
@@ -537,24 +538,25 @@ async function answerFriendRequest(requestId,accept){
 }
 async function loadDMContact(uid,name){
  const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
- set('dm-contact-name',name);
+ set('dm-contact-name',socialDisplayName(uid,name));
  const avatar=$('dm-contact-avatar');if(avatar){avatar.textContent=initials(name);avatar.style.backgroundImage='';}
  set('dm-contact-activity','Buscando presença...');
  try{
   const snapshot=await getDoc(doc(db,'users',uid));
   if(uid!==activeFriendId||!snapshot.exists())return;
   const other=snapshot.data(),isOnline=Date.now()-(other.lastSeen?.toMillis?.()||0)<180000;
-  set('dm-contact-name',other.displayName||name);
+  set('dm-contact-name',socialDisplayName(uid,other.displayName||name));
   set('dm-contact-activity',isOnline?(other.activityLabel||'● Online'):'Offline');
-  if(other.avatarData&&avatar){avatar.style.backgroundImage='url("'+String(other.avatarData).replace(/"/g,'%22')+'")';avatar.textContent='';}
+  const photo=memberPhoto(other);if(photo&&avatar){avatar.style.backgroundImage='url("'+photo.replace(/"/g,'%22')+'")';avatar.textContent='';}
  }catch(e){if(uid===activeFriendId)set('dm-contact-activity','Status indisponível');}
 }
 function openDirectMessage(uid,name){
  if(!currentUser||!uid)return;
+ if(socialControls?.hasBlocked(uid))return toast('Este jogador está bloqueado.');
  if(!$('view-friends')?.classList.contains('active-view'))switchView('friends');
  activeFriendId=uid;
  setPresence('private_chat','Em chat privado com '+name);
- $('dm-title').textContent=name;
+ $('dm-title').textContent=socialDisplayName(uid,name);
  $('dm-panel')?.classList.remove('hidden');
  $('dm-messages').innerHTML='<p class="muted">Carregando mensagens...</p>';
  dmFocusOn();notificationCenter?.setActive(uid);
@@ -574,7 +576,7 @@ function openDirectMessage(uid,name){
 }
 async function sendDirectMessage(event){
   event.preventDefault();const input=$('dm-input'),value=input.value.trim();
-  if(!value||!activeFriendId)return;if(value.length>1000){toast('A mensagem é muito longa.');return;}
+  if(!value||!activeFriendId)return;if(socialControls?.hasBlocked(activeFriendId))return toast('Jogador bloqueado.');if(value.length>1000){toast('A mensagem é muito longa.');return;}
   try{
     await addDoc(collection(db,'conversations',friendPairId(currentUser.uid,activeFriendId),'messages'),{uid:currentUser.uid,displayName:profile?.displayName||'Jogador',text:value,createdAt:serverTimestamp()});
     input.value='';input.style.height='auto';
@@ -778,7 +780,7 @@ function renderLocalBattleRecord() {
 // Apenas as vitórias/derrotas PvP confirmadas pelo servidor entram no placar GLOBAL.
 let rankingPlayers=[],rankingScores=new Map(),rankingLoaded=false;
 function rankingPortrait(user){
- const url=String(user.avatarData||user.photoURL||'');
+ const url=memberPhoto(user);
  const valid=/^https:\/\//i.test(url)||/^data:image\/(?:png|jpeg|webp);base64,/i.test(url);
  return valid?'<img src="'+safeText(url)+'" alt="Foto de '+safeText(user.displayName||'Jogador')+'" loading="lazy" referrerpolicy="no-referrer">':safeText(initials(user.displayName||'Jogador'));
 }
@@ -927,13 +929,14 @@ async function openMemberProfile(uid, fallbackName) {
     document.body.appendChild(modal);
   }
   const own = uid === currentUser?.uid;
+  const displayName=socialDisplayName(uid,member.displayName||'Jogador');
   const isOnline = member.lastSeen?.toDate && Date.now()-member.lastSeen.toDate().getTime()<3*60*1000;
   const activity = member.activityLabel || (isOnline ? 'online' : 'offline');
   modal.innerHTML = `<div class="cropper-card member-profile-card">
     <div class="panel-head"><h3>Perfil do jogador</h3><button class="icon-btn" data-profile-close>✕</button></div>
-    <div class="profile-banner-preview ${member.bannerStyle ? '' : 'no-profile-banner'}" data-style="${member.bannerStyle || 0}">${safeText(member.displayName || 'Jogador')}</div>
-    <div class="member-profile-identity"><div class="avatar avatar-large" ${member.avatarData ? `style="background-image:url('${member.avatarData}');background-size:cover;background-position:center;color:transparent"` : ''}>${member.avatarData ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(member.displayName || 'Jogador')}</h2><small>${own ? 'Este é o seu perfil' : safeText(activity)}</small></div></div>
-    ${!own ? `<div class="member-profile-actions"><button class="btn btn-primary" data-profile-add="${safeText(uid)}" data-profile-add-name="${safeText(member.displayName||'Jogador')}">Adicionar amizade</button><button class="btn" data-profile-message="${safeText(uid)}" data-profile-message-name="${safeText(member.displayName||'Jogador')}">Enviar mensagem</button></div>` : ''}
+    <div class="profile-banner-preview ${member.bannerStyle ? '' : 'no-profile-banner'}" data-style="${member.bannerStyle || 0}">${safeText(displayName)}</div>
+    <div class="member-profile-identity"><div class="avatar avatar-large" ${memberPhoto(member) ? `style="background-image:url('${memberPhoto(member)}');background-size:cover;background-position:center;color:transparent"` : ''}>${memberPhoto(member) ? '' : safeText(initials(member.displayName || 'Jogador'))}</div><div><h2>${safeText(displayName)}</h2><small>${own ? 'Este é o seu perfil' : safeText(activity)}</small></div></div>
+    ${!own ? `<div class="member-profile-actions"><button class="btn btn-primary" data-profile-add="${safeText(uid)}" data-profile-add-name="${safeText(member.displayName||'Jogador')}">Adicionar amizade</button><button class="btn" data-profile-message="${safeText(uid)}" data-profile-message-name="${safeText(member.displayName||'Jogador')}">Enviar mensagem</button><button class="btn" data-social-manage="${safeText(uid)}" data-social-name="${safeText(member.displayName||'Jogador')}">⚙ Gerenciar</button></div>` : ''}
   </div>`;
   modal.classList.remove('hidden');
 }
@@ -2034,6 +2037,12 @@ function setupEvents() {
     if (event.target.closest('[data-crop-cancel]')) { pendingAvatarImage=null; $('avatar-cropper')?.classList.add('hidden'); }
     if (event.target.closest('[data-crop-save]')) saveCroppedAvatar();
     if (event.target.closest('[data-profile-close]')) $('member-profile-modal')?.classList.add('hidden');
+    const manageSocial=event.target.closest('[data-social-manage]');
+    if(manageSocial){
+      const other=manageSocial.dataset.socialManage;
+      socialControls?.show(other,manageSocial.dataset.socialName||'Jogador',latestFriendDocs.some(d=>d.data().uids.includes(other)));
+      return;
+    }
     const profileTrigger=event.target.closest('[data-profile-open]'); if(profileTrigger) openMemberProfile(profileTrigger.dataset.profileOpen, profileTrigger.dataset.profileName);
     const profileAdd=event.target.closest('[data-profile-add]'); if(profileAdd)sendFriendRequest(profileAdd.dataset.profileAdd,profileAdd.dataset.profileAddName);
     const profileMessage=event.target.closest('[data-profile-message]'); if(profileMessage){$('member-profile-modal')?.classList.add('hidden');openDirectMessage(profileMessage.dataset.profileMessage,profileMessage.dataset.profileMessageName);}
@@ -2073,7 +2082,7 @@ if (configured) {
 
       } else {
         pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
-        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;
+        dmFocusOff();notificationCenter?.destroy();notificationCenter=null;socialControls?.destroy();socialControls=null;latestFriendDocs=[];
         currentUser = null;
         profile = null;
         cleanupListeners();
