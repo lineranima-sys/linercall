@@ -723,3 +723,11 @@ body.cinema-modal-open{overflow:hidden}
 .pvp-log{margin:0 16px 16px;padding:13px;background:#0c1b2f;border:1px solid #25405c;border-radius:9px}.pvp-log b{color:#79d7f3;font-size:12px}.pvp-log p{font-size:11px;color:#b3c6d9;margin:7px 0}
 @media(max-width:960px){.pvp-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.pvp-field{gap:7px;padding:12px;min-height:225px}.pvp-fighter img{height:108px}.pvp-hud{padding:5px}.pvp-hud b{font-size:11px}}
+
+/* Cenário pixel art — arquivo próprio, mantendo sprites em primeiro plano. */
+.pokemon-arena-scene,.pvp-field{
+ background-image:url('./arena-pixel-background.svg');
+ background-size:cover;background-repeat:no-repeat;background-position:center;
+ image-rendering:pixelated;
+}
+.pokemon-arena-scene::before,.pokemon-arena-scene::after{display:none}
