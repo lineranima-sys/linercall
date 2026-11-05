@@ -1,6 +1,6 @@
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261104-pvp-rules';
-import { mountStory } from './story-game.js?v=20261104-chapter1';
+import { mountStory } from './story-game.js?v=20261105-moedas-fire-dodge';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
