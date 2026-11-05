@@ -2084,7 +2084,7 @@ function setupEvents() {
 
   document.addEventListener('click', event => {
     const lightyScroll=event.target.closest('[data-lighty-scroll]');if(lightyScroll){const row=lightyScroll.parentElement?.querySelector(lightyScroll.dataset.lightyScroll==='episodes'?'.lighty-episode-row':'.lighty-season-row');if(row)row.scrollBy({left:(lightyScroll.dataset.direction==='next'?1:-1)*Math.max(220,row.clientWidth*.78),behavior:'smooth'});}
-    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)toast(seasonBuy.dataset.buySeason==='lighty-demon-slayer'?'Este episódio ainda não tem reprodução publicada.':'🔒 Temporada ainda não lançada no LightyFlix.');
+    const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightySeason(seasonBuy.dataset.buySeason,Number(seasonBuy.dataset.seasonIndex));
     const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
     const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie){const listing=cinemaItems.find(x=>x.id===lightyMovie.dataset.shopMovie);if(listing?.catalogOnly)toast('Este filme ainda não está disponível no LightyFlix.');else buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');}
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
@@ -2126,8 +2126,17 @@ function setupEvents() {
     const cinemaScroll=event.target.closest('[data-cinema-scroll]');if(cinemaScroll){const row=$(cinemaScroll.dataset.cinemaScroll);if(row)row.scrollBy({left:(cinemaScroll.dataset.direction==='next'?1:-1)*Math.max(260,row.clientWidth*.8),behavior:'smooth'});}
     const cinemaOpen=event.target.closest('[data-cinema-open]');if(cinemaOpen)openCinemaDetails(cinemaOpen.dataset.cinemaOpen);
     if(event.target.closest('[data-cinema-close]'))closeCinemaDetails();
-    const epClicked=event.target.closest('.lighty-episode-card');
-    if(epClicked) toast(epClicked.classList.contains('is-locked')?'🔒 Este episódio ainda não foi lançado no LightyFlix.':'O episódio 1 está cadastrado; o vídeo ainda não está disponível para reprodução.');
+    const episodeBuy=event.target.closest('[data-buy-episode]');
+    if(episodeBuy){
+      buyLightyEpisode(episodeBuy.dataset.buyEpisode,Number(episodeBuy.dataset.episodeSeason),Number(episodeBuy.dataset.episodeNumber));
+      return;
+    }
+    const epClicked=event.target.closest('[data-episode-open]');
+    if(epClicked){
+      const show=epClicked.dataset.episodeOpen,season=Number(epClicked.dataset.episodeSeason),number=Number(epClicked.dataset.episodeNumber);
+      const owned=ownsEpisode(getLightyPurchases(),show,season,number);
+      toast(owned?'Episódio desbloqueado! O vídeo ainda não está disponível para reprodução.':'🔒 Episódio não comprado. Confira o preço e use o botão Comprar.');
+    }
     const watch = event.target.closest('[data-watch]');
     if (watch) playCinemaItem(watch.dataset.watch);
 
