@@ -1,3 +1,6 @@
+import { soloBattleEffect, RARE_SUPER_MULTIPLIER } from './pokemon-battle-effects.js';
+import { mountTermo } from './termo-game.js';
+import { mountDetective, mountMusic, mountShooter } from './arcade-extras.js';
 import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
@@ -601,7 +604,7 @@ function setPresence(activity,label){
 function switchView(name) {
   if(name==='friends')notificationCenter?.markCategory('friend');
   if(name!=='friends')dmFocusOff();
-  if (name !== 'games' && miniGamePage === 'story') backToMiniGames();
+  if (name !== 'games' && ['story','termo','detective','music','shooter'].includes(miniGamePage)) backToMiniGames();
   const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
   const state=activities[name]||['browsing','Navegando'];
   setPresence(state[0],state[1]);
@@ -1091,8 +1094,38 @@ function pokemonArt(p) {
   const ids = { pikachu:25, charizard:6, blastoise:9, venusaur:3, gengar:94, lucario:448, eevee:133, snorlax:143 };
   return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + ids[p.id] + '.png';
 }
+let activeArcadeCleanup=null;
+function stopArcadeExtras(){
+  if(activeArcadeCleanup){try{activeArcadeCleanup();}catch(error){console.warn('Fechamento minigame',error);}activeArcadeCleanup=null;}
+}
+function awardArcadeLocal(coins){
+ if(!pokemonArena||!Number.isSafeInteger(coins)||coins<=0)return;
+ pokemonArena.coins=(Number(pokemonArena.coins)||0)+coins;
+ savePokemonArena();renderShop();
+ toast('🪙 +'+coins+' LCoins! Saldo: '+pokemonArena.coins+'.');
+}
+function showArcadeExtra(page){
+ const root=$('game-content');
+ if(!root||!currentUser)return;
+ const common={root,user:currentUser,addCoins:awardArcadeLocal};
+ $('game-stage')?.classList.remove('hidden');
+ if(page==='termo'){
+  $('game-title').textContent='TERMO · ONLINE';
+  activeArcadeCleanup=mountTermo({root,getUser:()=>currentUser,getDb:()=>db,addCoins:awardArcadeLocal});
+ }else if(page==='detective'){
+  $('game-title').textContent='Detetive · Mistérios';
+  activeArcadeCleanup=mountDetective(common);
+ }else if(page==='music'){
+  $('game-title').textContent='Adivinhe a Música!';
+  activeArcadeCleanup=mountMusic(common);
+ }else if(page==='shooter'){
+  $('game-title').textContent='SHOOT’E R!';
+  activeArcadeCleanup=mountShooter(common);
+ }
+}
 let miniGamePage = 'home';
 function showMiniGamePage(page) {
+  stopArcadeExtras();
   if(page==='pokemon') notificationCenter?.markCategory('battle');
   miniGamePage = page;
   const root = $('minigame-stage');
@@ -1108,8 +1141,10 @@ function showMiniGamePage(page) {
   if (page === 'reaction') showReaction();
   if (page === 'tetris') showTetris();
   if (page === 'story') startStory();
+  if (['termo','detective','music','shooter'].includes(page)) showArcadeExtra(page);
 }
 function backToMiniGames() {
+  stopArcadeExtras();
   stopStory();
   $('story-game-content')?.remove();
   miniGamePage = 'home';
@@ -1198,18 +1233,22 @@ function performPokemonMove(moveIndex) {
   if (!b || b.finished || b.turn !== 'player') return;
   const attacker = currentBattlePokemon('player');
   const defender = currentBattlePokemon('enemy');
-  const move = attacker.moves[moveIndex];
+  const move = attacker?.moves?.[moveIndex];
   if (!attacker || !defender || !move || attacker.hpNow <= 0) return;
 
   const cost = pokemonMoveCost(move);
   if (attacker.pe < cost) { toast('PE insuficiente! Use Descansar ou escolha outro golpe.'); return; }
   attacker.pe -= cost;
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
-  const damage = Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (0.88 + Math.random() * 0.24)));
+  const effect = soloBattleEffect();
+  const damage = effect.miss?0:Math.max(5, Math.round((move.power + attacker.atk * 0.55 - defender.def * 0.28) * multiplier * (effect.rareSuper?RARE_SUPER_MULTIPLIER:1) * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
   b.turn = 'enemy';
   defender.hpNow = Math.max(0, defender.hpNow - damage);
-  b.log.unshift(`${attacker.name} usou ${move.name}! ${damage} de dano.${multiplier > 1 ? ' É super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
+  b.log.unshift(effect.miss?
+   attacker.name+' usou '+move.name+'... MISS! O ataque errou!':
+   attacker.name+' usou '+move.name+'! '+damage+' de dano.'+
+   (effect.rareSuper?' SUPER EFETIVO!! GOLPE RARÍSSIMO!':multiplier > 1?' É super efetivo pelo tipo!':multiplier < 1?' Não foi muito efetivo...':''));
 
   if (defender.hpNow <= 0) {
     b.faintNotice = `${defender.name} desmaiou!`;
@@ -1241,10 +1280,14 @@ function pokemonEnemyTurn() {
   const move = [...livingMoves].sort((x,y)=>pokemonTypeMultiplier(y.type,defender.type)-pokemonTypeMultiplier(x.type,defender.type) || y.power-x.power)[0];
   attacker.pe -= pokemonMoveCost(move);
   const multiplier = pokemonTypeMultiplier(move.type, defender.type);
-  const damage = Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (0.88 + Math.random() * 0.24)));
+  const effect = soloBattleEffect();
+  const damage = effect.miss?0:Math.max(4, Math.round((move.power + attacker.atk * 0.5 - defender.def * 0.3) * multiplier * (effect.rareSuper?RARE_SUPER_MULTIPLIER:1) * (0.88 + Math.random() * 0.24)));
   b.faintNotice = '';
   defender.hpNow = Math.max(0, defender.hpNow - damage);
-  b.log.unshift(`${attacker.name} usou ${move.name}! Você recebeu ${damage} de dano.${multiplier > 1 ? ' Foi super efetivo!' : multiplier < 1 ? ' Não foi muito efetivo...' : ''}`);
+  b.log.unshift(effect.miss?
+   attacker.name+' usou '+move.name+'... MISS! O ataque errou!':
+   attacker.name+' usou '+move.name+'! Você recebeu '+damage+' de dano.'+
+   (effect.rareSuper?' SUPER EFETIVO!! GOLPE RARÍSSIMO!':multiplier > 1?' Foi super efetivo pelo tipo!':multiplier < 1?' Não foi muito efetivo...':''));
 
   if (defender.hpNow <= 0) {
     b.faintNotice = `${defender.name} desmaiou!`;
@@ -2056,6 +2099,7 @@ function setupEvents() {
   $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
   $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
   $('play-tetris')?.addEventListener('click', () => showMiniGamePage('tetris'));
+  ['termo','detective','music','shooter'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
   $('sidebar-collapse')?.addEventListener('click',()=>{document.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed');localStorage.setItem('linercall-sidebar-collapsed',document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')?'1':'0');});
   document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 
@@ -2189,7 +2233,7 @@ if (configured) {
         });
 
       } else {
-        pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
+        stopArcadeExtras();pokemonOnline?.destroy(); pokemonOnline=null;latestOnlinePlayers=[];
         dmFocusOff();notificationCenter?.destroy();notificationCenter=null;socialControls?.destroy();socialControls=null;latestFriendDocs=[];latestFriendRequests=[];
         currentUser = null;
         profile = null;
