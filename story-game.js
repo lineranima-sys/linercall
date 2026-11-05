@@ -131,6 +131,7 @@ export function mountStory(root,onExit){
   if(player.iframes<=0||Math.floor(player.iframes/6)%2===1)sprite(heroPixels,px,player.y);
   box(7,7,116,19,'#233b57');box(10,10,player.hp*22,12,'#f17480');
   c.font='bold 11px monospace';c.fillStyle='#fff';c.fillText('♥ '+player.hp+'    ✦',13,40);
+  if(scene===2&&flags.fishNotice&&!flags.fish){box(146,7,192,25,'#21445a');box(150,12,Math.max(0,player.fishHP)*60,10,'#65d3f4');c.fillStyle='white';c.fillText('PEIXE MONSTRUOSO',170,29);}
   if(scene===3&&flags.rescue&&!flags.win){box(147,7,186,26,'#963f62');c.fillStyle='white';c.fillText('RESGATE: '+Math.ceil(player.timer)+'s',164,23);}
   if(scene===3&&flags.explosion&&!flags.clone){for(let i=0;i<28;i++)box(r01(i*42+Math.floor(ticks/5))*CW,r01(i*23+Math.floor(ticks/9))*200,5,5,'#d9dfec88');}
   root.querySelector('#luminous-zone').textContent=levels[scene].name;
@@ -148,7 +149,8 @@ export function mountStory(root,onExit){
   for(const m of mobs){if(!m.alive)continue;if(Math.abs(m.x-player.x)<48){m.hp--;if(m.hp<=0)m.alive=false;}}
   if(scene===2&&!flags.fish&&Math.abs(485-player.x)<70){
    player.fishHP--;
-   if(player.fishHP<=0){flags.fish=true;flags.key=true;dialogue('BARDO','A canção e a chave','Apesar da mão ferida, o Bardo toca uma melodia que adormece o peixe. Uma chave cai de dentro dele! Vamos subir a montanha.');}
+   if(player.fishHP===1&&!flags.fishSong){flags.fishSong=true;dialogue('BARDO','O peixe está adormecendo!','Mesmo com a mão ferida, o Bardo toca uma canção. O peixe vai ficando sonolento e abre a boca. Mais um golpe para libertar a chave!');}
+   if(player.fishHP<=0){flags.fish=true;flags.key=true;dialogue('BARDO','A chave dentro do peixe!','O peixe dormiu e deixou cair a chave de dentro da boca. Agora podemos abrir a passagem para a Montanha Sagrada!');}
   }
   if(scene===3&&flags.explosion&&!flags.clone){player.peace=0;damage();dialogue('CÓPIA DE NÉVOA','Ele copia seus golpes!','Cada vez que você ataca, a cópia de névoa também ataca. Talvez seja melhor guardar a espada...');}
   if(scene===3&&flags.rescue&&!flags.win&&Math.abs(2240-player.x)<85){
@@ -212,6 +214,7 @@ export function mountStory(root,onExit){
   }
   if(player.y>CH+35){damage();player.x=Math.max(20,player.x-175);player.y=FLOOR-24;player.vy=0;}
   for(const mob of mobs)if(mob.alive&&Math.abs(mob.x-player.x)<18&&Math.abs((FLOOR-18)-player.y)<24)damage();
+  if(scene===2&&flags.fishNotice&&!flags.fish&&!flags.fishSong && Math.abs(485-player.x)<65 && Math.floor(ticks)%105<2)damage();
   events(dt);
  }
  function loop(t){
