@@ -1,3 +1,4 @@
+import {pvpBattleEffect,RARE_SUPER_MULTIPLIER} from '../pokemon-battle-effects.js';
 // Regras compartilháveis para validar resultados PvP no servidor.
 // NÃO aceita vitórias, derrotas ou pontuações informadas pelo navegador.
 export const POKEMON_STATS = Object.freeze({
@@ -45,7 +46,8 @@ export function verifyPokemonMatch(match,turns){
    const move=attacker.moves[t.index];
    if(!move||attacker.pe<cost(move))return null;
    attacker.pe-=cost(move);
-   const damage=Math.max(4,Math.round((move.power+attacker.atk*.55-defender.def*.30)*advantage(move.type,defender.type)));
+   const effect=pvpBattleEffect(match.id,t.turnNo,t.uid);
+   const damage=effect.miss?0:Math.max(4,Math.round((move.power+attacker.atk*.55-defender.def*.30)*advantage(move.type,defender.type)*(effect.rareSuper?RARE_SUPER_MULTIPLIER:1)));
    defender.hpNow=Math.max(0,defender.hpNow-damage);
    if(!defender.hpNow){
     const next=teams[opponent].findIndex(p=>p.hpNow>0);
