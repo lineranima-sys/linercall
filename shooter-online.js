@@ -3,7 +3,7 @@
 import {collection,doc,onSnapshot,updateDoc,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 export function createShooterOnline({db,user,onChange,onMessage,onWallet}){
  let room=null,code='',players=new Map(),unsubRoom=null,unsubPlayers=null,lastMove=0;
- let movementPending=false,disposed=false,errors=0,lastPing=0;
+ let movementPending=false,pendingPosition=Promise.resolve(),latestPose=null,disposed=false,lastPing=0;
  const uid=user.uid;
  const getRoom=()=>room;
  const getCode=()=>code;
@@ -55,21 +55,33 @@ export function createShooterOnline({db,user,onChange,onMessage,onWallet}){
  async function leave(){
   const previous=code;
   disposeListeners();code='';room=null;
-  if(previous){const oldCode=code;code=previous;try{await call('leave');}catch(error){onMessage?.(error.message);}finally{code=oldCode;}}
+  if(previous)try{await call('leave',{code:previous});}
+   catch(error){onMessage?.(error.message);}
  }
- async function shoot(weapon){return call('shoot',{weapon});}
+ async function shoot(weapon,pose){
+  // Antes do disparo, publicar a posição/ângulo atual para a API validar a mira real.
+  if(pose)await sendPosition(pose,true);
+  else await pendingPosition;
+  return call('shoot',{weapon});
+ }
  async function reload(weapon){return call('reload',{weapon});}
- function sendPosition({x,y,angle,weapon}){
-  if(!room||room.status!=='playing'||movementPending||!code||disposed)return;
-  if(Date.now()-lastMove<230)return;
-  if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(angle))return;
-  lastMove=Date.now();movementPending=true;
-  updateDoc(doc(db,'shooterRooms',code,'players',uid),{
-   x:Number(x.toFixed(3)),y:Number(y.toFixed(3)),angle:Number(angle.toFixed(4)),weapon,
-   updatedAt:serverTimestamp()
-  }).catch(error=>{
-   if(Date.now()-lastPing>5000){lastPing=Date.now();onMessage?.('Falha ao compartilhar posição: '+(error.code||error.message));}
-  }).finally(()=>{movementPending=false;});
+ function sendPosition({x,y,angle,weapon},force=false){
+  if(!room||room.status!=='playing'||!code||disposed)return Promise.resolve();
+  if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(angle))return Promise.resolve();
+  const now=Date.now(),pose={x:Number(x.toFixed(3)),y:Number(y.toFixed(3)),
+   angle:Number(angle.toFixed(4)),weapon,updatedAt:serverTimestamp()};
+  latestPose=pose;
+  if(!force&&now-lastMove<230)return pendingPosition;
+  lastMove=now;
+  const id=code;
+  // Enfileirar as atualizações, para os snapshots não chegarem fora de ordem.
+  pendingPosition=pendingPosition.catch(()=>{}).then(()=>
+   updateDoc(doc(db,'shooterRooms',id,'players',uid),pose)
+  ).catch(error=>{
+   if(Date.now()-lastPing>5000){lastPing=Date.now();onMessage?.('Falha na posição: '+(error.code||error.message));}
+   if(force)throw error;
+  });
+  return pendingPosition;
  }
  function getOpponent(){
   const pos=other();
