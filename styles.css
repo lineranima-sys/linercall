@@ -890,3 +890,7 @@ body.cinema-modal-open{overflow:hidden}
  .ranking-player-row .wins,.ranking-player-row .losses,.ranking-player-row .rank-points{font-size:12px}
  .ranking-live-panel{padding:13px}
 }
+
+/* Avisos sobre modais do LightyFlix: nunca sofrer o blur do fundo */
+body > #toast{z-index:2500!important;isolation:isolate;filter:none!important;backdrop-filter:none!important;max-width:min(90vw,520px);text-align:center;box-shadow:0 18px 45px #0009,0 0 0 2px #ffffff35}
+body > #toast.show{opacity:1;transform:translate(-50%,0)}
