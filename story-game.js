@@ -120,6 +120,12 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(zoneIndex===3&&flags.dragon&&!flags.dragonComplete&&x>3620){flags.dragon=false;checkpoint=3020;}
   if(zoneIndex===4&&flags.rescue&&!flags.win)rescueTime=60;
   spawnMobs();p.x=zoneIndex===3&&!flags.fishWon&&x>475?40:x;
+  // Ao retomar, saves antigos não devem prender o herói dentro de um bloco.
+  for(const [bx,by,bw] of zone().platforms){
+   if(p.x+p.w>bx&&p.x<bx+bw){
+    p.x=Math.abs(p.x+p.w-bx)<Math.abs(bx+bw-p.x)?bx-p.w:bx+bw+2;
+   }
+  }
   if(zoneIndex===3&&flags.dragon&&!flags.dragonComplete)p.x=Math.min(p.x,3470);
   p.y=FLOOR-p.h;p.vx=p.vy=0;p.ground=true;p.invul=0.65;bard.x=Math.max(0,p.x-90);
   mode='world';q('story3-menu').classList.add('hidden');
@@ -291,7 +297,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
     }
    }
   }
-  if(zoneIndex===2||zoneIndex===3||(zoneIndex===4&&flags.princess)){
+  if((zoneIndex===2&&flags.guards)||zoneIndex===3||(zoneIndex===4&&flags.princess)){
    const desired=clamp(p.x-(p.face>0?85:-85),0,zone().length-50);
    const diff=desired-bard.x;bard.walking=Math.abs(diff)>5;
    if(bard.walking){bard.face=Math.sign(diff);bard.x+=Math.sign(diff)*Math.min(Math.abs(diff),180*dt);}
@@ -355,7 +361,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    }
   }else if(zoneIndex===4){
    if(p.x>1030&&!flags.potion){flags.potion=true;sequence(lore.potion);}
-   if(p.x>1900&&!flags.princess){flags.princess=true;sequence(lore.princess);}
+   if(p.x>1900&&!flags.princess){flags.princess=true;bard.x=p.x-95;bard.y=FLOOR-72;sequence(lore.princess);}
    if(p.x>2600&&!flags.exploded){cloneCalm=0;sequence(lore.explosion,()=>{flags.exploded=true;p.y=FLOOR-p.h;p.vy=0;p.ground=true;p.invul=.5;});}
    if(flags.exploded&&!flags.cloneWon){
     p.x=Math.min(p.x,2910);
