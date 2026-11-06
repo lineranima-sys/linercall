@@ -179,9 +179,12 @@ function castleLandmark(c,mark,x,y,t){
   rect(c,x-40,y-49,82,47,'#6c4255');rect(c,x-48,y-65,95,19,'#e7af64');
   rect(c,x-34,y-61,70,42,'#b56e5f');rect(c,x-6,y-42,15,23,'#ffd87d');
   rect(c,x-38,y-54,5,27,'#f3c77b');rect(c,x+33,y-54,5,27,'#f3c77b');
-  ellipse(c,x,y-80,16,22,'#ab63ce');ellipse(c,x,y-86,9,13,'#d9a9fa');
+  // Poção dentro do baú, com frasco, gargalo, rolha e líquido.
+  rect(c,x-13,y-88,26,27,'#d5e7fa');rect(c,x-9,y-78,18,16,'#ab63ce');
+  rect(c,x-6,y-98,12,12,'#e5f4ff');rect(c,x-8,y-102,16,6,'#a96d42');
  } else if(mark==='cage'){
   rect(c,x-74,y-150,148,151,'#413953');rect(c,x-72,y-153,144,12,'#d4b3aa');
+  // A princesa fica visivelmente atrás das barras da gaiola.
   for(let i=0;i<12;i++)rect(c,x-67+i*12,y-142,5,136,'#d8c4b9');
   rect(c,x-72,y-7,147,10,'#d5b7ae');
   for(let i=0;i<8;i++)ellipse(c,x-62+i*17,y-3+Math.sin(t*.009+i)*4,8,14,'#ef8f51');
@@ -209,6 +212,7 @@ function drawLandmarks(c,zone,camera,t,flags){
   if(name==='gate')gate(c,x,FLOOR);
   if(name==='fish'&&!flags.fishWon)drawFish(c,x,FLOOR-75,t,flags.fishHP??8);
   if(name==='dragon')drawDragon(c,x,FLOOR,t);
+  if(name==='mist'&&!flags.exploded)continue;
   if(['chest','wedding','dungeon','mist','cage'].includes(name))castleLandmark(c,name,x,FLOOR,t);
  }
 }
@@ -323,7 +327,13 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  if(zone.id==='castelo'){
   if(!flags.exploded)drawCharacter(c,480-camera,FLOOR-71,t,'malacord');
   if(flags.exploded&&!flags.cloneWon)drawCharacter(c,2760-camera,FLOOR-71,t,'shade',-1);
-  if(flags.rescue&&!flags.win)drawCharacter(c,3520-camera,FLOOR-71,t,'princess');
+  if(flags.rescue&&!flags.win){
+   drawCharacter(c,3490-camera-24,FLOOR-71,t,'princess');
+   const cageX=3490-camera;
+   rect(c,cageX-74,FLOOR-154,148,9,'#d4b3aa');
+   for(let i=0;i<12;i++)rect(c,cageX-68+i*12,FLOOR-145,5,142,'#d8c4b9');
+   for(let i=0;i<6;i++)ellipse(c,cageX-62+i*23,FLOOR-3+Math.sin(t*.009+i)*4,7,13,'#ef8f51');
+  }
   if(flags.bard&&flags.princess)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  }
  for(const m of mobs)if(m.hp>0&&m.x-camera>-90&&m.x-camera<W+90)enemy(c,m,camera,t);
@@ -336,15 +346,16 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  if(true)
   human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
  if(hero.swing>0){
-  const hb=swordBox(hero,76),face=hero.face,cx=hb.x-camera,cy=hb.y;
+  const hb=swordBox(hero,76),face=hero.face;
   c.save();
   const sx=hero.x-camera+(face>0?49:0), sy=hero.y+23;
   c.translate(sx,sy);if(face<0)c.scale(-1,1);
   // Espada curta e proporcional ao herói (aprox. 70 px), com alcance real correspondente.
-  poly(c,[[0,12],[10,6],[57,-9],[70,-9],[69,-3],[15,21]],'#61cddd');
-  poly(c,[[10,7],[56,-9],[67,-7],[16,15]],'#eefeff');
+  c.rotate(-.48+Math.sin(Math.min(1,hero.swing/.3)*Math.PI)*.65);
+  poly(c,[[0,12],[10,6],[44,-8],[56,-8],[55,-3],[15,21]],'#61cddd');
+  poly(c,[[10,7],[43,-8],[53,-6],[16,15]],'#eefeff');
   line(c,[2,5],[15,24],'#bb7b48',7);line(c,[7,9],[12,15],'#ffdf88',5);
-  ellipse(c,61,-7,4,3,'#fcffff');
+  ellipse(c,50,-6,4,3,'#fcffff');
   if(flags.potion)for(let i=0;i<5;i++)ellipse(c,22+i*9,-10+Math.sin(t*.01+i)*6,3,6,'#ff9160');
   c.restore();
  }
