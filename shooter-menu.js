@@ -1,7 +1,7 @@
 // SHOOT'E R! — menu e salas PvP beta em Firestore.
 // As partidas multiplayer NÃO valem LCoins: ainda não há servidor autoritativo de combate.
 import {addDoc,collection,doc,getDoc,onSnapshot,runTransaction,serverTimestamp,setDoc,updateDoc,query,limit,orderBy} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
-import {mountShooterFPS} from './shooter-fps.js';
+import {mountShooterFPS} from './shooter-fps.js?v=20261105-three-polish';
 import {SHOOTER_MAPS} from './shooter-maps.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const validMap=id=>SHOOTER_MAPS.some(m=>m.id===id);
@@ -17,7 +17,7 @@ export function mountShooter({root,user,getDb,addCoins}){
  let mode='home',chosen='undefined',latestOpponents=[],latestPose=null,localHp=100,seenShots=new Set(),lastPoseAt=0;
  let playingRoom=null,postPromise=Promise.resolve();
  const mapThumb=(map)=>'<button type="button" class="shoot-map-tile '+(chosen===map.id?'selected':'')+'" data-shoot-map="'+map.id+'"><b>'+esc(map.name)+'</b><span>'+esc(map.subtitle)+'</span><small>'+map.style.toUpperCase()+'</small></button>';
- root.innerHTML='<section class="arcade-game shooter-hub"><header class="brigaloka-head"><span class="eyebrow">LINERCALL ARCADE · SHOOT’E R!</span><h2 class="shooter-logo">SHOOT<span>’E</span> R!</h2><p>Quatro cenários exploráveis, casas com portas, degraus e visão em primeira pessoa.</p></header><div id="shoot-hub-content"></div></section>';
+ root.innerHTML='<section class="arcade-game shooter-hub"><header class="brigaloka-head"><span class="eyebrow">LINERCALL ARCADE · SHOOT’E R!</span><h2 class="shooter-logo">SHOOT<span>’E</span> R!</h2><p>Quatro mundos exploráveis, construções em 3D, ambientes abertos e combate em primeira pessoa.</p></header><div id="shoot-hub-content"></div></section>';
  const container=root.querySelector('#shoot-hub-content');
  function stopGame(){
   if(sceneCleanup){sceneCleanup();sceneCleanup=null;}
@@ -32,9 +32,9 @@ export function mountShooter({root,user,getDb,addCoins}){
  function home(){
   stopRoom();mode='home';
   container.innerHTML='<div class="shooter-main-menu"><h3>Escolha um modo</h3><div class="shooter-mode-grid">'+
-   '<button type="button" data-shoot-mode="solo"><b>🎯 Singleplayer</b><small>Treino com drones, 45 LCoins pela missão diária.</small></button>'+
-   '<button type="button" data-shoot-mode="multi"><b>👥 Multiplayer (2)</b><small>Crie ou entre em uma sala e vote no cenário com seu amigo.</small></button>'+
-   '<button type="button" data-shoot-mode="tutorial"><b>📖 Tutorial</b><small>Movimentação, armas, casas, escadas e fuzil.</small></button></div></div>';
+   '<button type="button" data-shoot-mode="solo"><span class="mode-icon">🎯</span><b>SINGLEPLAYER</b><small>Treino de precisão em cenários 3D com drones. Recompensa diária de 45 LCoins.</small><span class="mode-foot">ESCOLHER MAPA →</span></button>'+
+   '<button type="button" data-shoot-mode="multi"><span class="mode-icon">👥</span><b>MULTIPLAYER 1×1</b><small>Crie uma sala, convide seu amigo e votem no próximo cenário.</small><span class="mode-foot">ENTRAR NO DUELO →</span></button>'+
+   '<button type="button" data-shoot-mode="tutorial"><span class="mode-icon">📖</span><b>TUTORIAL</b><small>Aprenda movimentação, sniper, recarga, exploração e limites do mapa.</small><span class="mode-foot">VER CONTROLES →</span></button></div></div>';
  }
  function tutorial(){
   mode='tutorial';container.innerHTML='<div class="arcade-case-panel"><h3>Como jogar SHOOT’E R!</h3>'+
