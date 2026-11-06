@@ -298,11 +298,18 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    if(m.hp<=0)continue;
    m.stun=Math.max(0,m.stun-dt);m.ai+=dt;
    const delta=p.x-m.x;
-   if(m.stun===0&&Math.abs(delta)<230)m.dir=Math.sign(delta)||m.dir;
-   if(m.stun===0)m.x+=m.dir*(m.kind==='goblin'?46:27)*dt;
-   m.x=clamp(m.x,m.home-66,m.home+66);
+   const alerted=Math.abs(delta)<360&&Math.abs(p.y-m.y)<120;
+   const speed=m.kind==='goblin'?alerted?145:94:alerted?112:70;
+   // Patrulha e perseguição: não inverter a direção a cada frame nas bordas.
+   const left=Math.max(0,m.home-(alerted?190:105));
+   const right=Math.min(zone().length-m.w,m.home+(alerted?190:105));
+   if(m.stun<=0){
+    if(alerted&&Math.abs(delta)>30)m.dir=Math.sign(delta);
+    m.x+=m.dir*speed*dt;
+    if(m.x<=left){m.x=left;m.dir=1;}
+    else if(m.x>=right){m.x=right;m.dir=-1;}
+   }
    m.y=FLOOR-m.h;
-   if(Math.abs(m.x-m.home)>=65)m.dir*=-1;
    if(overlaps(bodyBox(p),bodyBox(m)))damage(1);
   }
   if(zoneIndex===3&&!flags.fishWon&&overlaps(bodyBox(p),{x:294,y:FLOOR-130,w:155,h:120}))damage(1);
