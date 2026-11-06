@@ -179,9 +179,12 @@ function castleLandmark(c,mark,x,y,t){
   rect(c,x-40,y-49,82,47,'#6c4255');rect(c,x-48,y-65,95,19,'#e7af64');
   rect(c,x-34,y-61,70,42,'#b56e5f');rect(c,x-6,y-42,15,23,'#ffd87d');
   rect(c,x-38,y-54,5,27,'#f3c77b');rect(c,x+33,y-54,5,27,'#f3c77b');
-  ellipse(c,x,y-80,16,22,'#ab63ce');ellipse(c,x,y-86,9,13,'#d9a9fa');
+  // Poção dentro do baú, com frasco, gargalo, rolha e líquido.
+  rect(c,x-13,y-88,26,27,'#d5e7fa');rect(c,x-9,y-78,18,16,'#ab63ce');
+  rect(c,x-6,y-98,12,12,'#e5f4ff');rect(c,x-8,y-102,16,6,'#a96d42');
  } else if(mark==='cage'){
   rect(c,x-74,y-150,148,151,'#413953');rect(c,x-72,y-153,144,12,'#d4b3aa');
+  // A princesa fica visivelmente atrás das barras da gaiola.
   for(let i=0;i<12;i++)rect(c,x-67+i*12,y-142,5,136,'#d8c4b9');
   rect(c,x-72,y-7,147,10,'#d5b7ae');
   for(let i=0;i<8;i++)ellipse(c,x-62+i*17,y-3+Math.sin(t*.009+i)*4,8,14,'#ef8f51');
@@ -209,6 +212,7 @@ function drawLandmarks(c,zone,camera,t,flags){
   if(name==='gate')gate(c,x,FLOOR);
   if(name==='fish'&&!flags.fishWon)drawFish(c,x,FLOOR-75,t,flags.fishHP??8);
   if(name==='dragon')drawDragon(c,x,FLOOR,t);
+  if(name==='mist'&&!flags.exploded)continue;
   if(['chest','wedding','dungeon','mist','cage'].includes(name))castleLandmark(c,name,x,FLOOR,t);
  }
 }
@@ -318,12 +322,25 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   if(x> -100&&x<W+80){poly(c,[[x-20,FLOOR],[x+9,FLOOR-55],[x+35,FLOOR]],'#779aa8');rect(c,x+5,FLOOR-58,14,14,'#d2dfe4');}
  }
  drawLandmarks(c,zone,camera,t,flags);
- if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);drawCharacter(c,1990-camera,FLOOR-71,t,'bard');}
- if(zone.id==='montanha'){drawCharacter(c,430-camera,FLOOR-71,t,'bard');}
+ if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);if(flags.guards&&flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');}
+ if(zone.id==='montanha'&&flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  if(zone.id==='castelo'){
   if(!flags.exploded)drawCharacter(c,480-camera,FLOOR-71,t,'malacord');
   if(flags.exploded&&!flags.cloneWon)drawCharacter(c,2760-camera,FLOOR-71,t,'shade',-1);
-  if(flags.princessFreed||flags.rescue)drawCharacter(c,3520-camera,FLOOR-71,t,'princess');
+  if(flags.rescue&&!flags.win){
+   const cageX=3490-camera;
+   // A princesa está desacordada dentro da gaiola, não em pé à frente das barras.
+   c.save();c.translate(cageX+28,FLOOR-20);c.rotate(-Math.PI/2);
+   human(c,0,0,t,'princess');c.restore();
+   rect(c,cageX-74,FLOOR-154,148,9,'#d4b3aa');
+   line(c,[cageX-61,FLOOR-154],[cageX-100,FLOOR-222],'#b7a6af',5);
+   line(c,[cageX+61,FLOOR-154],[cageX+100,FLOOR-222],'#b7a6af',5);
+   line(c,[cageX+15,FLOOR-43],[cageX+56,FLOOR-60],'#c7d5d9',4);
+   ellipse(c,cageX+61,FLOOR-63,8,8,'#ffe19b');
+   for(let i=0;i<12;i++)rect(c,cageX-68+i*12,FLOOR-145,5,142,'#d8c4b9');
+   for(let i=0;i<6;i++)ellipse(c,cageX-62+i*23,FLOOR-3+Math.sin(t*.009+i)*4,7,13,'#ef8f51');
+  }
+  if(flags.bard&&flags.princess)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  }
  for(const m of mobs)if(m.hp>0&&m.x-camera>-90&&m.x-camera<W+90)enemy(c,m,camera,t);
  for(const f of fx)if(f.life>0){
@@ -332,19 +349,25 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   else if(f.kind==='dust')ellipse(c,f.x-camera,f.y,7*f.life,4*f.life,'#e9e8df');
   c.restore();
  }
- if(hero.invul<=0||Math.floor(t/80)%2===0)
-  human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
+ human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
  if(hero.swing>0){
-  const hb=swordBox(hero,76),face=hero.face,cx=hb.x-camera,cy=hb.y;
-  c.save();c.globalAlpha=.17;rect(c,cx,cy,hb.w,hb.h,'#e4faff');c.globalAlpha=1;
+  const hb=swordBox(hero,76),face=hero.face;
+  c.save();
   const sx=hero.x-camera+(face>0?49:0), sy=hero.y+23;
   c.translate(sx,sy);if(face<0)c.scale(-1,1);
   // Espada curta e proporcional ao herói (aprox. 70 px), com alcance real correspondente.
-  poly(c,[[0,12],[10,6],[57,-9],[70,-9],[69,-3],[15,21]],'#61cddd');
-  poly(c,[[10,7],[56,-9],[67,-7],[16,15]],'#eefeff');
+  c.rotate(-.48+Math.sin(Math.min(1,hero.swing/.3)*Math.PI)*.65);
+  const broken=!!flags.exploded;
+  if(broken){
+   poly(c,[[0,12],[10,6],[18,-2],[24,-3],[26,4],[15,21]],'#81bed6');
+   poly(c,[[10,7],[18,-2],[23,0],[16,15]],'#d3f4ff');
+  }else{
+   poly(c,[[0,12],[10,6],[44,-8],[56,-8],[55,-3],[15,21]],'#61cddd');
+   poly(c,[[10,7],[43,-8],[53,-6],[16,15]],'#eefeff');
+   ellipse(c,50,-6,4,3,'#fcffff');
+  }
   line(c,[2,5],[15,24],'#bb7b48',7);line(c,[7,9],[12,15],'#ffdf88',5);
-  ellipse(c,61,-7,4,3,'#fcffff');
-  if(flags.potion)for(let i=0;i<5;i++)ellipse(c,22+i*9,-10+Math.sin(t*.01+i)*6,3,6,'#ff9160');
+  if(flags.potion&&!broken)for(let i=0;i<5;i++)ellipse(c,22+i*9,-10+Math.sin(t*.01+i)*6,3,6,'#ff9160');
   c.restore();
  }
  // Partículas leves de natureza e primeiro plano, sem esconder o personagem.
@@ -357,14 +380,128 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  c.fillStyle=vignette;c.fillRect(0,0,W,H);
  c.restore();
 }
-export function drawSlide(c,t,progress,lane,fire=[]){
+export function drawSlide(c,t,progress,jumpY,fire=[],duck=0){
  sky(c,'mountain',t,progress*2000);for(let i=0;i<9;i++)mountain(c,i*180-progress*600,520,340,190,'#6198b4','#e1e9ee');
  poly(c,[[0,490],[0,430],[300,365],[500,310],[960,425],[960,540]],'#a97049');
  for(let i=0;i<110;i++){
   const x=noise(i*21)*W,y=420-noise(i*7)*85+Math.sin(x*.01)*16;
   rect(c,x,y,10,6,i%4?'#ffdc75':'#f8bd62');
  }
- drawCharacter(c,180,250+lane*110,t,'hero',1,'jump');
- for(const a of fire){ellipse(c,a.x,a.y,22,22,'#e96650');ellipse(c,a.x-6,a.y-3,13,13,'#ffdb77');}
+ // Personagem escorrega rente às moedas; pulo e agachamento têm alturas distintas.
+ if(duck>0&&jumpY>=0){
+  c.save();c.translate(180,397);c.scale(1,.53);
+  drawCharacter(c,0,-72,t,'hero',1,'idle');c.restore();
+ }else drawCharacter(c,180,326+jumpY,t,'hero',1,jumpY<0?'jump':'walk');
+ for(const a of fire){
+  const y=a.kind==='low'?382:335;
+  ellipse(c,a.x,y,22,22,'#e96650');ellipse(c,a.x-6,y-3,13,13,'#ffdb77');
+ }
  rect(c,20,20,240,24,'#243853');rect(c,24,24,230*progress,16,'#ffd57a');
+}
+
+
+// Cenas visuais do Capítulo 1. Os personagens atuam em cena; a caixa de diálogo é só legenda.
+export function drawStoryCutscene(c,scene,index,t){
+ c.save();
+ const castle=!['arrival','dragon','fish','fishSong','fishWin','intro'].includes(scene);
+ if(castle)castleRoom(c,0,t);else{
+  sky(c,scene==='dragon'?'mountain':'meadow',t,0);
+  for(let i=0;i<8;i++)tree(c,i*175,FLOOR,1.2,i+41,'forest');
+  dirt(c,0,FLOOR,W,1,'meadow');
+ }
+ function label(text){rect(c,17,15,270,33,'#12243acb');c.textAlign='left';c.font='bold 15px sans-serif';c.fillStyle='#f8d69d';c.fillText(text,30,37);}
+ function person(x,kind,face=1,state='idle',y=FLOOR-72){human(c,x,y,t,kind,face,state);}
+ function cage(x=590,withPrincess=true){
+  rect(c,x-87,FLOOR-177,173,175,'#352d47');
+  if(withPrincess)person(x-22,'princess',-1);
+  rect(c,x-88,FLOOR-178,175,10,'#d5bbab');
+  for(let i=0;i<12;i++)rect(c,x-81+i*14,FLOOR-167,6,160,'#e0c7ae');
+  rect(c,x-86,FLOOR-7,172,12,'#c39ca3');
+  // Correntes e trava ligadas ao braço da princesa.
+  line(c,[x-4,FLOOR-80],[x+73,FLOOR-70],'#d6d8e1',5);
+  ellipse(c,x+72,FLOOR-70,8,9,'#f3cd80');
+  for(let i=0;i<2;i++)line(c,[x+64+i*14,FLOOR-167],[x+64+i*14,FLOOR-211],'#b9b9cc',5);
+  line(c,[x-60,FLOOR-178],[x-80,FLOOR-224],'#bd9181',6);
+ }
+ function sword(x,y,broken=false){
+  line(c,[x,y],[x+(broken?48:86),y-51],'#8ce2ef',broken?10:14);
+  line(c,[x+17,y-11],[x+32,y+8],'#e0ad61',9);
+  ellipse(c,x+(broken?47:86),y-49,7,7,'#edfbff');
+ }
+ if(scene==='intro'){label('A CARTA DO BARDO');building(c,340,FLOOR,1);person(610,'hero',-1);rect(c,686,286,76,52,'#e4cdab');rect(c,693,295,62,7,'#bd9a80');}
+ else if(scene==='arrival'){label('OS PORTÕES DO CASTELO');fountain(c,180,FLOOR);statue(c,350,FLOOR);gate(c,760,FLOOR);person(510,'hero');person(610,'bard',-1);person(820,'guard',-1);}
+ else if(scene==='fish'||scene==='fishSong'||scene==='fishWin'){
+  label(scene==='fishSong'?'CANÇÃO DO BARDO':scene==='fishWin'?'A CHAVE RECUPERADA':'O PEIXE DA MONTANHA');
+  person(250,'hero');person(380,'bard');drawFish(c,625,FLOOR-74,t,scene==='fishWin'?0:7);
+  if(scene==='fishSong')for(let i=0;i<5;i++){c.fillStyle='#ffdc8f';c.font='bold 27px sans-serif';c.fillText('♪',445+i*20,FLOOR-185-Math.sin(t*.002+i)*15);}
+  if(scene==='fishWin'){rect(c,620,FLOOR-60,16,25,'#f7d77c');ellipse(c,632,FLOOR-59,12,10,'#f7d77c');}
+ }
+ else if(scene==='dragon'){
+  label(index<2?'O DRAGÃO DA MONTANHA':'MOEDAS DE CHOCOLATE');
+  drawDragon(c,610,FLOOR,t);person(190,'hero');person(280,'bard');
+  if(index>=2){
+   rect(c,495,FLOOR-46,118,37,'#8d4c5d');
+   rect(c,500,FLOOR-42,108,26,'#efbd74');
+   rect(c,501,FLOOR-36,22,20,'#874b37');
+   rect(c,532,FLOOR-36,22,20,'#874b37');
+   rect(c,563,FLOOR-36,22,20,'#874b37');
+  }
+ }
+ else if(scene==='castle'){
+  label('A CERIMÔNIA DE MALACORD');
+  castleLandmark(c,'wedding',560,FLOOR,t);
+  person(290,'hero');person(395,'bard');
+  person(640,'malacord',-1);
+ }
+ else if(scene==='potion'){
+  label('O BAÚ E A POÇÃO');
+  castleLandmark(c,'chest',570,FLOOR,t);
+  person(320,'hero');
+  // Mapa do casamento saindo do baú.
+  rect(c,542,FLOOR-115,95,62,'#f1e1ba');
+  line(c,[548,FLOOR-103],[624,FLOOR-103],'#b88e7f',3);
+  line(c,[550,FLOOR-89],[604,FLOOR-70],'#bd9a83',3);
+  if(index>0){sword(382,FLOOR-66);for(let i=0;i<9;i++)ellipse(c,423+i*9,FLOOR-95-Math.sin(t*.003+i)*8,5,8,'#ed8155');}
+ }
+ else if(scene==='princess'){
+  label('POV DO BARDO · CALABOUÇO');
+  rect(c,0,160,W,270,'#36334a8a');
+  for(let i=0;i<9;i++)rect(c,i*110,170,3,258,'#62566e');
+  person(index===0?155:295,'bard');
+  cage(615,true);
+  if(index===1){rect(c,300,FLOOR-132,88,24,'#9e4c64');rect(c,310,FLOOR-124,65,8,'#ffdc83');}
+ }
+ else if(scene==='explosion'){
+  label(index===0?'A ESPADA PISCA':index===1?'A EXPLOSÃO':'A CÓPIA NA NÉVOA');
+  if(index===0){person(415,'hero');sword(471,FLOOR-81);for(let i=0;i<6;i++)ellipse(c,480+i*10,FLOOR-162+(i%2)*10,6,11,'#ffba80');person(245,'bard');person(170,'princess');}
+  else if(index===1){
+   ellipse(c,495,270,180,150,'#e6bb97');ellipse(c,495,270,116,100,'#f5ebc6');
+   for(let i=0;i<15;i++)ellipse(c,315+i*25,200+Math.sin(i*8)*56,28,17,'#b9a6c4');
+   c.save();c.translate(350,FLOOR-40);c.rotate(Math.PI*.46);human(c,0,0,t,'hero');c.restore();
+  }else{
+   for(let i=0;i<15;i++)ellipse(c,245+i*39,288+Math.sin(t*.001+i)*20,75,35,'#b9b4d38c');
+   c.save();c.translate(350,FLOOR-36);c.rotate(Math.PI*.47);human(c,0,0,t,'hero');c.restore();
+   person(652,'shade',-1);
+   person(155,'bard');cage(810,true);
+  }
+ }
+ else if(scene==='cloneWin'){
+  label(index===0?'A NÉVOA SE DESFAZ':index===1?'O GOLPE DO ALAÚDE':'A PRINCESA EM PERIGO');
+  if(index===0){person(340,'hero');for(let i=0;i<11;i++)ellipse(c,620+Math.sin(i*7)*85,200+i*17,25,14,'#c4cbe2');}
+  else if(index===1){person(360,'bard');person(620,'malacord',-1);rect(c,390,FLOOR-85,87,30,'#d8a15d');rect(c,413,FLOOR-79,8,35,'#8c5f49');}
+  else{person(350,'hero');cage(635,true);}
+ }
+ else if(scene==='finale'){
+  const headings=['UMA SAÍDA','AS CORDAS SE ROMPEM','MALACORD NA PRISÃO','UM NOVO NOME','FIM DO CAPÍTULO'];
+  label(headings[Math.min(index,headings.length-1)]);
+  if(index<=1){
+   person(300,'hero');cage(615,true);
+   if(index===1){sword(390,FLOOR-132,true);for(let i=0;i<12;i++)ellipse(c,615+(i-6)*14,FLOOR-80,4,3,'#f9dc9e');}
+  }else{
+   person(250,'hero');person(330,'bard');person(415,'princess');
+   if(index===2||index===3){rect(c,625,FLOOR-158,150,160,'#393147');person(680,'malacord');for(let i=0;i<11;i++)rect(c,625+i*13,FLOOR-160,5,160,'#c9c0c8');}
+   else{rect(c,600,175,150,82,'#ffdc98');c.font='bold 26px sans-serif';c.fillStyle='#293958';c.fillText('FIM',652,220);}
+  }
+ }
+ c.restore();
 }

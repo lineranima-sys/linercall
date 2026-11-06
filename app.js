@@ -7,7 +7,8 @@ import { mountBrigaLoka } from './brigaloka.js?v=20261105-fighter-art-redesign';
 import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
-import { mountStory } from './story-game.js?v=20261106-enemy-camera-fix';
+import { mountStory } from './story-game.js?v=20261106-feedback-rework';
+import { mountPhoneSnake } from './snake-phone.js?v=20261106-phone-v1';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 import { LIGHTY_PRICES, episodePrice, quoteSeason, ownsEpisode, lightyEpisodeKey, lightySeasonKey } from './lightyflix-pricing.js?v=20261105-episodes-150-300';
 
@@ -1127,6 +1128,9 @@ function showArcadeExtra(page){
  }else if(page==='brigaloka'){
   $('game-title').textContent='BrigaLoka!';
   activeArcadeCleanup=mountBrigaLoka(common);
+ }else if(page==='snake'){
+  $('game-title').textContent='Cobrinha dos Telefones';
+  activeArcadeCleanup=mountPhoneSnake(common);
  }
 }
 let miniGamePage = 'home';
@@ -1147,7 +1151,7 @@ function showMiniGamePage(page) {
   if (page === 'reaction') showReaction();
   if (page === 'tetris') showTetris();
   if (page === 'story') startStory();
-  if (['termo','detective','music','shooter','brigaloka'].includes(page)) showArcadeExtra(page);
+  if (['termo','detective','music','shooter','brigaloka','snake'].includes(page)) showArcadeExtra(page);
 }
 function backToMiniGames() {
   stopArcadeExtras();
@@ -2105,7 +2109,7 @@ function setupEvents() {
   $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
   $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
   $('play-tetris')?.addEventListener('click', () => showMiniGamePage('tetris'));
-  ['termo','detective','music','shooter','brigaloka'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
+  ['termo','detective','music','shooter','brigaloka','snake'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
   $('sidebar-collapse')?.addEventListener('click',()=>{document.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed');localStorage.setItem('linercall-sidebar-collapsed',document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')?'1':'0');});
   document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 

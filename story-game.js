@@ -1,6 +1,6 @@
 import {chapter,lore,WIDTH,HEIGHT,FLOOR} from './story-chapter-v3.js';
 import {overlaps,swordBox,bodyBox} from './story-combat-v3.js?v=wall-sword-fix';
-import {drawWorld,drawSlide} from './story-art-v3.js?v=enemy-ai-facing';
+import {drawWorld,drawSlide,drawStoryCutscene} from './story-art-v3.js?v=cinematics-20261106';
 
 // Liner Story — Capítulo 1. Novo jogo, sem dependência de Firebase para salvar.
 const W=WIDTH,HERO_W=50,HERO_H=72,MAX_HP=7;
@@ -10,12 +10,13 @@ const hudHearts=hp=>'♥'.repeat(Math.max(0,hp))+'♡'.repeat(Math.max(0,MAX_HP-
 
 export function mountStory(root,onExit=()=>{},uid='guest'){
  let zoneIndex=0,paused=true,menu=true,finished=false,mode='world',last=0,elapsed=0,raf=0,saveAccumulator=0;
- let camera=0,checkpoint=40,dialogueLines=[],dialogueIndex=0,afterDialogue=null,notice='',noticeTime=0;
- let enemies=[],fx=[],slide={progress:0,hearts:3,lane:0,hazards:[],spawn:0,invul:0};
+ let camera=0,checkpoint=40,dialogueLines=[],dialogueIndex=0,afterDialogue=null,cutscene='',notice='',noticeTime=0;
+ let bard={x:0,y:FLOOR-72,face:1,walking:false};
+ let enemies=[],fx=[],slide={progress:0,hearts:3,lane:0,hazards:[],spawn:0,invul:0,jumpY:0,jumpV:0,duck:0};
  let defeated=chapter.map(()=>[]);
  let flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
   dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
-  exploded:false,cloneWon:false,rescue:false,win:false};
+  exploded:false,cloneWon:false,shadowChallenged:false,rescue:false,cageExamined:false,win:false};
  let fishHP=8,fishInvul=0,cloneCalm=0,rescueTime=60,attackHits=new Set();
  const p={x:44,y:FLOOR-HERO_H,w:HERO_W,h:HERO_H,vx:0,vy:0,ground:true,face:1,hp:MAX_HP,
   invul:0,swing:0,attackCooldown:0,coyote:0,jumpBuffer:0};
@@ -56,14 +57,14 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  const q=id=>root.querySelector('#'+id), zone=()=>chapter[zoneIndex];
  const note=(text,duration=3)=>{notice=text;noticeTime=duration;};
  function objective(){
-  if(mode==='slide')return 'DESAFIO DO DRAGÃO · ↑ ou ↓ para trocar de faixa e desviar do fogo!';
+  if(mode==='slide')return 'DESAFIO DO DRAGÃO · W/Espaço para pular; S/Z para abaixar e desviar!';
   if(zoneIndex===0)return 'Atravesse a longa estrada e derrote os monstros de Malacord.';
   if(zoneIndex===1)return 'Explore a floresta e alcance as ruínas do reino.';
   if(zoneIndex===2)return flags.guards?'Acompanhe o Bardo até a Montanha Sagrada.':'Descubra por que os guardas bloqueiam o castelo.';
   if(zoneIndex===3)return !flags.fishWon?'Derrote o PEIXE GIGANTE sem encostar nele!':!flags.dragonComplete?'Encontre o dragão no topo da montanha.':'Entre no castelo pelo alto.';
-  if(flags.rescue&&!flags.win)return 'A gaiola vai pegar fogo! Corra até a princesa e pressione E para cortar as cordas.';
-  if(flags.exploded&&!flags.cloneWon)return 'A névoa copia os ataques. Pare de atacar e mantenha-se vivo!';
-  if(!flags.potion)return 'Procure o baú com o mapa do casamento e a poção.';
+  if(flags.rescue&&!flags.win)return 'A gaiola está em perigo! Observe a estrutura e encontre uma saída.';
+  if(flags.exploded&&!flags.cloneWon)return 'Sua cópia responde a cada golpe. Descubra como quebrar esse ciclo.';
+  if(!flags.potion)return 'Encontre o baú no salão e pressione E para abri-lo.';
   if(!flags.princess)return 'Descubra o que o Bardo encontrou no calabouço.';
   return 'Continue pelo salão do casamento.';
  }
@@ -71,7 +72,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   q('story3-area').textContent=mode==='slide'?'FUGA DO DRAGÃO':zone().name.toUpperCase();
   q('story3-hearts').textContent=mode==='slide'?'♥'.repeat(slide.hearts):hudHearts(p.hp);
   q('story3-percent').textContent=(mode==='slide'?Math.floor(slide.progress*100):Math.floor(clamp(p.x/zone().length,0,1)*100))+'%';
-  q('story3-goal').textContent=noticeTime>0?notice:objective();
+  q('story3-goal').textContent=cutscene?'CENA DA HISTÓRIA · '+(dialogueIndex+1)+' / '+dialogueLines.length:(noticeTime>0?notice:objective());
  }
  function spawnMobs(){
   enemies=zone().enemies.map(([x,kind],i)=>({x,y:FLOOR-(kind==='goblin'?68:55),w:48,h:kind==='goblin'?68:55,
@@ -81,7 +82,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function setZone(index,spawnX=46){
   zoneIndex=index;mode='world';checkpoint=spawnX;
   p.x=spawnX;p.y=FLOOR-p.h;p.vx=0;p.vy=0;p.ground=true;p.coyote=0;
-  p.hp=Math.max(4,p.hp);p.invul=1.7;camera=0;spawnMobs();save();
+  p.hp=Math.max(4,p.hp);p.invul=.6;camera=0;bard.x=Math.max(0,spawnX-90);bard.y=FLOOR-72;spawnMobs();save();
  }
  function save(){
   if(menu||finished||mode==='slide')return;
@@ -102,7 +103,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function reset(){
   flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
    dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
-   exploded:false,cloneWon:false,rescue:false,win:false};
+   exploded:false,cloneWon:false,shadowChallenged:false,rescue:false,cageExamined:false,win:false};
   defeated=chapter.map(()=>[]);fishHP=8;fishInvul=0;cloneCalm=0;rescueTime=60;
   p.hp=MAX_HP;p.invul=0;finished=false;menu=false;mode='world';elapsed=0;attackHits.clear();
   q('story3-menu').classList.add('hidden');q('story3-complete').classList.add('hidden');
@@ -119,14 +120,22 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(zoneIndex===3&&flags.dragon&&!flags.dragonComplete&&x>3620){flags.dragon=false;checkpoint=3020;}
   if(zoneIndex===4&&flags.rescue&&!flags.win)rescueTime=60;
   spawnMobs();p.x=zoneIndex===3&&!flags.fishWon&&x>475?40:x;
+  // Ao retomar, saves antigos não devem prender o herói dentro de um bloco.
+  for(const [bx,by,bw] of zone().platforms){
+   if(p.x+p.w>bx&&p.x<bx+bw){
+    p.x=Math.abs(p.x+p.w-bx)<Math.abs(bx+bw-p.x)?bx-p.w:bx+bw+2;
+   }
+  }
   if(zoneIndex===3&&flags.dragon&&!flags.dragonComplete)p.x=Math.min(p.x,3470);
-  p.y=FLOOR-p.h;p.vx=p.vy=0;p.ground=true;p.invul=2;
+  p.y=FLOOR-p.h;p.vx=p.vy=0;p.ground=true;p.invul=0.65;bard.x=Math.max(0,p.x-90);
   mode='world';q('story3-menu').classList.add('hidden');
   sequence([['NARRADOR','Bem-vindo de volta!','A aventura continua de onde você parou. Seu progresso anterior está preservado.']]);
  }
  function sequence(lines,done=null){
   if(!lines?.length){done?.();return;}
   dialogueLines=lines;dialogueIndex=0;afterDialogue=done;paused=true;
+  const byTitle={'A cabana distante':'intro','O herói que todos conhecem':'arrival','MINHA MÃO!':'fish','Uma última canção':'fishSong','A chave dentro do peixe':'fishWin','Nada de recompensas!':'dragon','Não são moedas...':'dragon','A torre do castelo':'castle','O baú do casamento':'potion','Enquanto isso, no calabouço...':'princess','A espada pisca...':'explosion','O silêncio vence':'cloneWin','Há outra saída!':'finale'};
+  cutscene=byTitle[lines[0]?.[1]]||'';
   keys.left=keys.right=keys.up=keys.down=false;showDialogue();
  }
  function showDialogue(){
@@ -138,50 +147,65 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function advance(){
   if(q('story3-dialog').classList.contains('hidden'))return;
   if(++dialogueIndex<dialogueLines.length){showDialogue();return;}
-  q('story3-dialog').classList.add('hidden');dialogueLines=[];paused=false;
+  q('story3-dialog').classList.add('hidden');dialogueLines=[];cutscene='';paused=false;
   const done=afterDialogue;afterDialogue=null;done?.();save();
  }
  function showHelp(){
   q('story3-menu').classList.add('hidden');
-  sequence([['CONTROLES','Movimentação','A e D / setas: andar. Espaço / W: pular. X ou J: espada. E: interagir. No celular, use os botões na tela.'],
+  sequence([['CONTROLES','Movimentação','A e D / setas: andar. Espaço / W: pular. Z, X ou J: espada. E: interagir. No celular, use os botões na tela.'],
    ['COMBATE','Não encoste nos inimigos','O golpe acerta à frente do corpo, antes de você se aproximar demais. Depois de sofrer dano, você fica invulnerável por um instante.'],
    ['DICAS','Salvamento e checkpoints','Seu progresso é salvo automaticamente. Use a espada para atacar de longe e procure plataformas para atravessar buracos.']],()=>{
     if(menu)q('story3-menu').classList.remove('hidden');
    });
  }
  function jump(){
-  if(mode==='slide'){slide.lane=0;return;}
+  if(mode==='slide'){if(slide.jumpY===0){slide.jumpV=-620;slide.jumpY=-1;}return;}
   if(menu||finished||paused)return;
   p.jumpBuffer=.16;
  }
  function attack(){
-  if(mode==='slide'){slide.lane=1;return;}
+  if(mode==='slide'){slide.duck=.65;return;}
   if(menu||finished||paused||p.attackCooldown>0)return;
-  if(flags.rescue&&Math.abs(p.x-3480)<195){interact();return;}
+  if(flags.rescue&&Math.abs(p.x-3480)<145){
+   if(!flags.cageExamined){interact();return;}
+   finishRescue();return;
+  }
   p.swing=.30;p.attackCooldown=.48;attackHits=new Set();
   if(zoneIndex===4&&flags.exploded&&!flags.cloneWon){
-   cloneCalm=0;damage(1,true);note('A CÓPIA REPETIU SEU GOLPE! Pare de atacar.',3);
+   flags.shadowChallenged=true;cloneCalm=0;damage(1,true);note('Sua cópia repetiu o golpe!',2);
   }
+ }
+ function finishRescue(){
+  if(flags.win||!flags.rescue||!flags.cageExamined)return;
+  flags.win=true;
+  sequence(lore.finale,()=>{
+   finished=true;paused=true;try{localStorage.removeItem(SAVE);}catch{}
+   q('story3-complete').classList.remove('hidden');
+  });
  }
  function interact(){
   if(menu||finished||paused)return;
+  if(zoneIndex===4&&!flags.potion&&Math.abs(p.x-1160)<115){
+   flags.potion=true;sequence(lore.potion);save();return;
+  }
   if(zoneIndex===4&&flags.rescue&&!flags.win){
-   if(Math.abs(p.x-3480)<195){
-    flags.win=true;rescueTime=Math.max(0,rescueTime);
-    sequence(lore.finale,()=>{
-     finished=true;paused=true;try{localStorage.removeItem(SAVE);}catch{}
-     q('story3-complete').classList.remove('hidden');
-    });
-   }else note('A gaiola está mais à frente. Corra!',2.4);
+   if(Math.abs(p.x-3480)<145){
+    if(!flags.cageExamined){
+     flags.cageExamined=true;
+     sequence([['HERÓI','Uma chave impossível','A chave está presa ao braço da princesa. Não posso machucá-la. Preciso encontrar outro jeito de tirar estas grades.'],
+      ['HERÓI','Olhando a estrutura','Ela é suspensa por cordas... E ainda tenho os restos da espada. Preciso agir antes que o fogo aumente.']]);
+     save();
+    }else note('Use Z perto da gaiola para tentar cortar as cordas.',3);
+   }else note('A princesa está mais adiante. Corra!',2.4);
   }else note('Procure algo importante pelo caminho.',1.4);
  }
  function damage(amount=1,shadow=false){
   if(p.invul>0||menu||paused)return;
-  p.hp=clamp(p.hp-amount,0,MAX_HP);p.invul=1.3;
+  p.hp=clamp(p.hp-amount,0,MAX_HP);p.invul=.8;
   p.vx+=shadow?(p.face>0?-150:150):(-p.face*135);
   fx.push({kind:'spark',x:p.x+22,y:p.y+20,life:1,max:1,color:'#ff7590'});
   if(p.hp<=0){
-   p.hp=MAX_HP;p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=2.5;
+   p.hp=MAX_HP;p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=.9;
    if(zoneIndex===4&&flags.rescue)rescueTime=60;
    note('Você se recuperou no último checkpoint.',4);save();
   }
@@ -216,29 +240,34 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   });
  }
  function startDragonSlide(){
-  mode='slide';paused=false;slide={progress:0,hearts:3,lane:0,hazards:[],spawn:.3,invul:0};
+  mode='slide';paused=false;slide={progress:0,hearts:3,lane:0,hazards:[],spawn:1.5,invul:0,jumpY:0,jumpV:0,duck:0};
   q('story3-goal').textContent=objective();
  }
  function updateSlide(dt){
-  slide.progress+=dt/20;
+  slide.progress+=dt/23;
+  slide.jumpY+=slide.jumpV*dt;slide.jumpV+=1500*dt;
+  if(slide.jumpY>=0){slide.jumpY=0;slide.jumpV=0;}
+  slide.duck=Math.max(0,slide.duck-dt);
   slide.spawn-=dt;slide.invul=Math.max(0,slide.invul-dt);
   if(slide.spawn<=0){
-   slide.spawn=1.15+Math.random()*.45;
-   slide.hazards.push({x:W+40,y:250+(Math.random()<.5?0:110),speed:310+slide.progress*130});
+   slide.spawn=1.4+Math.random()*.6;
+   slide.hazards.push({x:W+40,kind:Math.random()<.5?'low':'high',speed:295+slide.progress*100});
   }
   for(const a of slide.hazards){
    a.x-=a.speed*dt;
-   if(a.x<240&&a.x>135&&Math.abs(a.y-(250+slide.lane*110))<35&&!a.hit&&slide.invul===0){
-    a.hit=true;slide.hearts--;slide.invul=1.2;
+   const collision=a.kind==='low'?slide.jumpY>-48:slide.duck<=0;
+   if(a.x<235&&a.x>155&&collision&&!a.hit&&slide.invul===0){
+    a.hit=true;slide.hearts--;slide.invul=1.4;
     if(slide.hearts<=0){
-     slide.progress=0;slide.hearts=3;slide.hazards=[];slide.spawn=2;
+     slide.progress=0;slide.hearts=3;slide.hazards=[];slide.spawn=2;slide.jumpY=0;slide.jumpV=0;slide.duck=0;
      note('O dragão alcançou vocês! A descida recomeça.',3);
     }
    }
   }
-  slide.hazards=slide.hazards.filter(a=>a.x> -55&&!a.hit);
+  slide.hazards=slide.hazards.filter(a=>a.x>-55&&!a.hit);
   if(slide.progress>=1){
    slide.progress=1;mode='world';paused=true;flags.dragonComplete=true;
+   p.y=FLOOR-p.h;p.vy=0;p.ground=true;
    sequence(lore.dragon.slice(2),()=>transition(4,'O dragão os deixou sobre a torre. O castelo está silencioso demais.'));
   }
  }
@@ -253,7 +282,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    fx.push({kind:'dust',x:p.x+25,y:p.y+70,life:.8,max:.8});
   }
   const direction=(keys.right?1:0)-(keys.left?1:0);
-  const target=direction*185;
+  const target=direction*160;
   p.vx+=(target-p.vx)*Math.min(1,dt*(p.ground?15:10));
   if(direction)p.face=direction;
   // Plataformas são sólidos completos: laterais e parte de baixo bloqueiam passagem.
@@ -270,6 +299,12 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
      p.x=oldX;p.vx=0;
     }
    }
+  }
+  if((zoneIndex===2&&flags.guards)||zoneIndex===3||(zoneIndex===4&&flags.princess)){
+   const desired=clamp(p.x-(p.face>0?85:-85),0,zone().length-50);
+   const diff=desired-bard.x;bard.walking=Math.abs(diff)>5;
+   if(bard.walking){bard.face=Math.sign(diff);bard.x+=Math.sign(diff)*Math.min(Math.abs(diff),180*dt);}
+   bard.y=FLOOR-72;
   }
   const before=p.y+p.h;
   p.vy=Math.min(950,p.vy+1740*dt);
@@ -290,7 +325,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    }
   }
   if(p.y>HEIGHT+100){
-   damage(1);p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=Math.max(p.invul,1.5);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
+   damage(1);p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=Math.max(p.invul,.8);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
   }
   hitTest();
   for(const m of enemies){
@@ -325,22 +360,23 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    if(!flags.fishWon&&p.x>490){p.x=490;p.vx=0;}
    if(p.x>3730&&!flags.dragon){
     flags.dragon=true;
-    sequence(lore.dragon.slice(0,2),startDragonSlide);
+    p.y=FLOOR-p.h;p.vy=0;p.ground=true;sequence(lore.dragon.slice(0,2),startDragonSlide);
    }
   }else if(zoneIndex===4){
-   if(p.x>1030&&!flags.potion){flags.potion=true;sequence(lore.potion);}
-   if(p.x>1900&&!flags.princess){flags.princess=true;sequence(lore.princess);}
-   if(p.x>2600&&!flags.exploded){flags.exploded=true;cloneCalm=0;sequence(lore.explosion);}
+   if(!flags.potion&&p.x>1280){p.x=1280;p.vx=0;note('O baú ficou para trás. Pressione E para examiná-lo.',3);}
+   if(p.x>1900&&!flags.princess){flags.princess=true;bard.x=p.x-95;bard.y=FLOOR-72;sequence(lore.princess);}
+   if(p.x>2600&&!flags.exploded){cloneCalm=0;sequence(lore.explosion,()=>{flags.exploded=true;p.y=FLOOR-p.h;p.vy=0;p.ground=true;p.invul=.5;});}
    if(flags.exploded&&!flags.cloneWon){
-    p.x=Math.min(p.x,2910);
+    p.x=clamp(p.x,2530,2910);
     if(p.invul<=0&&Math.abs(p.x-2760)<105&&Math.abs(p.vx)>130)damage(1);
-    if(p.swing<=0)cloneCalm+=dt;else cloneCalm=0;
+    if(flags.shadowChallenged&&p.swing<=0)cloneCalm+=dt;else cloneCalm=0;
     if(cloneCalm>5.5){
      flags.cloneWon=true;sequence(lore.cloneWin,()=>{
       flags.rescue=true;rescueTime=60;p.x=Math.max(p.x,2915);checkpoint=3000;save();
      });
     }
    }else if(flags.rescue&&!flags.win){
+    p.x=clamp(p.x,2915,3650);
     rescueTime-=dt;
     if(rescueTime<=0){
      rescueTime=60;p.x=3030;p.y=FLOOR-p.h;p.vx=0;
@@ -354,25 +390,23 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function draw(){
   const targetCamera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
   camera+=(targetCamera-camera)*.12;
-  if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.lane,slide.hazards);}
-  else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP},fx);}
-  if(!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
+  if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.jumpY,slide.hazards,slide.duck);}
+  else if(cutscene){drawStoryCutscene(ctx,cutscene,dialogueIndex,elapsed*1000);}
+  else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP,bard},fx);}
+  if(!cutscene&&!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
    ctx.fillStyle='#21334dd0';ctx.fillRect(W/2-143,14,286,25);
    ctx.fillStyle='#e4778f';ctx.fillRect(W/2-139,18,278*clamp(fishHP/8,0,1),17);
    ctx.textAlign='center';ctx.font='bold 13px monospace';ctx.fillStyle='#ffffff';
    ctx.fillText('O PEIXE MONSTRUOSO',W/2,35);
   }
-  if(flags.rescue&&!flags.win&&zoneIndex===4){
+  if(!cutscene&&flags.rescue&&!flags.win&&zoneIndex===4){
    ctx.fillStyle='#552c42d9';ctx.fillRect(W/2-110,13,220,49);
    ctx.textAlign='center';ctx.font='bold 29px monospace';ctx.fillStyle='#ffddc3';
    const secs=Math.max(0,Math.ceil(rescueTime));
    const clock=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
    ctx.fillText(clock,W/2,47);
   }
-  if(flags.exploded&&!flags.cloneWon&&zoneIndex===4&&!menu){
-   ctx.fillStyle='#d4e6f7';ctx.font='bold 15px monospace';ctx.textAlign='center';
-   ctx.fillText('Não ataque. Deixe a névoa imitar o silêncio.',W/2,76);
-  }
+
   updateHUD();
  }
  function frame(now){
@@ -388,7 +422,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function onKeyDown(e){
   if(e.target?.matches?.('input,textarea,select'))return;
   const k=e.key.toLowerCase();
-  if(['arrowleft','arrowright','arrowup','arrowdown',' ','a','d','w','s','x','j','e','p','enter'].includes(k))e.preventDefault();
+  if(['arrowleft','arrowright','arrowup','arrowdown',' ','a','d','w','s','x','z','j','e','p','enter'].includes(k))e.preventDefault();
   if(!q('story3-dialog').classList.contains('hidden')){
    if(!e.repeat&&['enter',' ','e'].includes(k))advance();return;
   }
@@ -398,9 +432,9 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(k==='a'||k==='arrowleft')keys.left=true;
   if(k==='d'||k==='arrowright')keys.right=true;
   if(k==='w'||k==='arrowup'){keys.up=true;if(!e.repeat)jump();}
-  if(k==='s'||k==='arrowdown'){keys.down=true;if(mode==='slide')slide.lane=1;}
+  if(k==='s'||k==='arrowdown'){keys.down=true;if(mode==='slide')slide.duck=.65;}
   if(k===' '&&!e.repeat)jump();
-  if(['x','j'].includes(k)&&!e.repeat)attack();
+  if(['x','z','j'].includes(k)&&!e.repeat)attack();
   if(k==='e'&&!e.repeat)interact();
  }
  function onKeyUp(e){
