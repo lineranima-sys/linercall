@@ -2109,7 +2109,7 @@ function setupEvents() {
   $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
   $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
   $('play-tetris')?.addEventListener('click', () => showMiniGamePage('tetris'));
-  ['termo','detective','music','shooter','brigaloka'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
+  ['termo','detective','music','shooter','brigaloka','snake'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
   $('sidebar-collapse')?.addEventListener('click',()=>{document.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed');localStorage.setItem('linercall-sidebar-collapsed',document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')?'1':'0');});
   document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 
