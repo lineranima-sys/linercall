@@ -1787,7 +1787,7 @@ function getLightyPurchases(){
     return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
   }catch{return {};}
 }
-function hasLightyPurchase(key){return !!getLightyPurchases()[key];}
+function hasLightyPurchase(key){const entry=getLightyPurchases()[key];return !!entry&&!entry.refundedAt;}
 function formatLightyCoins(n){return Math.max(0,Number(n)||0).toLocaleString('pt-BR')+' LCoins';}
 function commitLightyPurchase(key,cost,label,warning){
  if(!pokemonArena||!currentUser)return toast('Entre na sua conta para comprar.');
@@ -1810,16 +1810,130 @@ function commitLightyPurchase(key,cost,label,warning){
  toast('Desbloqueio concluído: '+label+'. Saldo: '+formatLightyCoins(pokemonArena.coins)+'.');
  return true;
 }
-function buyLightyContent(key,cost,label){
- if(!pokemonArena)return;
- const purchases=getLightyPurchases();
- if(purchases[key])return toast('Você já comprou este conteúdo.');
- if((Number(pokemonArena.coins)||0)<cost)return toast('Moedas insuficientes.');
- pokemonArena.coins-=cost;
- purchases[key]={cost,boughtAt:Date.now()};
- try{localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));}
- catch(error){pokemonArena.coins+=cost;console.error(error);return toast('Erro ao salvar a compra. Moedas preservadas.');}
- savePokemonArena();renderShop();toast(label+' comprado!');
+// Filmes com cartaz, mas sem vídeo, não podem mais cobrar LCoins.
+function lightyMovieById(id){return cinemaItems.find(x=>x.id===id&&x.type==='movie');}
+function canWatchLightyMovie(item){return !!lightyMovieSource(item);}
+function movieDialog(item,options){
+ return showLightyDialog({poster:validWebUrl(item.poster||item.backdrop||''),...options});
+}
+function lightyMovieRefresh(id){
+ renderShop();
+ renderCinema();
+ const modal=$('cinema-details');
+ if(modal&&!modal.classList.contains('hidden')&&lightyMovieById(id))openCinemaDetails(id);
+ document.querySelectorAll('.pokemon-wallet b').forEach(el=>{el.textContent=pokemonArena?.coins??0;});
+}
+function movieReceipt(id){
+ const item=lightyMovieById(id);if(!item)return;
+ const record=getLightyPurchases()['movie:'+id];if(!record||record.refundedAt)return;
+ const ready=canWatchLightyMovie(item);
+ const cost=Number(record.cost)||LIGHTY_MOVIE_COST;
+ movieDialog(item,{
+  kicker:'✦ SUA CONQUISTA LIGHTYFLIX',
+  title:'Esse filme é seu! 🎉',
+  description:'Parabéns pela conquista de '+item.title+'! Você se dedicou para juntar suas LCoins, e sua compra merece ser reconhecida. Obrigado por fazer parte do LightyFlix.',
+  detail:'✓ Compra registrada neste navegador.\nInvestimento: '+formatLightyCoins(cost)+'.\n'+
+    (ready?'▶ Fonte de reprodução cadastrada.':'⚠ O vídeo ainda não está disponível para assistir. Você pode recuperar suas LCoins.'),
+  actions:[
+   ...(ready?[{label:'▶ Assistir agora',primary:true,onClick:()=>playCinemaItem(id)}]:[
+    {label:'Recuperar minhas LCoins',primary:true,onClick:()=>requestMovieRefund(id)}]),
+   {label:'Voltar ao catálogo'}
+  ]
+ });
+}
+function unavailableMovieInfo(item){
+ movieDialog(item,{
+  kicker:'TRANSPARÊNCIA · LIGHTYFLIX',title:'Ainda não dá para assistir',
+  description:item.title+' está no catálogo, mas não possui uma fonte de reprodução configurada. Por isso, a compra está temporariamente desativada.',
+  detail:'Nenhuma LCoin será cobrada por um filme indisponível.',
+  actions:[{label:'Entendi',primary:true}]
+ });
+}
+function requestMoviePurchase(id){
+ const item=lightyMovieById(id);if(!item)return toast('Filme não encontrado.');
+ if(!pokemonArena||!currentUser)return toast('Entre na sua conta para comprar.');
+ if(hasLightyPurchase('movie:'+id)){movieReceipt(id);return;}
+ if(!canWatchLightyMovie(item)){unavailableMovieInfo(item);return;}
+ const coins=Number(pokemonArena.coins)||0;
+ if(coins<LIGHTY_MOVIE_COST){
+  movieDialog(item,{kicker:'SUA CARTEIRA',title:'Faltam algumas LCoins',
+   description:'Você tem '+formatLightyCoins(coins)+' e precisa de '+formatLightyCoins(LIGHTY_MOVIE_COST)+' para adquirir '+item.title+'.',
+   detail:'A compra não foi realizada. Continue juntando LCoins nos minigames.',
+   actions:[{label:'Voltar ao catálogo',primary:true}]});
+  return;
+ }
+ movieDialog(item,{kicker:'CONFIRMAÇÃO DE COMPRA',title:'Quer comprar esse filme?',
+  description:'Você conquistou suas LCoins jogando. Confira os detalhes antes de confirmar a compra de '+item.title+'.',
+  detail:'Preço: '+formatLightyCoins(LIGHTY_MOVIE_COST)+
+   '\nSeu saldo: '+formatLightyCoins(coins)+
+   '\nDepois da compra: '+formatLightyCoins(coins-LIGHTY_MOVIE_COST)+
+   '\nReprodução: fonte cadastrada.',
+  actions:[{label:'Cancelar'},{label:'✓ Confirmar compra',primary:true,onClick:()=>finalizeMoviePurchase(id)}]
+ });
+}
+// Os dois registros são locais e ligados ao UID; salvar e restaurar ambos em caso de falha.
+function lightyMovieCommitStores(purchases,newCoins){
+ const purchaseKey=lightyPurchasesKey(),walletKey=pokemonStorageKey();
+ let previousPurchases=null,previousWallet=null;
+ try{
+  previousPurchases=localStorage.getItem(purchaseKey);
+  previousWallet=localStorage.getItem(walletKey);
+  const wallet={...pokemonArena,coins:newCoins};
+  localStorage.setItem(walletKey,JSON.stringify(wallet));
+  localStorage.setItem(purchaseKey,JSON.stringify(purchases));
+  pokemonArena.coins=newCoins;
+  return true;
+ }catch(error){
+  try{
+   if(previousWallet===null)localStorage.removeItem(walletKey);
+   else localStorage.setItem(walletKey,previousWallet);
+   if(previousPurchases===null)localStorage.removeItem(purchaseKey);
+   else localStorage.setItem(purchaseKey,previousPurchases);
+  }catch(restoreError){console.error('Não foi possível restaurar compra local',restoreError);}
+  console.error('Falha ao salvar transação LightyFlix',error);
+  toast('Falha ao salvar a operação. Confira suas moedas antes de tentar novamente.');
+  return false;
+ }
+}
+function finalizeMoviePurchase(id){
+ const item=lightyMovieById(id);if(!item||!canWatchLightyMovie(item))return toast('Filme indisponível para compra.');
+ if(!pokemonArena||!currentUser)return;
+ const purchases=getLightyPurchases(),key='movie:'+id;
+ if(hasLightyPurchase(key)){movieReceipt(id);return;}
+ const coins=Number(pokemonArena.coins)||0;
+ if(coins<LIGHTY_MOVIE_COST)return toast('Saldo insuficiente. Compra cancelada.');
+ purchases[key]={cost:LIGHTY_MOVIE_COST,boughtAt:Date.now()};
+ if(!lightyMovieCommitStores(purchases,coins-LIGHTY_MOVIE_COST))return;
+ lightyMovieRefresh(id);
+ movieReceipt(id);
+}
+function requestMovieRefund(id){
+ const item=lightyMovieById(id);
+ if(!item||canWatchLightyMovie(item))return toast('Este filme tem uma fonte de reprodução disponível.');
+ if(!currentUser||!pokemonArena)return toast('Entre na mesma conta usada na compra.');
+ const record=getLightyPurchases()['movie:'+id];
+ const amount=lightyMovieRefundAmount(record);
+ if(!amount)return toast('Não há uma compra ativa elegível para estorno neste dispositivo.');
+ movieDialog(item,{kicker:'REEMBOLSO DE LCOINS',title:'Recuperar suas moedas?',
+  description:'O vídeo de '+item.title+' não foi disponibilizado. Você pode desfazer a compra e receber suas LCoins de volta.',
+  detail:'Você receberá: '+formatLightyCoins(amount)+'.\nSaldo atual: '+formatLightyCoins(pokemonArena.coins||0)+'.\nDepois: '+formatLightyCoins((Number(pokemonArena.coins)||0)+amount)+'.\nA compra deixará de aparecer em Meus filmes.',
+  actions:[{label:'Manter compra'},{label:'Devolver '+formatLightyCoins(amount),primary:true,onClick:()=>finalizeMovieRefund(id)}]
+ });
+}
+function finalizeMovieRefund(id){
+ const item=lightyMovieById(id),purchases=getLightyPurchases(),key='movie:'+id,record=purchases[key];
+ if(!item||canWatchLightyMovie(item)||!currentUser||!pokemonArena)return;
+ const amount=lightyMovieRefundAmount(record);
+ if(!amount){toast('Esse reembolso já foi realizado ou não está disponível.');return;}
+ purchases[key]={...record,refundedAt:Date.now(),refundedAmount:amount};
+ const updatedCoins=(Number(pokemonArena.coins)||0)+amount;
+ if(!lightyMovieCommitStores(purchases,updatedCoins))return;
+ lightyMovieRefresh(id);
+ movieDialog(item,{kicker:'REEMBOLSO CONCLUÍDO',title:'Suas LCoins voltaram! ✨',
+  description:'Você recuperou '+formatLightyCoins(amount)+' porque o filme ainda não estava disponível. Seu esforço continua valendo!',
+  detail:'Novo saldo: '+formatLightyCoins(updatedCoins)+'.\nEsse estorno só pode acontecer uma vez para esta compra.',
+  actions:[{label:'Voltar ao LightyFlix',primary:true}]
+ });
 }
 const lightyNoVideoWarning='A reprodução deste episódio ainda não está disponível no LightyFlix. Este pagamento usa moedas virtuais e desbloqueia somente o registro no catálogo por enquanto.';
 function buyLightyEpisode(showId,seasonIndex,number){
