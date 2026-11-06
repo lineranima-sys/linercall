@@ -79,7 +79,7 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
   enemies=[];particles=[];reloadEnds=0;current=0;pressed.clear();
   guns.forEach((g,i)=>{g.ammo=GUNS[i].ammo;g.reserve=GUNS[i].reserve;});
   overlay.classList.add('hidden');
-  setHint('Treinamento iniciado! Elimine '+TARGET+' drones antes do fim do tempo.');
+  setHint(mode==='multi'?'Duelo online beta: encontre o outro jogador e acerte seus disparos. Sem LCoins.':'Treinamento iniciado! Elimine '+TARGET+' drones antes do fim do tempo.');
   canvas.focus({preventScroll:true});
   if(canvas.requestPointerLock)canvas.requestPointerLock().catch(()=>setHint('Clique na tela para controlar a câmera. Você também pode usar ← →.'));
   updateHud();
@@ -110,7 +110,7 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
    localStorage.setItem(todayKey(),'1');
    addCoins(45);rewarded=true;
   }
-  const result=won?'🏆 Missão concluída! '+(rewarded?'+45 LCoins!':'Você já coletou as moedas de hoje.'):
+  const result=mode==='multi'?'Rodada encerrada (beta): retorne ao menu para jogar novamente.':won?'🏆 Missão concluída! '+(rewarded?'+45 LCoins!':'Você já coletou as moedas de hoje.'):
    'Treinamento encerrado. '+kills+'/'+TARGET+' drones eliminados. Tente de novo!';
   setHint(result);
   overlay.classList.remove('hidden');
@@ -408,7 +408,7 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  el.addEventListener('pointercancel',touchUp);
  el.addEventListener('click',click);
  look=-Math.PI/2;render(performance.now());updateHud();
- return ()=>{
+ const cleanup=()=>{
   playing=false;done=true;cancelAnimationFrame(raf);
   if(document.pointerLockElement===canvas)document.exitPointerLock?.();
   document.removeEventListener('keydown',keyDown);
@@ -424,4 +424,11 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
   el.removeEventListener('pointercancel',touchUp);
   el.removeEventListener('click',click);
  };
+ cleanup.damage=amount=>{
+  if(mode!=='multi'||!playing||!Number.isFinite(amount)||amount<=0)return;
+  life=Math.max(0,life-Math.min(100,amount));hitAt=performance.now();updateHud();
+  if(life<=0){finish(false);setHint('Você foi eliminado! Retorne ao menu para outra partida.');}
+ };
+ cleanup.getPose=()=>({x:px,y:py,angle:look,pitch,hp:life,weapon:current});
+ return cleanup;
 }
