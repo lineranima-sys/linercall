@@ -16,7 +16,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  let defeated=chapter.map(()=>[]);
  let flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
   dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
-  exploded:false,cloneWon:false,rescue:false,cageExamined:false,win:false};
+  exploded:false,cloneWon:false,shadowChallenged:false,rescue:false,cageExamined:false,win:false};
  let fishHP=8,fishInvul=0,cloneCalm=0,rescueTime=60,attackHits=new Set();
  const p={x:44,y:FLOOR-HERO_H,w:HERO_W,h:HERO_H,vx:0,vy:0,ground:true,face:1,hp:MAX_HP,
   invul:0,swing:0,attackCooldown:0,coyote:0,jumpBuffer:0};
@@ -64,7 +64,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(zoneIndex===3)return !flags.fishWon?'Derrote o PEIXE GIGANTE sem encostar nele!':!flags.dragonComplete?'Encontre o dragão no topo da montanha.':'Entre no castelo pelo alto.';
   if(flags.rescue&&!flags.win)return 'A gaiola está em perigo! Observe a estrutura e encontre uma saída.';
   if(flags.exploded&&!flags.cloneWon)return 'Sua cópia responde a cada golpe. Descubra como quebrar esse ciclo.';
-  if(!flags.potion)return 'Procure o baú com o mapa do casamento e a poção.';
+  if(!flags.potion)return 'Encontre o baú no salão e pressione E para abri-lo.';
   if(!flags.princess)return 'Descubra o que o Bardo encontrou no calabouço.';
   return 'Continue pelo salão do casamento.';
  }
@@ -103,7 +103,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function reset(){
   flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
    dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
-   exploded:false,cloneWon:false,rescue:false,cageExamined:false,win:false};
+   exploded:false,cloneWon:false,shadowChallenged:false,rescue:false,cageExamined:false,win:false};
   defeated=chapter.map(()=>[]);fishHP=8;fishInvul=0;cloneCalm=0;rescueTime=60;
   p.hp=MAX_HP;p.invul=0;finished=false;menu=false;mode='world';elapsed=0;attackHits.clear();
   q('story3-menu').classList.add('hidden');q('story3-complete').classList.add('hidden');
@@ -172,7 +172,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   }
   p.swing=.30;p.attackCooldown=.48;attackHits=new Set();
   if(zoneIndex===4&&flags.exploded&&!flags.cloneWon){
-   cloneCalm=0;damage(1,true);note('Sua cópia repetiu o golpe!',2);
+   flags.shadowChallenged=true;cloneCalm=0;damage(1,true);note('Sua cópia repetiu o golpe!',2);
   }
  }
  function finishRescue(){
@@ -185,6 +185,9 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  }
  function interact(){
   if(menu||finished||paused)return;
+  if(zoneIndex===4&&!flags.potion&&Math.abs(p.x-1160)<115){
+   flags.potion=true;sequence(lore.potion);save();return;
+  }
   if(zoneIndex===4&&flags.rescue&&!flags.win){
    if(Math.abs(p.x-3480)<145){
     if(!flags.cageExamined){
@@ -360,19 +363,20 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
     p.y=FLOOR-p.h;p.vy=0;p.ground=true;sequence(lore.dragon.slice(0,2),startDragonSlide);
    }
   }else if(zoneIndex===4){
-   if(p.x>1030&&!flags.potion){flags.potion=true;sequence(lore.potion);}
+   if(!flags.potion&&p.x>1280){p.x=1280;p.vx=0;note('O baú ficou para trás. Pressione E para examiná-lo.',3);}
    if(p.x>1900&&!flags.princess){flags.princess=true;bard.x=p.x-95;bard.y=FLOOR-72;sequence(lore.princess);}
    if(p.x>2600&&!flags.exploded){cloneCalm=0;sequence(lore.explosion,()=>{flags.exploded=true;p.y=FLOOR-p.h;p.vy=0;p.ground=true;p.invul=.5;});}
    if(flags.exploded&&!flags.cloneWon){
-    p.x=Math.min(p.x,2910);
+    p.x=clamp(p.x,2530,2910);
     if(p.invul<=0&&Math.abs(p.x-2760)<105&&Math.abs(p.vx)>130)damage(1);
-    if(p.swing<=0)cloneCalm+=dt;else cloneCalm=0;
+    if(flags.shadowChallenged&&p.swing<=0)cloneCalm+=dt;else cloneCalm=0;
     if(cloneCalm>5.5){
      flags.cloneWon=true;sequence(lore.cloneWin,()=>{
       flags.rescue=true;rescueTime=60;p.x=Math.max(p.x,2915);checkpoint=3000;save();
      });
     }
    }else if(flags.rescue&&!flags.win){
+    p.x=clamp(p.x,2915,3650);
     rescueTime-=dt;
     if(rescueTime<=0){
      rescueTime=60;p.x=3030;p.y=FLOOR-p.h;p.vx=0;
