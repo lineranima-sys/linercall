@@ -24,7 +24,7 @@ export function mountPhoneSnake({root,user,addCoins}){
  root.innerHTML='<section class="phone-snake"><header class="phone-snake-header"><div><small>LINERCALL ARCADE · CLÁSSICOS</small><h3>COBRINHA DOS TELEFONES</h3><p>Coma os telefones, cresça e não morda a própria cauda.</p></div><span class="phone-snake-reward">📱 +10 LCoins<br><small>por telefone</small></span></header>'+
  '<div class="phone-snake-stats"><span>📱 Telefones: <b data-sn="count">0</b></span><span>🪙 Ganhos: <b data-sn="coins">0</b></span><span>🏆 Recorde: <b data-sn="best">0</b></span></div>'+
  '<div class="phone-snake-board"><canvas width="528" height="528" tabindex="0" aria-label="Jogo da cobrinha"></canvas><div class="phone-snake-cover" data-sn="cover"><div><strong data-sn="cover-title">Cobrinha dos Telefones</strong><p data-sn="cover-info">Cada telefone capturado vale 10 LCoins. Use as setas ou WASD.</p><button data-sn-action="start" type="button">▶ Começar</button></div></div></div>'+
- '<div class="phone-snake-buttons"><div class="phone-snake-dpad"><button data-sn-dir="up" type="button">▲</button><div><button data-sn-dir="left" type="button">◀</button><button data-sn-dir="down" type="button">▼</button><button data-sn-dir="right" type="button">▶</button></div></div><div class="phone-snake-actions"><button data-sn-action="pause" type="button">⏸ Pausar</button><button data-sn-action="start" type="button">↻ Reiniciar</button><button data-minigame-back type="button">← Voltar</button></div></div>'+
+ '<div class="phone-snake-buttons"><div class="phone-snake-dpad"><button data-sn-dir="up" type="button">▲</button><div><button data-sn-dir="left" type="button">◀</button><button data-sn-dir="down" type="button">▼</button><button data-sn-dir="right" type="button">▶</button></div></div><div class="phone-snake-actions"><button data-sn-action="pause" type="button">⏸ Pausar</button><button data-sn-action="restart" type="button">↻ Reiniciar</button><button data-minigame-back type="button">← Voltar</button></div></div>'+
  '<p class="phone-snake-foot">Setas ou WASD para movimentar · Espaço ou P para pausar · funciona também no celular.</p></section>';
  const el=selector=>root.querySelector(selector),canvas=el('canvas'),ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx){el('[data-sn="cover-info"]').textContent='Canvas indisponível.';return ()=>{};}
@@ -102,6 +102,7 @@ export function mountPhoneSnake({root,user,addCoins}){
   const button=e.target.closest('[data-sn-action]')?.dataset.snAction;
   if(button==='pause')pause();
   else if(button==='start'){if(active&&paused&&!ended)pause();else reset();}
+  else if(button==='restart')reset();
  };
  const onBlur=()=>{if(active&&!paused)pause();};
  const onVisibility=()=>{if(document.hidden&&active&&!paused)pause();};
