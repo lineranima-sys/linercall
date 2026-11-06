@@ -1,6 +1,6 @@
 // Pintura procedural original em Canvas, detalhe interno 960x540, sem imagens ou redes externas.
 import {WIDTH as W,HEIGHT as H,FLOOR} from './story-chapter-v3.js';
-import {swordBox} from './story-combat-v3.js';
+import {swordBox} from './story-combat-v3.js?v=wall-sword-fix';
 const PI=Math.PI, TAU=PI*2;
 const pal={
  skin:'#efc59f',skinShadow:'#c9916f',line:'#242744',hair:'#352c44',hairLight:'#765065',
