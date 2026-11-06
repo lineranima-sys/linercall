@@ -136,7 +136,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   q('story3-dialog').classList.remove('hidden');
  }
  function advance(){
-  if(menu||q('story3-dialog').classList.contains('hidden'))return;
+  if(q('story3-dialog').classList.contains('hidden'))return;
   if(++dialogueIndex<dialogueLines.length){showDialogue();return;}
   q('story3-dialog').classList.add('hidden');dialogueLines=[];paused=false;
   const done=afterDialogue;afterDialogue=null;done?.();save();
@@ -246,7 +246,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(p.attackCooldown>0)p.attackCooldown=Math.max(0,p.attackCooldown-dt);
   if(p.swing>0)p.swing=Math.max(0,p.swing-dt);
   p.invul=Math.max(0,p.invul-dt);fishInvul=Math.max(0,fishInvul-dt);
-  p.coyote=p.ground?.13:Math.max(0,p.coyote-dt);
+  p.coyote=p.ground ? .13 : Math.max(0,p.coyote-dt);
   p.jumpBuffer=Math.max(0,p.jumpBuffer-dt);
   if(p.jumpBuffer>0&&p.coyote>0){
    p.vy=-680;p.ground=false;p.coyote=0;p.jumpBuffer=0;
@@ -271,7 +271,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    }
   }
   if(p.y>HEIGHT+100){
-   p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=2;damage(1);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
+   damage(1);p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=Math.max(p.invul,1.5);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
   }
   hitTest();
   for(const m of enemies){
@@ -285,6 +285,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    if(Math.abs(m.x-m.home)>=65)m.dir*=-1;
    if(overlaps(bodyBox(p),bodyBox(m)))damage(1);
   }
+  if(zoneIndex===3&&!flags.fishWon&&overlaps(bodyBox(p),{x:294,y:FLOOR-130,w:155,h:120}))damage(1);
   for(const f of fx)f.life-=dt*1.7;fx=fx.filter(f=>f.life>0).slice(-90);
   const stops=zone().checkpoints;
   for(const at of stops)if(p.x>at&&checkpoint<at){checkpoint=at;note('Checkpoint ativado!',2);save();}
