@@ -2,14 +2,14 @@
 export function overlaps(a,b){
  return !!a&&!!b&&a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 }
-export function swordBox(hero,reach=116){
+export function swordBox(hero,reach=76){
  const face=hero.face<0?-1:1;
  return {x:face>0?hero.x+hero.w-3:hero.x-reach+3,y:hero.y+8,w:reach,h:hero.h-11};
 }
 export function bodyBox(actor){
  return {x:actor.x+5,y:actor.y+5,w:Math.max(8,actor.w-10),h:Math.max(12,actor.h-5)};
 }
-export function swordCanHit(hero,target,reach=116){
+export function swordCanHit(hero,target,reach=76){
  return overlaps(swordBox(hero,reach),target.hurtbox||bodyBox(target));
 }
 // BrigaLoka usa pés no piso, eixo y positivo para saltos.
