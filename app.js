@@ -2,7 +2,8 @@ import { soloBattleEffect, RARE_SUPER_MULTIPLIER } from './pokemon-battle-effect
 import { mountTermo } from './termo-game.js';
 import { mountDetective } from './arcade-extras.js?v=20261105';
 import { mountMusic } from './music-trivia.js?v=20261105-famous-covers';
-import { mountShooter } from './shooter-fps.js?v=20261105-first-person';
+import { mountShooter } from './shooter-menu.js?v=20261105-arena-map-vote';
+import { mountBrigaLoka } from './brigaloka.js?v=20261105-liner';
 import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
@@ -606,7 +607,7 @@ function setPresence(activity,label){
 function switchView(name) {
   if(name==='friends')notificationCenter?.markCategory('friend');
   if(name!=='friends')dmFocusOff();
-  if (name !== 'games' && ['story','termo','detective','music','shooter'].includes(miniGamePage)) backToMiniGames();
+  if (name !== 'games' && ['story','termo','detective','music','shooter','brigaloka'].includes(miniGamePage)) backToMiniGames();
   const activities={welcome:['browsing','Navegando'],chat:['chat','No chat geral'],calls:['voice','Em sala de voz'],friends:['friends','Na lista de amigos'],games:['playing','Jogando minigames'],ranking:['browsing','Vendo o ranking'],settings:['browsing','Nas configurações'],cinema:['watching','No LightyFlix'],shop:['shopping','Na loja']};
   const state=activities[name]||['browsing','Navegando'];
   setPresence(state[0],state[1]);
@@ -1122,7 +1123,10 @@ function showArcadeExtra(page){
   activeArcadeCleanup=mountMusic(common);
  }else if(page==='shooter'){
   $('game-title').textContent='SHOOT’E R!';
-  activeArcadeCleanup=mountShooter(common);
+  activeArcadeCleanup=mountShooter({...common,getDb:()=>db});
+ }else if(page==='brigaloka'){
+  $('game-title').textContent='BrigaLoka!';
+  activeArcadeCleanup=mountBrigaLoka(common);
  }
 }
 let miniGamePage = 'home';
@@ -1143,7 +1147,7 @@ function showMiniGamePage(page) {
   if (page === 'reaction') showReaction();
   if (page === 'tetris') showTetris();
   if (page === 'story') startStory();
-  if (['termo','detective','music','shooter'].includes(page)) showArcadeExtra(page);
+  if (['termo','detective','music','shooter','brigaloka'].includes(page)) showArcadeExtra(page);
 }
 function backToMiniGames() {
   stopArcadeExtras();
@@ -2101,7 +2105,7 @@ function setupEvents() {
   $('play-reaction')?.addEventListener('click', () => showMiniGamePage('reaction'));
   $('play-pokemon')?.addEventListener('click', () => showMiniGamePage('pokemon'));
   $('play-tetris')?.addEventListener('click', () => showMiniGamePage('tetris'));
-  ['termo','detective','music','shooter'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
+  ['termo','detective','music','shooter','brigaloka'].forEach(page => $('play-'+page)?.addEventListener('click', () => showMiniGamePage(page)));
   $('sidebar-collapse')?.addEventListener('click',()=>{document.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed');localStorage.setItem('linercall-sidebar-collapsed',document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')?'1':'0');});
   document.addEventListener('input', event => { if (['avatar-crop-zoom','avatar-crop-x','avatar-crop-y'].includes(event.target.id)) updateCropPreview(); });
 

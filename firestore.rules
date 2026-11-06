@@ -250,6 +250,103 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // SHOOT'E R! — duelo beta entre duas contas, sem recompensas de moedas.
+    match /shooterRooms/{roomId} {
+      function participant() {
+        return signedIn() &&
+          (resource.data.hostUid == request.auth.uid || resource.data.guestUid == request.auth.uid);
+      }
+      function validMap(m) {
+        return m in ['tanjiro','folha','chaves','undefined'];
+      }
+      allow get: if signedIn() && (participant() || resource.data.status == 'waiting');
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['hostUid','hostName','guestUid','guestName','hostMap','guestMap','status','createdAt','updatedAt'])
+        && request.resource.data.keys().hasAll(['hostUid','hostName','guestUid','guestName','hostMap','guestMap','status','createdAt','updatedAt'])
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.hostName is string && request.resource.data.hostName.size() <= 40
+        && request.resource.data.guestUid == '' && request.resource.data.guestName == ''
+        && request.resource.data.hostMap == '' && request.resource.data.guestMap == ''
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn() && (
+        // Um único segundo jogador entra na sala vazia.
+        (resource.data.status == 'waiting' && resource.data.guestUid == ''
+          && request.auth.uid != resource.data.hostUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestUid','guestName','status','updatedAt'])
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.guestName is string && request.resource.data.guestName.size() <= 40
+          && request.resource.data.status == 'choosing'
+          && request.resource.data.updatedAt == request.time)
+        ||
+        // Cada participante pode registrar apenas o próprio voto, uma vez.
+        (participant() && resource.data.guestUid != '' && resource.data.status == 'choosing'
+          && request.resource.data.updatedAt == request.time
+          && (
+            (request.auth.uid == resource.data.hostUid && resource.data.hostMap == ''
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hostMap','updatedAt'])
+              && validMap(request.resource.data.hostMap))
+            ||
+            (request.auth.uid == resource.data.guestUid && resource.data.guestMap == ''
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestMap','updatedAt'])
+              && validMap(request.resource.data.guestMap))
+          ))
+      );
+      allow delete: if false;
+
+      match /players/{playerUid} {
+        function room() {
+          return get(/databases/$(database)/documents/shooterRooms/$(roomId)).data;
+        }
+        function participant() {
+          return signedIn() &&
+            (room().hostUid == request.auth.uid || room().guestUid == request.auth.uid);
+        }
+        function validPose(data) {
+          return data.keys().hasOnly(['uid','x','y','angle','pitch','weapon','hp','updatedAt'])
+            && data.keys().hasAll(['uid','x','y','angle','pitch','weapon','hp','updatedAt'])
+            && data.uid == request.auth.uid
+            && data.x is number && data.x >= 0 && data.x <= 32
+            && data.y is number && data.y >= 0 && data.y <= 27
+            && data.angle is number && data.angle >= 0 && data.angle <= 7
+            && data.pitch is number && data.pitch >= -0.7 && data.pitch <= 0.7
+            && data.weapon is int && data.weapon >= 0 && data.weapon <= 3
+            && data.hp is number && data.hp >= 0 && data.hp <= 100
+            && data.updatedAt == request.time;
+        }
+        allow read: if participant();
+        allow create: if participant() && playerUid == request.auth.uid
+          && validPose(request.resource.data);
+        allow update: if participant() && playerUid == request.auth.uid
+          && validPose(request.resource.data)
+          && request.resource.data.uid == resource.data.uid;
+        allow delete: if false;
+      }
+      match /shots/{shotId} {
+        function room() {
+          return get(/databases/$(database)/documents/shooterRooms/$(roomId)).data;
+        }
+        function participant() {
+          return signedIn() &&
+            (room().hostUid == request.auth.uid || room().guestUid == request.auth.uid);
+        }
+        allow read: if participant();
+        allow create: if participant()
+          && request.resource.data.keys().hasOnly(['uid','weapon','x','y','angle','pitch','createdAt'])
+          && request.resource.data.keys().hasAll(['uid','weapon','x','y','angle','pitch','createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.weapon is int && request.resource.data.weapon >= 0 && request.resource.data.weapon <= 3
+          && request.resource.data.x is number && request.resource.data.x >= 0 && request.resource.data.x <= 32
+          && request.resource.data.y is number && request.resource.data.y >= 0 && request.resource.data.y <= 27
+          && request.resource.data.angle is number && request.resource.data.angle >= 0 && request.resource.data.angle <= 7
+          && request.resource.data.pitch is number && request.resource.data.pitch >= -0.7 && request.resource.data.pitch <= 0.7
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
