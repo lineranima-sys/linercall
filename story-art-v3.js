@@ -322,15 +322,21 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   if(x> -100&&x<W+80){poly(c,[[x-20,FLOOR],[x+9,FLOOR-55],[x+35,FLOOR]],'#779aa8');rect(c,x+5,FLOOR-58,14,14,'#d2dfe4');}
  }
  drawLandmarks(c,zone,camera,t,flags);
- if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);if(flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');}
+ if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);if(flags.guards&&flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');}
  if(zone.id==='montanha'&&flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  if(zone.id==='castelo'){
   if(!flags.exploded)drawCharacter(c,480-camera,FLOOR-71,t,'malacord');
   if(flags.exploded&&!flags.cloneWon)drawCharacter(c,2760-camera,FLOOR-71,t,'shade',-1);
   if(flags.rescue&&!flags.win){
-   drawCharacter(c,3490-camera-24,FLOOR-71,t,'princess');
    const cageX=3490-camera;
+   // A princesa está desacordada dentro da gaiola, não em pé à frente das barras.
+   c.save();c.translate(cageX+28,FLOOR-20);c.rotate(-Math.PI/2);
+   human(c,0,0,t,'princess');c.restore();
    rect(c,cageX-74,FLOOR-154,148,9,'#d4b3aa');
+   line(c,[cageX-61,FLOOR-154],[cageX-100,FLOOR-222],'#b7a6af',5);
+   line(c,[cageX+61,FLOOR-154],[cageX+100,FLOOR-222],'#b7a6af',5);
+   line(c,[cageX+15,FLOOR-43],[cageX+56,FLOOR-60],'#c7d5d9',4);
+   ellipse(c,cageX+61,FLOOR-63,8,8,'#ffe19b');
    for(let i=0;i<12;i++)rect(c,cageX-68+i*12,FLOOR-145,5,142,'#d8c4b9');
    for(let i=0;i<6;i++)ellipse(c,cageX-62+i*23,FLOOR-3+Math.sin(t*.009+i)*4,7,13,'#ef8f51');
   }
@@ -343,8 +349,7 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   else if(f.kind==='dust')ellipse(c,f.x-camera,f.y,7*f.life,4*f.life,'#e9e8df');
   c.restore();
  }
- if(true)
-  human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
+ human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
  if(hero.swing>0){
   const hb=swordBox(hero,76),face=hero.face;
   c.save();
