@@ -338,7 +338,9 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(flags.rescue&&!flags.win&&zoneIndex===4){
    ctx.fillStyle='#552c42d9';ctx.fillRect(W/2-110,13,220,49);
    ctx.textAlign='center';ctx.font='bold 29px monospace';ctx.fillStyle='#ffddc3';
-   ctx.fillText('00:'+String(Math.max(0,Math.ceil(rescueTime))).padStart(2,'0'),W/2,47);
+   const secs=Math.max(0,Math.ceil(rescueTime));
+   const clock=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
+   ctx.fillText(clock,W/2,47);
   }
   if(flags.exploded&&!flags.cloneWon&&zoneIndex===4&&!menu){
    ctx.fillStyle='#d4e6f7';ctx.font='bold 15px monospace';ctx.textAlign='center';
