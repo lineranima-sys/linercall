@@ -1,6 +1,6 @@
 // SHOOT'E R! — menu e salas PvP beta em Firestore.
 // As partidas multiplayer NÃO valem LCoins: ainda não há servidor autoritativo de combate.
-import {addDoc,collection,doc,getDoc,onSnapshot,runTransaction,serverTimestamp,setDoc,updateDoc,query,limit} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import {addDoc,collection,doc,getDoc,onSnapshot,runTransaction,serverTimestamp,setDoc,updateDoc,query,limit,orderBy} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 import {mountShooterFPS} from './shooter-fps.js';
 import {SHOOTER_MAPS} from './shooter-maps.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -171,7 +171,7 @@ export function mountShooter({root,user,getDb,addCoins}){
    const p=snap.data(),age=Date.now()-(p.updatedAt?.toMillis?.()||0);
    latestOpponents=age<10000&&p.hp>0&&Number.isFinite(p.x)&&Number.isFinite(p.y)?[{x:p.x,y:p.y,hp:p.hp}]:[];
   },()=>{});
-  shotsStop=onSnapshot(query(collection(db,'shooterRooms',id,'shots'),limit(200)),receiveShots,()=>{});
+  shotsStop=onSnapshot(query(collection(db,'shooterRooms',id,'shots'),orderBy('createdAt','desc'),limit(90)),receiveShots,()=>{});
  }
  async function onSubmit(e){
   if(e.target.id!=='shoot-room-form')return;
