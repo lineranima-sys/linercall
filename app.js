@@ -11,6 +11,8 @@ import { mountStory } from './story-game.js?v=20261106-feedback-rework';
 import { mountPhoneSnake } from './snake-phone.js?v=20261106-phone-v1';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 import { LIGHTY_PRICES, episodePrice, quoteSeason, ownsEpisode, lightyEpisodeKey, lightySeasonKey } from './lightyflix-pricing.js?v=20261105-episodes-150-300';
+import { LIGHTY_MOVIE_COST, lightyMovieSource, lightyMovieOwns, lightyMovieRefundAmount } from './lightyflix-movies.js?v=20261106';
+import { showLightyDialog } from './lightyflix-purchase-dialog.js?v=20261106';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import {
@@ -326,15 +328,15 @@ function createCinemaPage() {
     section.innerHTML=`
       <div class="section-intro"><div><span class="eyebrow">CINEMA DA COMUNIDADE</span><h2>Seu próximo filme começa aqui.</h2><p>Descubra, explore e monte sua lista.</p></div><span class="pixel-badge">LIGHTYFLIX</span></div>
       <div class="cinema-hero panel"><div class="cinema-hero-content"><span class="eyebrow">BEM-VINDO AO</span><h1>LIGHTYFLIX</h1><p>Filmes e séries para descobrir. Reprodução disponível em breve.</p><button class="btn btn-primary" id="cinema-explore">Explorar catálogo →</button></div></div>
-      <div class="cinema-view-tabs"><button class="active" data-cinema-tab="home">Início</button><button data-cinema-tab="all">Catálogo completo <span id="cinema-total-count">0</span></button><button data-cinema-tab="list">Minha lista <span id="cinema-list-count">0</span></button></div>
+      <div class="cinema-view-tabs"><button class="active" data-cinema-tab="home">Início</button><button data-cinema-tab="all">Catálogo completo <span id="cinema-total-count">0</span></button><button data-cinema-tab="list">Minha lista <span id="cinema-list-count">0</span></button><button data-cinema-tab="owned">✓ Meus filmes <span id="cinema-owned-count">0</span></button></div>
       <div id="cinema-home-view">
         <section class="cinema-section"><div class="cinema-row-head"><div><span class="eyebrow">ESCOLHIDOS PARA VOCÊ</span><h3>Em destaque</h3></div><div class="cinema-row-arrows"><button data-cinema-scroll="cinema-featured">‹</button><button data-cinema-scroll="cinema-featured" data-direction="next">›</button></div></div><div id="cinema-featured" class="cinema-row"><div class="empty-state">Carregando...</div></div></section>
         <section class="cinema-section"><div class="cinema-row-head"><div><span class="eyebrow">DESCUBRA</span><h3>Filmes</h3></div><div class="cinema-row-arrows"><button data-cinema-scroll="cinema-movies">‹</button><button data-cinema-scroll="cinema-movies" data-direction="next">›</button></div></div><div id="cinema-movies" class="cinema-row"><div class="empty-state">Carregando...</div></div></section>
         <section class="cinema-section"><div class="cinema-row-head"><div><span class="eyebrow">MARATONAS</span><h3>Séries</h3></div><div class="cinema-row-arrows"><button data-cinema-scroll="cinema-series">‹</button><button data-cinema-scroll="cinema-series" data-direction="next">›</button></div></div><div id="cinema-series" class="cinema-row"><div class="empty-state">Carregando...</div></div></section>
         <section class="cinema-section"><div class="cinema-row-head"><div><span class="eyebrow">SUA COLEÇÃO</span><h3>Minha lista</h3></div><div class="cinema-row-arrows"><button data-cinema-scroll="cinema-my-list">‹</button><button data-cinema-scroll="cinema-my-list" data-direction="next">›</button></div></div><div id="cinema-my-list" class="cinema-row"><div class="empty-state">Sua lista está vazia.</div></div></section>
       </div>
-      <div id="cinema-all-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">BIBLIOTECA LIGHTYFLIX</span><h2>Catálogo completo</h2><p>Todos os filmes e séries em um só lugar.</p></div><div class="cinema-filters"><button class="active" data-cinema-filter="all">Tudo</button><button data-cinema-filter="movie">Filmes</button><button data-cinema-filter="series">Séries</button></div></div><div id="cinema-all-grid" class="cinema-all-grid"></div></div><div id="cinema-list-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">SUA COLEÇÃO</span><h2>Minha lista</h2><p>Os filmes e séries que você guardou.</p></div></div><div id="cinema-list-grid" class="cinema-all-grid"></div></div>
-      <div id="cinema-details" class="cinema-modal hidden" role="dialog" aria-modal="true" aria-label="Detalhes do conteúdo"><div class="cinema-modal-backdrop" data-cinema-close></div><article class="cinema-detail-card"><button class="cinema-detail-close" data-cinema-close aria-label="Fechar">×</button><div class="cinema-detail-backdrop" id="cinema-detail-backdrop"></div><div class="cinema-detail-content"><img id="cinema-detail-poster" class="cinema-detail-poster" alt=""><div class="cinema-detail-info"><span class="eyebrow" id="cinema-detail-type">FILME</span><h2 id="cinema-detail-title"></h2><div class="cinema-detail-meta" id="cinema-detail-meta"></div><p id="cinema-detail-description"></p><div id="cinema-episodes" class="cinema-episodes"></div><div id="cinema-related" class="cinema-related"></div><div class="cinema-detail-actions"><button class="btn btn-primary" id="cinema-detail-buy">Comprar</button><button class="btn" id="cinema-detail-list">+ Minha lista</button></div></div></div></article></div>
+      <div id="cinema-all-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">BIBLIOTECA LIGHTYFLIX</span><h2>Catálogo completo</h2><p>Todos os filmes e séries em um só lugar.</p></div><div class="cinema-filters"><button class="active" data-cinema-filter="all">Tudo</button><button data-cinema-filter="movie">Filmes</button><button data-cinema-filter="series">Séries</button></div></div><div id="cinema-all-grid" class="cinema-all-grid"></div></div><div id="cinema-list-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">SUA COLEÇÃO</span><h2>Minha lista</h2><p>Os filmes e séries que você guardou.</p></div></div><div id="cinema-list-grid" class="cinema-all-grid"></div></div><div id="cinema-owned-view" class="hidden"><div class="cinema-all-heading"><div><span class="eyebrow">MINHAS CONQUISTAS</span><h2>Meus filmes</h2><p class="lighty-owned-view-note">Aqui ficam os títulos que você adquiriu com suas LCoins.</p></div></div><div id="cinema-owned-grid" class="cinema-all-grid"></div></div>
+      <div id="cinema-details" class="cinema-modal hidden" role="dialog" aria-modal="true" aria-label="Detalhes do conteúdo"><div class="cinema-modal-backdrop" data-cinema-close></div><article class="cinema-detail-card"><button class="cinema-detail-close" data-cinema-close aria-label="Fechar">×</button><div class="cinema-detail-backdrop" id="cinema-detail-backdrop"></div><div class="cinema-detail-content"><img id="cinema-detail-poster" class="cinema-detail-poster" alt=""><div class="cinema-detail-info"><span class="eyebrow" id="cinema-detail-type">FILME</span><h2 id="cinema-detail-title"></h2><div class="cinema-detail-meta" id="cinema-detail-meta"></div><p id="cinema-detail-description"></p><div id="cinema-episodes" class="cinema-episodes"></div><div id="cinema-related" class="cinema-related"></div><div class="cinema-detail-actions"><button class="btn btn-primary" id="cinema-detail-buy">Comprar</button><button class="btn" id="cinema-detail-list">+ Minha lista</button></div><div id="cinema-detail-purchase-state" class="lighty-detail-state hidden"></div></div></div></article></div>
       <div id="cinema-player" class="panel hidden" style="margin-top:25px;padding:20px;"><div class="panel-head"><div><span class="eyebrow">REPRODUZINDO</span><h3 id="cinema-player-title">Conteúdo</h3></div><button class="btn btn-danger" id="cinema-close-player">Fechar</button></div><div id="cinema-player-content"></div></div>`;
     const footer=main.querySelector('.app-footer');main.insertBefore(section,footer||null);
   }
@@ -1411,6 +1413,19 @@ function applyShopCosmetics() {
   ['profile-banner-preview','shop-banner-preview'].forEach(id=>{const el=$(id);if(el)el.dataset.style=String(shopState.bannerStyle||0);});
   const banner=$('profile-banner-preview'); if(banner)banner.classList.toggle('hidden',!shopState.bannerStyle);
 }
+function lightyMovieShopCard(item){
+ const owned=hasLightyPurchase('movie:'+item.id),ready=canWatchLightyMovie(item);
+ const state=owned?'✓ COMPRADO':ready?'🪙 '+formatLightyCoins(LIGHTY_MOVIE_COST):'◷ Ainda sem vídeo';
+ const action=owned
+  ?'<button class="btn btn-primary" data-shop-open-cinema="'+safeText(item.id)+'">✓ Ver compra</button>'
+  :ready?'<button class="btn btn-primary" data-shop-movie="'+safeText(item.id)+'">Comprar filme</button>'
+  :'<button class="btn" type="button" disabled>Indisponível</button>';
+ return '<article class="shop-item panel"><div class="shop-item-art"><img src="'+safeText(item.poster||'')+'" alt="" loading="lazy"></div>'+
+  '<div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · FILME</span><h3>'+safeText(item.title)+'</h3>'+
+  '<b class="shop-price">'+state+'</b>'+action+
+  (owned&&!ready?'<p class="lighty-catalog-warning">Vídeo não disponível. Abra os detalhes para recuperar suas LCoins.</p>':'')+
+  '<button class="btn" data-shop-open-cinema="'+safeText(item.id)+'">Ver detalhes</button></div></article>';
+}
 function renderShop() {
  const root=$('shop-content'); if(!root||!pokemonArena||!shopState)return;
  root.innerHTML=`
@@ -1420,7 +1435,7 @@ function renderShop() {
   <article class="shop-item panel"><div id="shop-banner-preview" class="shop-item-art shop-banner-art" data-style="${shopState.bannerStyle||0}">✦ LINERCALL'S ✦</div><div class="shop-item-info"><span class="eyebrow">PERSONALIZAÇÃO</span><h3>Banner de perfil</h3><p>Você pode trocar o banner uma vez por compra. Cada nova alteração custa moedas novamente.</p><b class="shop-price">🪙 200 moedas · por alteração</b><button class="btn btn-primary" data-shop-buy="banner">${shopState.bannerCredits>0?'Escolher banner · crédito disponível':'Comprar alteração'}</button><div class="banner-style-options"><button data-banner-style="1" ${shopState.bannerCredits>0?'':'disabled'}>Aurora</button><button data-banner-style="2" ${shopState.bannerCredits>0?'':'disabled'}>Nebulosa</button><button data-banner-style="3" ${shopState.bannerCredits>0?'':'disabled'}>Vulcão</button></div></div></article>
  </div><p class="shop-notice">Protótipo local: moedas e cosméticos ficam neste navegador e ainda não sincronizam entre dispositivos.</p>
  <div id="avatar-cropper" class="cropper-modal hidden"><div class="cropper-card"><div class="panel-head"><h3>Enquadre sua foto</h3><button class="icon-btn" data-crop-cancel>✕</button></div><div class="cropper-window"><img id="avatar-crop-image" alt="Prévia da foto"></div><label>Zoom <input id="avatar-crop-zoom" type="range" min="1" max="3" step=".05" value="1"></label><label>Horizontal <input id="avatar-crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical <input id="avatar-crop-y" type="range" min="0" max="100" value="50"></label><div class="cropper-actions"><button class="btn" data-crop-cancel>Cancelar</button><button class="btn btn-primary" data-crop-save>Salvar foto</button></div></div></div>`;
- if(cinemaItems.length){const lighty=cinemaItems.map(item=>item.type==='movie'?`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · FILME</span><h3>${safeText(item.title)}</h3><b class="shop-price">${item.catalogOnly?'🔒 Ainda indisponível':'🪙 2.000 moedas'}</b><button class="btn btn-primary" data-shop-movie="${safeText(item.id)}" ${item.catalogOnly||hasLightyPurchase('movie:'+item.id)?'disabled':''}>${item.catalogOnly?'Em breve':hasLightyPurchase('movie:'+item.id)?'Comprado':'Comprar filme'}</button></div></article>`:`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · SÉRIE</span><h3>${safeText(item.title)}</h3><b class="shop-price">🪙 ${formatLightyCoins(episodePrice(item.duration))} por episódio</b><p>Pacote da 1ª temporada: ${formatLightyCoins(quoteSeason({showId:item.id,season:0,episodeCount:SERIES_EPISODE_DATA[item.id]?.[0]?.count||0,duration:item.duration,purchases:getLightyPurchases()}).bundleTotal)}. Para completar agora: ${formatLightyCoins(quoteSeason({showId:item.id,season:0,episodeCount:SERIES_EPISODE_DATA[item.id]?.[0]?.count||0,duration:item.duration,purchases:getLightyPurchases()}).remaining)}. O preço diminui conforme os episódios já comprados.</p><button class="btn" data-shop-open-cinema="${safeText(item.id)}">Ver temporadas</button></div></article>`).join('');root.insertAdjacentHTML('beforeend','<h3 class="shop-section-title">LightyFlix</h3><div class="shop-grid">'+lighty+'</div>');}
+ if(cinemaItems.length){const lighty=cinemaItems.map(item=>item.type==='movie'?lightyMovieShopCard(item):`<article class="shop-item panel"><div class="shop-item-art"><img src="${safeText(item.poster||'')}" alt="" loading="lazy"></div><div class="shop-item-info"><span class="eyebrow">LIGHTYFLIX · SÉRIE</span><h3>${safeText(item.title)}</h3><b class="shop-price">🪙 ${formatLightyCoins(episodePrice(item.duration))} por episódio</b><p>Pacote da 1ª temporada: ${formatLightyCoins(quoteSeason({showId:item.id,season:0,episodeCount:SERIES_EPISODE_DATA[item.id]?.[0]?.count||0,duration:item.duration,purchases:getLightyPurchases()}).bundleTotal)}. Para completar agora: ${formatLightyCoins(quoteSeason({showId:item.id,season:0,episodeCount:SERIES_EPISODE_DATA[item.id]?.[0]?.count||0,duration:item.duration,purchases:getLightyPurchases()}).remaining)}. O preço diminui conforme os episódios já comprados.</p><button class="btn" data-shop-open-cinema="${safeText(item.id)}">Ver temporadas</button></div></article>`).join('');root.insertAdjacentHTML('beforeend','<h3 class="shop-section-title">LightyFlix</h3><div class="shop-grid">'+lighty+'</div>');}
  applyShopCosmetics();
 }
 let pendingAvatarImage = null;
@@ -1753,8 +1768,25 @@ function getYouTubeEmbed(value) {
 }
 
 function cinemaCard(item) {
-  const poster=validWebUrl(item.poster||item.backdrop||''),title=safeText(item.title||'Sem título'),type=item.type==='series'?'SÉRIE':'FILME';
-  return `<article class="cinema-card"><button class="cinema-card-open" data-cinema-open="${safeText(item.id)}" aria-label="Ver detalhes de ${title}"><div class="cinema-card-poster"><img src="${poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX'}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/500x750/17152b/e7d8ff?text=SEM+CAPA'"><span class="cinema-card-type">${type}</span><span class="cinema-card-view">Ver detalhes</span></div><div class="cinema-card-info"><h4>${title}</h4><p>${safeText(item.description||'')}</p><div class="cinema-meta"><span>⏱ ${safeText(item.duration||'Duração não informada')}</span><span>📅 ${safeText(item.releaseDate||item.year||'Data não informada')}</span></div></div></button><div class="cinema-card-actions"><button class="btn cinema-coming-soon" type="button" disabled>◷ Em breve</button><button class="btn" data-mylist="${safeText(item.id)}">${getMyList().includes(item.id)?'✓ Remover da lista':'+ Minha lista'}</button></div></article>`;
+ const poster=validWebUrl(item.poster||item.backdrop||''),title=safeText(item.title||'Sem título');
+ const movie=item.type==='movie',type=movie?'FILME':'SÉRIE',id=safeText(item.id);
+ const owned=movie&&hasLightyPurchase('movie:'+item.id),ready=movie&&canWatchLightyMovie(item);
+ const state=owned?'<span class="cinema-card-owned-ribbon'+(ready?'':' unavailable')+'">✓ COMPRADO</span>':'';
+ const action=!movie
+  ?'<button class="btn cinema-coming-soon" type="button" disabled>◷ Em breve</button>'
+  :owned?(ready?'<button class="btn btn-primary" data-lighty-movie-watch="'+id+'">▶ Assistir</button>':
+   '<button class="btn btn-primary" data-lighty-movie-receipt="'+id+'">✓ Ver compra</button>')
+   :ready?'<button class="btn btn-primary" data-lighty-movie-buy="'+id+'">Comprar · 2.000</button>'
+   :'<button class="btn cinema-coming-soon" type="button" disabled>◷ Indisponível</button>';
+ return '<article class="cinema-card"><button class="cinema-card-open" data-cinema-open="'+id+'" aria-label="Ver detalhes de '+title+'">'+
+  '<div class="cinema-card-poster"><img src="'+(poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX')+'" alt="'+title+
+  '" loading="lazy" onerror="this.src=\'https://placehold.co/500x750/17152b/e7d8ff?text=SEM+CAPA\'">'+
+  '<span class="cinema-card-type">'+type+'</span>'+state+'<span class="cinema-card-view">Ver detalhes</span></div>'+
+  '<div class="cinema-card-info"><h4>'+title+'</h4><p>'+safeText(item.description||'')+'</p>'+
+  '<div class="cinema-meta"><span>⏱ '+safeText(item.duration||'Duração não informada')+'</span><span>📅 '+
+  safeText(item.releaseDate||item.year||'Data não informada')+'</span></div></div></button>'+
+  '<div class="cinema-card-actions">'+action+'<button class="btn" data-mylist="'+id+'">'+
+  (getMyList().includes(item.id)?'✓ Remover da lista':'+ Minha lista')+'</button></div></article>';
 }
 
 function renderCinema() {
@@ -1785,7 +1817,7 @@ function getLightyPurchases(){
     return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
   }catch{return {};}
 }
-function hasLightyPurchase(key){return !!getLightyPurchases()[key];}
+function hasLightyPurchase(key){const entry=getLightyPurchases()[key];return !!entry&&!entry.refundedAt;}
 function formatLightyCoins(n){return Math.max(0,Number(n)||0).toLocaleString('pt-BR')+' LCoins';}
 function commitLightyPurchase(key,cost,label,warning){
  if(!pokemonArena||!currentUser)return toast('Entre na sua conta para comprar.');
@@ -1808,16 +1840,130 @@ function commitLightyPurchase(key,cost,label,warning){
  toast('Desbloqueio concluído: '+label+'. Saldo: '+formatLightyCoins(pokemonArena.coins)+'.');
  return true;
 }
-function buyLightyContent(key,cost,label){
- if(!pokemonArena)return;
- const purchases=getLightyPurchases();
- if(purchases[key])return toast('Você já comprou este conteúdo.');
- if((Number(pokemonArena.coins)||0)<cost)return toast('Moedas insuficientes.');
- pokemonArena.coins-=cost;
- purchases[key]={cost,boughtAt:Date.now()};
- try{localStorage.setItem(lightyPurchasesKey(),JSON.stringify(purchases));}
- catch(error){pokemonArena.coins+=cost;console.error(error);return toast('Erro ao salvar a compra. Moedas preservadas.');}
- savePokemonArena();renderShop();toast(label+' comprado!');
+// Filmes com cartaz, mas sem vídeo, não podem mais cobrar LCoins.
+function lightyMovieById(id){return cinemaItems.find(x=>x.id===id&&x.type==='movie');}
+function canWatchLightyMovie(item){return !!lightyMovieSource(item);}
+function movieDialog(item,options){
+ return showLightyDialog({poster:validWebUrl(item.poster||item.backdrop||''),...options});
+}
+function lightyMovieRefresh(id){
+ renderShop();
+ renderCinema();
+ const modal=$('cinema-details');
+ if(modal&&!modal.classList.contains('hidden')&&lightyMovieById(id))openCinemaDetails(id);
+ document.querySelectorAll('.pokemon-wallet b').forEach(el=>{el.textContent=pokemonArena?.coins??0;});
+}
+function movieReceipt(id){
+ const item=lightyMovieById(id);if(!item)return;
+ const record=getLightyPurchases()['movie:'+id];if(!record||record.refundedAt)return;
+ const ready=canWatchLightyMovie(item);
+ const cost=Number(record.cost)||LIGHTY_MOVIE_COST;
+ movieDialog(item,{
+  kicker:'✦ SUA CONQUISTA LIGHTYFLIX',
+  title:'Esse filme é seu! 🎉',
+  description:'Parabéns pela conquista de '+item.title+'! Você se dedicou para juntar suas LCoins, e sua compra merece ser reconhecida. Obrigado por fazer parte do LightyFlix.',
+  detail:'✓ Compra registrada neste navegador.\nInvestimento: '+formatLightyCoins(cost)+'.\n'+
+    (ready?'▶ Fonte de reprodução cadastrada.':'⚠ O vídeo ainda não está disponível para assistir. Você pode recuperar suas LCoins.'),
+  actions:[
+   ...(ready?[{label:'▶ Assistir agora',primary:true,onClick:()=>playCinemaItem(id)}]:[
+    {label:'Recuperar minhas LCoins',primary:true,onClick:()=>requestMovieRefund(id)}]),
+   {label:'Voltar ao catálogo'}
+  ]
+ });
+}
+function unavailableMovieInfo(item){
+ movieDialog(item,{
+  kicker:'TRANSPARÊNCIA · LIGHTYFLIX',title:'Ainda não dá para assistir',
+  description:item.title+' está no catálogo, mas não possui uma fonte de reprodução configurada. Por isso, a compra está temporariamente desativada.',
+  detail:'Nenhuma LCoin será cobrada por um filme indisponível.',
+  actions:[{label:'Entendi',primary:true}]
+ });
+}
+function requestMoviePurchase(id){
+ const item=lightyMovieById(id);if(!item)return toast('Filme não encontrado.');
+ if(!pokemonArena||!currentUser)return toast('Entre na sua conta para comprar.');
+ if(hasLightyPurchase('movie:'+id)){movieReceipt(id);return;}
+ if(!canWatchLightyMovie(item)){unavailableMovieInfo(item);return;}
+ const coins=Number(pokemonArena.coins)||0;
+ if(coins<LIGHTY_MOVIE_COST){
+  movieDialog(item,{kicker:'SUA CARTEIRA',title:'Faltam algumas LCoins',
+   description:'Você tem '+formatLightyCoins(coins)+' e precisa de '+formatLightyCoins(LIGHTY_MOVIE_COST)+' para adquirir '+item.title+'.',
+   detail:'A compra não foi realizada. Continue juntando LCoins nos minigames.',
+   actions:[{label:'Voltar ao catálogo',primary:true}]});
+  return;
+ }
+ movieDialog(item,{kicker:'CONFIRMAÇÃO DE COMPRA',title:'Quer comprar esse filme?',
+  description:'Você conquistou suas LCoins jogando. Confira os detalhes antes de confirmar a compra de '+item.title+'.',
+  detail:'Preço: '+formatLightyCoins(LIGHTY_MOVIE_COST)+
+   '\nSeu saldo: '+formatLightyCoins(coins)+
+   '\nDepois da compra: '+formatLightyCoins(coins-LIGHTY_MOVIE_COST)+
+   '\nReprodução: fonte cadastrada.',
+  actions:[{label:'Cancelar'},{label:'✓ Confirmar compra',primary:true,onClick:()=>finalizeMoviePurchase(id)}]
+ });
+}
+// Os dois registros são locais e ligados ao UID; salvar e restaurar ambos em caso de falha.
+function lightyMovieCommitStores(purchases,newCoins){
+ const purchaseKey=lightyPurchasesKey(),walletKey=pokemonStorageKey();
+ let previousPurchases=null,previousWallet=null;
+ try{
+  previousPurchases=localStorage.getItem(purchaseKey);
+  previousWallet=localStorage.getItem(walletKey);
+  const wallet={...pokemonArena,coins:newCoins};
+  localStorage.setItem(walletKey,JSON.stringify(wallet));
+  localStorage.setItem(purchaseKey,JSON.stringify(purchases));
+  pokemonArena.coins=newCoins;
+  return true;
+ }catch(error){
+  try{
+   if(previousWallet===null)localStorage.removeItem(walletKey);
+   else localStorage.setItem(walletKey,previousWallet);
+   if(previousPurchases===null)localStorage.removeItem(purchaseKey);
+   else localStorage.setItem(purchaseKey,previousPurchases);
+  }catch(restoreError){console.error('Não foi possível restaurar compra local',restoreError);}
+  console.error('Falha ao salvar transação LightyFlix',error);
+  toast('Falha ao salvar a operação. Confira suas moedas antes de tentar novamente.');
+  return false;
+ }
+}
+function finalizeMoviePurchase(id){
+ const item=lightyMovieById(id);if(!item||!canWatchLightyMovie(item))return toast('Filme indisponível para compra.');
+ if(!pokemonArena||!currentUser)return;
+ const purchases=getLightyPurchases(),key='movie:'+id;
+ if(hasLightyPurchase(key)){movieReceipt(id);return;}
+ const coins=Number(pokemonArena.coins)||0;
+ if(coins<LIGHTY_MOVIE_COST)return toast('Saldo insuficiente. Compra cancelada.');
+ purchases[key]={cost:LIGHTY_MOVIE_COST,boughtAt:Date.now()};
+ if(!lightyMovieCommitStores(purchases,coins-LIGHTY_MOVIE_COST))return;
+ lightyMovieRefresh(id);
+ movieReceipt(id);
+}
+function requestMovieRefund(id){
+ const item=lightyMovieById(id);
+ if(!item||canWatchLightyMovie(item))return toast('Este filme tem uma fonte de reprodução disponível.');
+ if(!currentUser||!pokemonArena)return toast('Entre na mesma conta usada na compra.');
+ const record=getLightyPurchases()['movie:'+id];
+ const amount=lightyMovieRefundAmount(record);
+ if(!amount)return toast('Não há uma compra ativa elegível para estorno neste dispositivo.');
+ movieDialog(item,{kicker:'REEMBOLSO DE LCOINS',title:'Recuperar suas moedas?',
+  description:'O vídeo de '+item.title+' não foi disponibilizado. Você pode desfazer a compra e receber suas LCoins de volta.',
+  detail:'Você receberá: '+formatLightyCoins(amount)+'.\nSaldo atual: '+formatLightyCoins(pokemonArena.coins||0)+'.\nDepois: '+formatLightyCoins((Number(pokemonArena.coins)||0)+amount)+'.\nA compra deixará de aparecer em Meus filmes.',
+  actions:[{label:'Manter compra'},{label:'Devolver '+formatLightyCoins(amount),primary:true,onClick:()=>finalizeMovieRefund(id)}]
+ });
+}
+function finalizeMovieRefund(id){
+ const item=lightyMovieById(id),purchases=getLightyPurchases(),key='movie:'+id,record=purchases[key];
+ if(!item||canWatchLightyMovie(item)||!currentUser||!pokemonArena)return;
+ const amount=lightyMovieRefundAmount(record);
+ if(!amount){toast('Esse reembolso já foi realizado ou não está disponível.');return;}
+ purchases[key]={...record,refundedAt:Date.now(),refundedAmount:amount};
+ const updatedCoins=(Number(pokemonArena.coins)||0)+amount;
+ if(!lightyMovieCommitStores(purchases,updatedCoins))return;
+ lightyMovieRefresh(id);
+ movieDialog(item,{kicker:'REEMBOLSO CONCLUÍDO',title:'Suas LCoins voltaram! ✨',
+  description:'Você recuperou '+formatLightyCoins(amount)+' porque o filme ainda não estava disponível. Seu esforço continua valendo!',
+  detail:'Novo saldo: '+formatLightyCoins(updatedCoins)+'.\nEsse estorno só pode acontecer uma vez para esta compra.',
+  actions:[{label:'Voltar ao LightyFlix',primary:true}]
+ });
 }
 const lightyNoVideoWarning='A reprodução deste episódio ainda não está disponível no LightyFlix. Este pagamento usa moedas virtuais e desbloqueia somente o registro no catálogo por enquanto.';
 function buyLightyEpisode(showId,seasonIndex,number){
@@ -1935,8 +2081,29 @@ function renderSeriesDetails(item,selectedSeason=0){
 }
 
 let cinemaFilter='all';
-function setCinemaTab(tab){$('cinema-home-view')?.classList.toggle('hidden',tab!=='home');$('cinema-all-view')?.classList.toggle('hidden',tab!=='all');$('cinema-list-view')?.classList.toggle('hidden',tab!=='list');document.querySelectorAll('[data-cinema-tab]').forEach(b=>b.classList.toggle('active',b.dataset.cinemaTab===tab));if(tab==='list')renderCinemaList();}
-function renderCinemaAll(){const items=cinemaFilter==='all'?cinemaItems:cinemaItems.filter(item=>item.type===cinemaFilter);if($('cinema-all-grid'))$('cinema-all-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Nenhum conteúdo nesta categoria.</div>';renderCinemaList();$('cinema-list-count').textContent=getMyList().length;}function renderCinemaList(){const ids=getMyList(),items=cinemaItems.filter(item=>ids.includes(item.id));if($('cinema-list-grid'))$('cinema-list-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Sua lista está vazia. Adicione filmes e séries pelo catálogo.</div>';if($('cinema-list-count'))$('cinema-list-count').textContent=ids.length;}
+function setCinemaTab(tab){
+ for(const [name,id] of [['home','cinema-home-view'],['all','cinema-all-view'],['list','cinema-list-view'],['owned','cinema-owned-view']])
+  $(id)?.classList.toggle('hidden',tab!==name);
+ document.querySelectorAll('[data-cinema-tab]').forEach(b=>b.classList.toggle('active',b.dataset.cinemaTab===tab));
+ if(tab==='list')renderCinemaList();
+ if(tab==='owned')renderCinemaOwned();
+}
+function renderCinemaAll(){
+ const items=cinemaFilter==='all'?cinemaItems:cinemaItems.filter(item=>item.type===cinemaFilter);
+ if($('cinema-all-grid'))$('cinema-all-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Nenhum conteúdo nesta categoria.</div>';
+ renderCinemaList();renderCinemaOwned();
+ $('cinema-list-count').textContent=getMyList().length;
+}
+function renderCinemaList(){
+ const ids=getMyList(),items=cinemaItems.filter(item=>ids.includes(item.id));
+ if($('cinema-list-grid'))$('cinema-list-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Sua lista está vazia. Adicione filmes e séries pelo catálogo.</div>';
+ if($('cinema-list-count'))$('cinema-list-count').textContent=ids.length;
+}
+function renderCinemaOwned(){
+ const items=cinemaItems.filter(item=>item.type==='movie'&&hasLightyPurchase('movie:'+item.id));
+ if($('cinema-owned-grid'))$('cinema-owned-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Você ainda não tem filmes adquiridos. Quando comprar um filme disponível, ele aparecerá aqui.</div>';
+ if($('cinema-owned-count'))$('cinema-owned-count').textContent=String(items.length);
+}
 function openCinemaDetails(id){
  const item=cinemaItems.find(entry=>entry.id===id);if(!item)return;
  const poster=validWebUrl(item.poster||item.backdrop||'');
@@ -1945,12 +2112,27 @@ function openCinemaDetails(id){
  renderSeriesDetails(item,0);
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
- const purchaseButton=$('cinema-detail-buy');if(purchaseButton){
-  const key='movie:'+id,owned=hasLightyPurchase(key),catalogOnly=item.catalogOnly===true;
-  purchaseButton.textContent=catalogOnly?'🔒 Ainda não disponível no LightyFlix':owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';
-  purchaseButton.disabled=catalogOnly||item.type!=='movie'||owned;
-  purchaseButton.classList.toggle('hidden',item.type!=='movie');
-  purchaseButton.onclick=()=>{if(!catalogOnly)buyLightyContent(key,2000,'Filme');};
+ const purchaseButton=$('cinema-detail-buy'),ownership=$('cinema-detail-purchase-state');
+ if(purchaseButton){
+  const movie=item.type==='movie',owned=movie&&hasLightyPurchase('movie:'+id),ready=movie&&canWatchLightyMovie(item);
+  purchaseButton.classList.toggle('hidden',!movie);
+  purchaseButton.disabled=!movie||owned||!ready;
+  purchaseButton.textContent=owned?'✓ Filme comprado':ready?'Comprar filme · 2.000 LCoins':'◷ Filme sem vídeo disponível';
+  purchaseButton.onclick=()=>requestMoviePurchase(id);
+  if(ownership){
+   ownership.classList.toggle('hidden',!movie);
+   if(!movie)ownership.innerHTML='';
+   else if(owned){
+    ownership.innerHTML='<strong>✓ Esse filme é seu!</strong><p>'+
+     (ready?'Você pode assistir usando a fonte cadastrada.':'Compra registrada neste navegador. O vídeo ainda não foi disponibilizado; você pode recuperar as LCoins gastas.')+
+     '</p><div class="lighty-detail-buttons">'+
+     (ready?'<button class="btn btn-primary" data-lighty-movie-watch="'+safeText(id)+'">▶ Assistir agora</button>':
+       '<button class="btn lighty-refund-button" data-lighty-movie-refund="'+safeText(id)+'">Recuperar minhas LCoins</button>')+
+     '<button class="btn" data-lighty-movie-receipt="'+safeText(id)+'">✦ Ver comprovante</button></div>';
+   }else ownership.innerHTML='<strong>◷ Ainda não disponível para compra</strong><p>'+
+    (ready?'O filme está disponível. Confira o preço e confirme antes de comprar.':
+     'Este título aparece no catálogo, mas não tem uma fonte de reprodução. Não vamos cobrar suas LCoins por algo que você não consegue assistir.')+'</p>';
+  }
  }
  // Evitar botões de plataformas externas; limpar eventuais links antigos.
  $('cinema-official-link')?.remove();
@@ -2013,14 +2195,11 @@ function playCinemaItem(id) {
     return;
   }
 
-  if(item.catalogOnly)return toast('Este filme ainda não pode ser reproduzido no LightyFlix.');
   const source = validWebUrl(item.sourceUrl || item.embedUrl || '');
-  if(item.type==='movie'&&!hasLightyPurchase('movie:'+id))return toast('Compre este filme por 2.000 moedas para liberar.');
-
-  if (!source) {
-    toast('Este conteúdo ainda não tem uma fonte válida.');
-    return;
-  }
+  if(item.type==='movie'&&(!canWatchLightyMovie(item)||!source)){unavailableMovieInfo(item);return;}
+  if(item.catalogOnly){toast('Este conteúdo ainda não pode ser reproduzido no LightyFlix.');return;}
+  if(item.type==='movie'&&!hasLightyPurchase('movie:'+id)){requestMoviePurchase(id);return;}
+  if(!source){toast('Este conteúdo ainda não tem uma fonte de reprodução válida.');return;}
 
   const embed = getYouTubeEmbed(source);
 
@@ -2135,7 +2314,11 @@ function setupEvents() {
     const lightyScroll=event.target.closest('[data-lighty-scroll]');if(lightyScroll){const row=lightyScroll.parentElement?.querySelector(lightyScroll.dataset.lightyScroll==='episodes'?'.lighty-episode-row':'.lighty-season-row');if(row)row.scrollBy({left:(lightyScroll.dataset.direction==='next'?1:-1)*Math.max(220,row.clientWidth*.78),behavior:'smooth'});}
     const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightySeason(seasonBuy.dataset.buySeason,Number(seasonBuy.dataset.seasonIndex));
     const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
-    const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie){const listing=cinemaItems.find(x=>x.id===lightyMovie.dataset.shopMovie);if(listing?.catalogOnly)toast('Este filme ainda não está disponível no LightyFlix.');else buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');}
+    const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie)requestMoviePurchase(lightyMovie.dataset.shopMovie);
+    const filmBuy=event.target.closest('[data-lighty-movie-buy]');if(filmBuy)requestMoviePurchase(filmBuy.dataset.lightyMovieBuy);
+    const filmPlay=event.target.closest('[data-lighty-movie-watch]');if(filmPlay)playCinemaItem(filmPlay.dataset.lightyMovieWatch);
+    const filmReceipt=event.target.closest('[data-lighty-movie-receipt]');if(filmReceipt)movieReceipt(filmReceipt.dataset.lightyMovieReceipt);
+    const filmRefund=event.target.closest('[data-lighty-movie-refund]');if(filmRefund)requestMovieRefund(filmRefund.dataset.lightyMovieRefund);
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
     const addFriend = event.target.closest('[data-friend-add]'); if(addFriend)sendFriendRequest(addFriend.dataset.friendAdd,addFriend.dataset.friendAddName);
     const acceptFriend = event.target.closest('[data-friend-accept]'); if(acceptFriend)answerFriendRequest(acceptFriend.dataset.friendAccept,true);
