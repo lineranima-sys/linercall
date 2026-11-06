@@ -110,3 +110,27 @@
  #game-content .brig-fight-controls{grid-template-columns:repeat(2,1fr)}
  #game-content .brigaloka-head{min-height:0}
 }
+
+
+/* FPS in Three.js: independent transparent crosshair + weapon over WebGL. */
+#game-content .shoot-fps-screen {position:relative;aspect-ratio:900/520;overflow:hidden;min-height:0;background:#1b2939;border:2px solid #748ba4;border-radius:17px;box-shadow:0 24px 45px #0007}
+#game-content .shoot-fps-screen #shoot-world-3d {position:absolute;inset:0;z-index:0;display:none;width:100%;height:100%;max-height:none;object-fit:fill;pointer-events:none}
+#game-content .shoot-fps-screen #shoot-canvas {position:relative;z-index:1;display:block;width:100%;height:100%;max-height:none!important;aspect-ratio:900/520;background:#19283a;outline:0!important;border:0!important;cursor:crosshair;touch-action:none}
+#game-content .shoot-fps-screen.shooter-webgl-ready #shoot-canvas {background:transparent!important}
+#game-content .shoot-fps-screen #shoot-overlay {z-index:4}
+#game-content .shooter-hub .shooter-hud {font-variant-numeric:tabular-nums}
+#game-content .shooter-hub .shooter-keys {color:#c6d7e8;font-size:12px;line-height:1.8}
+#game-content .shooter-hub .shooter-keys b {color:#ffdb99}
+#game-content .shooter-hub .shooter-actions {display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+#game-content .shooter-hub .shooter-actions button {padding:12px 15px;min-height:44px}
+#game-content .brig-menu .brig-actions button {display:flex;flex-direction:column;gap:6px;align-items:flex-start;justify-content:center}
+#game-content .brig-menu .brig-actions button b{font-size:17px;color:#fff9e5}
+#game-content .brig-menu .brig-actions button small{font-size:11px;font-weight:500;color:#e5dbec}
+#game-content .brig-menu-intro h3{font-size:clamp(20px,4vw,31px);margin:8px 0}
+#game-content .brig-selection-title{display:block;margin:0 0 12px}
+#game-content .brig-fight-controls .brig-controls-hint{font-size:10px;color:#bacbe1;grid-column:1/-1}
+@media(max-width:650px){
+ #game-content .shooter-hub .shoot-fps-screen {border-radius:7px}
+ #game-content .shooter-hub .shooter-hud {padding:9px}
+ #game-content .brig-menu .brig-actions button {min-height:100px}
+}
