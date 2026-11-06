@@ -2195,14 +2195,11 @@ function playCinemaItem(id) {
     return;
   }
 
-  if(item.catalogOnly)return toast('Este filme ainda não pode ser reproduzido no LightyFlix.');
   const source = validWebUrl(item.sourceUrl || item.embedUrl || '');
-  if(item.type==='movie'&&!hasLightyPurchase('movie:'+id))return toast('Compre este filme por 2.000 moedas para liberar.');
-
-  if (!source) {
-    toast('Este conteúdo ainda não tem uma fonte válida.');
-    return;
-  }
+  if(item.type==='movie'&&(!canWatchLightyMovie(item)||!source)){unavailableMovieInfo(item);return;}
+  if(item.catalogOnly){toast('Este conteúdo ainda não pode ser reproduzido no LightyFlix.');return;}
+  if(item.type==='movie'&&!hasLightyPurchase('movie:'+id)){requestMoviePurchase(id);return;}
+  if(!source){toast('Este conteúdo ainda não tem uma fonte de reprodução válida.');return;}
 
   const embed = getYouTubeEmbed(source);
 
