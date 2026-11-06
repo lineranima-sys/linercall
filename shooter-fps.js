@@ -1,3 +1,4 @@
+import {createShooterWorld3D} from './shooter-world3d.js?v=20261105-polish';
 import {loadShooterMap,shooterBlocked,shooterElevation,shooterCell} from './shooter-maps.js';
 // SHOOT’E R! — FPS retro em raycasting (visão em primeira pessoa).
 // Treino contra drones 3D estilizados. Não é PvP online e não envolve violência gráfica.
@@ -41,11 +42,11 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  const guns=GUNS.map(g=>({...g}));
  const el=document.createElement('section');
  el.className='arcade-game shooter-game shooter-fps';
- el.innerHTML='<span class="eyebrow">FPS RETRÔ · CENÁRIOS EXPLORÁVEIS</span>'+
+ el.innerHTML='<span class="eyebrow">FPS 3D · CENÁRIOS EXPLORÁVEIS</span>'+
  '<h2 class="shooter-logo">SHOOT<span>’E</span> R!</h2>'+
- '<p><b>Mapa: '+ACTIVE_MAP.name+'</b> · '+ACTIVE_MAP.subtitle+'. Entre nas casas pelas portas, explore os arredores e suba pelos degraus. Limite invisível no exterior.</p>'+
+ '<p><b>Mapa: '+ACTIVE_MAP.name+'</b> · '+ACTIVE_MAP.subtitle+'. Explore casas, escadas, vielas e arredores. Nova renderização 3D quando disponível.</p>'+
  '<div class="shooter-hud"><span id="shoot-hp">❤️ 100 HP</span><span id="shoot-weapon">Pistola</span><span id="shoot-score">0/12</span><span id="shoot-timer">85 s</span></div>'+
- '<div class="shoot-fps-screen"><canvas id="shoot-canvas" width="900" height="520" tabindex="0" aria-label="Visão em primeira pessoa do SHOOT’E R!"></canvas>'+
+ '<div class="shoot-fps-screen"><canvas id="shoot-world-3d" width="900" height="520" aria-hidden="true"></canvas><canvas id="shoot-canvas" width="900" height="520" tabindex="0" aria-label="Visão em primeira pessoa do SHOOT’E R!"></canvas>'+
  '<div class="shoot-fps-paused" id="shoot-overlay"><b>SHOOT’E R!</b><span>FPS EM PRIMEIRA PESSOA</span><small>Clique em Iniciar para controlar o personagem.</small></div></div>'+
  '<div class="shooter-keys"><b>WASD</b> mover · <b>Mouse</b> olhar · <b>Esquerdo</b> atirar · <b>Direito</b> mira do fuzil · <b>1–4</b> armas · <b>R</b> recarregar · <b>Esc</b> solta mouse · <b>PgUp/PgDn</b> olhar vertical</div>'+
  '<p id="shoot-message" class="arcade-note">Elimine 12 drones antes do fim do tempo para ganhar 45 LCoins (uma vez por dia).</p>'+
@@ -55,8 +56,14 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  '<button type="button" class="btn" data-shoot-mouse>🎯 Capturar mouse</button></div>'+
  '<div class="shoot-touch-controls"><div class="shoot-touch-weaponbar"><button type="button" data-shoot-weapon="0">Pistola</button><button type="button" data-shoot-weapon="1">SMG</button><button type="button" data-shoot-weapon="2">Sniper</button><button type="button" data-shoot-weapon="3">Faca</button></div><div class="shoot-touch-nav"><button type="button" data-hold-key="w">▲</button><div><button type="button" data-hold-key="a">◀</button><button type="button" data-hold-key="s">▼</button><button type="button" data-hold-key="d">▶</button></div></div><div class="shoot-touch-actions"><button type="button" data-hold-fire>🎯 ATIRAR</button><button type="button" data-hold-scope>🔭 ZOOM</button></div><small>Arraste a visão com o dedo na arena para virar. Toque nas armas acima para trocar (1–4 no teclado).</small></div>';
  root.replaceChildren(el);
- const $=s=>el.querySelector(s),canvas=$('#shoot-canvas'),ctx=canvas.getContext('2d',{alpha:false}),hud=$('#shoot-weapon'),message=$('#shoot-message'),overlay=$('#shoot-overlay');
+ const $=s=>el.querySelector(s),canvas=$('#shoot-canvas'),worldCanvas=$('#shoot-world-3d'),ctx=canvas.getContext('2d',{alpha:true}),hud=$('#shoot-weapon'),message=$('#shoot-message'),overlay=$('#shoot-overlay');
  const W=canvas.width,H=canvas.height;
+ let world3D=null,disposed=false;
+ createShooterWorld3D({canvas:worldCanvas,mapId:ACTIVE_MAP.id}).then(view=>{
+  if(disposed){view.dispose();return;}
+  world3D=view;el.classList.add('shooter-webgl-ready');worldCanvas.style.display='block';
+ }).catch(error=>{console.warn('SHOOT’E R!: iniciando renderizador alternativo.',error);worldCanvas.style.display='none';});
+
  let px=ACTIVE_MAP.spawn[0],py=ACTIVE_MAP.spawn[1],look=0,pitch=0,kills=0,life=100,pressed=new Set(),enemies=[],particles=[];
  let lastPosePublish=0;
  let playing=false,done=false,shooting=false,scope=false,shotAt=-1e4,flashAt=0,hitAt=0,spawnAt=0,reloadEnds=0;
@@ -315,10 +322,22 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  }
  function render(now){
   const fov=scope&&current===2?.29:FOV;
-  background();
-  const depths=drawWalls(fov);
-  drawEnemies(fov,depths,now);
-  drawProps(fov,depths);
+  if(world3D){
+   try{
+    world3D.draw({x:px,y:py,look,pitch,scope,enemies,opponents:typeof getOpponents==='function'?(getOpponents()||[]):[],time:now});
+    ctx.clearRect(0,0,W,H);
+   }catch(error){
+    console.warn('SHOOT’E R!: fallback do WebGL',error);
+    try{world3D.dispose();}catch{}
+    world3D=null;worldCanvas.style.display='none';el.classList.remove('shooter-webgl-ready');
+   }
+  }
+  if(!world3D){
+   background();
+   const depths=drawWalls(fov);
+   drawEnemies(fov,depths,now);
+   drawProps(fov,depths);
+  }
   gunView(now);
   if(now-hitAt<180){ctx.fillStyle='#caffbd';ctx.font='bold 23px sans-serif';ctx.textAlign='center';ctx.fillText('✕',W/2,H/2-30);}
   const vignette=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,W*.68);
@@ -409,6 +428,7 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  el.addEventListener('click',click);
  look=-Math.PI/2;render(performance.now());updateHud();
  const cleanup=()=>{
+  disposed=true;if(world3D){try{world3D.dispose();}catch{}world3D=null;}
   playing=false;done=true;cancelAnimationFrame(raf);
   if(document.pointerLockElement===canvas)document.exitPointerLock?.();
   document.removeEventListener('keydown',keyDown);
