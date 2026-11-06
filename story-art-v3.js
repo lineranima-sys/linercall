@@ -357,11 +357,17 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   c.translate(sx,sy);if(face<0)c.scale(-1,1);
   // Espada curta e proporcional ao herói (aprox. 70 px), com alcance real correspondente.
   c.rotate(-.48+Math.sin(Math.min(1,hero.swing/.3)*Math.PI)*.65);
-  poly(c,[[0,12],[10,6],[44,-8],[56,-8],[55,-3],[15,21]],'#61cddd');
-  poly(c,[[10,7],[43,-8],[53,-6],[16,15]],'#eefeff');
+  const broken=!!flags.exploded;
+  if(broken){
+   poly(c,[[0,12],[10,6],[18,-2],[24,-3],[26,4],[15,21]],'#81bed6');
+   poly(c,[[10,7],[18,-2],[23,0],[16,15]],'#d3f4ff');
+  }else{
+   poly(c,[[0,12],[10,6],[44,-8],[56,-8],[55,-3],[15,21]],'#61cddd');
+   poly(c,[[10,7],[43,-8],[53,-6],[16,15]],'#eefeff');
+   ellipse(c,50,-6,4,3,'#fcffff');
+  }
   line(c,[2,5],[15,24],'#bb7b48',7);line(c,[7,9],[12,15],'#ffdf88',5);
-  ellipse(c,50,-6,4,3,'#fcffff');
-  if(flags.potion)for(let i=0;i<5;i++)ellipse(c,22+i*9,-10+Math.sin(t*.01+i)*6,3,6,'#ff9160');
+  if(flags.potion&&!broken)for(let i=0;i<5;i++)ellipse(c,22+i*9,-10+Math.sin(t*.01+i)*6,3,6,'#ff9160');
   c.restore();
  }
  // Partículas leves de natureza e primeiro plano, sem esconder o personagem.
@@ -469,7 +475,7 @@ export function drawStoryCutscene(c,scene,index,t){
    for(let i=0;i<15;i++)ellipse(c,245+i*39,288+Math.sin(t*.001+i)*20,75,35,'#b9b4d38c');
    c.save();c.translate(350,FLOOR-36);c.rotate(Math.PI*.47);human(c,0,0,t,'hero');c.restore();
    person(652,'shade',-1);
-   person(155,'bard');person(215,'princess');
+   person(155,'bard');cage(810,true);
   }
  }
  else if(scene==='cloneWin'){
