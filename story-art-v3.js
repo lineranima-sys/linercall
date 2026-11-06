@@ -331,15 +331,16 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  if(hero.invul<=0||Math.floor(t/80)%2===0)
   human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
  if(hero.swing>0){
-  const hb=swordBox(hero),face=hero.face,cx=hb.x-camera,cy=hb.y;
+  const hb=swordBox(hero,76),face=hero.face,cx=hb.x-camera,cy=hb.y;
   c.save();c.globalAlpha=.17;rect(c,cx,cy,hb.w,hb.h,'#e4faff');c.globalAlpha=1;
   const sx=hero.x-camera+(face>0?49:0), sy=hero.y+23;
   c.translate(sx,sy);if(face<0)c.scale(-1,1);
-  poly(c,[[0,17],[14,9],[104,-18],[122,-18],[120,-8],[23,30]],'#61cddd');
-  poly(c,[[14,10],[102,-18],[117,-15],[23,23]],'#eefeff');
-  line(c,[3,6],[25,37],'#bb7b48',10);line(c,[12,12],[18,21],'#ffdf88',7);
-  ellipse(c,102,-14,9,5,'#fcffff');
-  if(flags.potion)for(let i=0;i<5;i++)ellipse(c,45+i*14,-16+Math.sin(t*.01+i)*9,5,10,'#ff9160');
+  // Espada curta e proporcional ao herói (aprox. 70 px), com alcance real correspondente.
+  poly(c,[[0,12],[10,6],[57,-9],[70,-9],[69,-3],[15,21]],'#61cddd');
+  poly(c,[[10,7],[56,-9],[67,-7],[16,15]],'#eefeff');
+  line(c,[2,5],[15,24],'#bb7b48',7);line(c,[7,9],[12,15],'#ffdf88',5);
+  ellipse(c,61,-7,4,3,'#fcffff');
+  if(flags.potion)for(let i=0;i<5;i++)ellipse(c,22+i*9,-10+Math.sin(t*.01+i)*6,3,6,'#ff9160');
   c.restore();
  }
  // Partículas leves de natureza e primeiro plano, sem esconder o personagem.
