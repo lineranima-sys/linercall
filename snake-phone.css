@@ -1,0 +1,38 @@
+/* Cobrinha dos Telefones — estilo isolado do Arcade */
+.phone-snake{font-family:inherit;color:#eff7ff;max-width:1000px;margin:0 auto}
+.phone-snake *{box-sizing:border-box}
+.phone-snake-header{display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,#15283f,#2b2953);border:1px solid #435c77;border-radius:15px;padding:17px 21px;margin-bottom:12px}
+.phone-snake-header small{font-size:11px;letter-spacing:1.7px;color:#8ae7cd;font-weight:800}
+.phone-snake-header h3{font-size:clamp(18px,3vw,29px);font-weight:900;margin:8px 0;color:#f6f5ff}
+.phone-snake-header p{margin:0;color:#b4c9d9;font-size:13px}
+.phone-snake-reward{font-size:18px;font-weight:900;color:#ffdc84;text-align:center;white-space:nowrap;background:#344364;border:1px solid #62708b;border-radius:12px;padding:13px}
+.phone-snake-reward small{color:#c0d1dc;font-weight:600;letter-spacing:0}
+.phone-snake-stats{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin:12px 0;font-size:14px}
+.phone-snake-stats span{background:#12243d;border:1px solid #395772;padding:9px 12px;border-radius:10px;color:#c6deef}
+.phone-snake-stats b{color:#ffe096;font-variant-numeric:tabular-nums}
+.phone-snake-board{position:relative;width:min(100%,528px);margin:0 auto;border:4px solid #547e8a;border-radius:14px;overflow:hidden;box-shadow:0 15px 35px #050e21a9,0 0 0 2px #112b42;background:#102136;aspect-ratio:1/1}
+.phone-snake-board canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.phone-snake-cover{position:absolute;inset:0;background:#0b1728c9;display:flex;align-items:center;justify-content:center;padding:12px}
+.phone-snake-cover.hidden{display:none}
+.phone-snake-cover>div{width:min(94%,390px);background:linear-gradient(140deg,#253956f5,#292b4cf5);border:2px solid #e1c38a;border-radius:12px;padding:24px;text-align:center;box-shadow:0 10px 30px #030814aa}
+.phone-snake-cover strong{display:block;font-size:clamp(20px,4vw,28px);color:#ffe4a1}
+.phone-snake-cover p{font-size:14px;line-height:1.5;color:#d7ebf4;margin:12px 0 20px}
+.phone-snake button{cursor:pointer;border:1px solid #7291b0;border-radius:9px;background:linear-gradient(#41628a,#273f61);color:#f8fbff;min-height:44px;font-size:15px;font-weight:800;padding:9px 16px;box-shadow:0 3px 0 #0a192d;touch-action:manipulation}
+.phone-snake button:hover{filter:brightness(1.16)}
+.phone-snake button:active{transform:translateY(2px);box-shadow:0 1px 0 #0a192d}
+.phone-snake-cover button{background:linear-gradient(#ffe0a3,#d7a363);color:#352942;border:1px solid #fff1c6}
+.phone-snake-buttons{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px auto;max-width:750px;flex-wrap:wrap}
+.phone-snake-dpad{text-align:center}
+.phone-snake-dpad>button{display:block;margin:0 auto 6px}
+.phone-snake-dpad>div{display:flex;gap:6px}
+.phone-snake-dpad button{min-width:58px;font-size:20px}
+.phone-snake-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:9px}
+.phone-snake-foot{text-align:center;color:#a5b9d0;font-size:12px;line-height:1.5;margin:10px auto 0}
+@media(max-width:620px){
+ .phone-snake-header{flex-direction:column;text-align:center;padding:12px}
+ .phone-snake-header h3{font-size:19px}
+ .phone-snake-reward{font-size:15px}
+ .phone-snake-buttons{flex-direction:column;gap:17px}
+ .phone-snake-stats{font-size:12px}
+ .phone-snake-cover>div{padding:13px}
+}
