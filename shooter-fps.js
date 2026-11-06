@@ -300,25 +300,81 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  }
  function gunView(now){
   if(scope&&current===2){
-   ctx.fillStyle='#060a10';ctx.beginPath();ctx.rect(0,0,W,H);ctx.arc(W/2,H/2,H*.45,0,TAU,true);ctx.fill('evenodd');
-   ctx.strokeStyle='#111820';ctx.lineWidth=12;ctx.beginPath();ctx.arc(W/2,H/2,H*.45,0,TAU);ctx.stroke();
-   ctx.strokeStyle='#76ecdd99';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
-   ctx.strokeStyle='#d4ffff';ctx.beginPath();ctx.arc(W/2,H/2,8,0,TAU);ctx.stroke();return;
+   ctx.fillStyle='#070b11';ctx.beginPath();ctx.rect(0,0,W,H);ctx.arc(W/2,H/2,H*.43,0,TAU,true);ctx.fill('evenodd');
+   ctx.strokeStyle='#101823';ctx.lineWidth=14;ctx.beginPath();ctx.arc(W/2,H/2,H*.43,0,TAU);ctx.stroke();
+   ctx.strokeStyle='#b3f9ff88';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+   ctx.strokeStyle='#e5ffff';ctx.beginPath();ctx.arc(W/2,H/2,7,0,TAU);ctx.stroke();
+   ctx.fillStyle='#ecf3f4';ctx.font='12px Space Grotesk,sans-serif';ctx.fillText('8×',W/2+H*.43-37,H/2+20);return;
   }
-  const cx=W/2,bottom=H+11;const sway=Math.sin(now/170)*3;
-  ctx.fillStyle='#253340';ctx.beginPath();ctx.moveTo(cx-88,bottom);ctx.lineTo(cx-60,H-90+sway);ctx.lineTo(cx+55,H-90+sway);ctx.lineTo(cx+90,bottom);ctx.closePath();ctx.fill();
-  ctx.fillStyle=current===3?'#cad4dd':current===2?'#343e4a':current===1?'#2a404a':'#435366';
-  const width=current===2?25:current===1?31:current===3?11:35;
-  ctx.fillRect(cx-width/2,H-158+sway,width,116);
-  ctx.fillStyle='#708da1';ctx.fillRect(cx-width/2,H-158+sway,width,6);
-  ctx.fillStyle='#101e2b';ctx.fillRect(cx-39,H-52,78,64);
-  ctx.fillStyle='#78afbb';ctx.fillRect(cx-22,H-51,44,9);
-  if(now-flashAt<105&&current!==3){
-   ctx.fillStyle='#ffe083cc';ctx.beginPath();ctx.moveTo(cx,H-180+sway);ctx.lineTo(cx-28,H-213+sway);ctx.lineTo(cx,H-205+sway);ctx.lineTo(cx+28,H-213+sway);ctx.closePath();ctx.fill();
+  const cx=W*.65,cy=H+35,aiming=scope&&current===2;
+  const firing=now-flashAt<110&&current!==3;
+  const kick=firing?Math.max(0,1-(now-flashAt)/110)*12:0;
+  const sway=(playing?Math.sin(now/190)*2.5:0);
+  ctx.save();ctx.translate(cx,cy+kick+sway);ctx.rotate(-.12);
+  // Gloved forearm and sleeve, much closer to a FPS viewmodel.
+  ctx.fillStyle='#344653';ctx.beginPath();ctx.moveTo(-9,-70);ctx.lineTo(73,-38);ctx.lineTo(178,37);ctx.lineTo(13,37);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#14212b';ctx.lineWidth=5;ctx.stroke();
+  ctx.fillStyle='#526776';ctx.beginPath();ctx.moveTo(4,-74);ctx.lineTo(44,-62);ctx.lineTo(96,-4);ctx.lineTo(32,17);ctx.closePath();ctx.fill();
+  const isKnife=current===3;
+  if(isKnife){
+   ctx.fillStyle='#181e29';ctx.beginPath();ctx.moveTo(-28,-55);ctx.lineTo(12,-40);ctx.lineTo(15,7);ctx.lineTo(-40,5);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#d7dce3';ctx.beginPath();ctx.moveTo(-47,-42);ctx.lineTo(-125,-209);ctx.lineTo(-73,-177);ctx.lineTo(-12,-60);ctx.closePath();ctx.fill();
+   ctx.strokeStyle='#647b86';ctx.lineWidth=4;ctx.stroke();
+   ctx.fillStyle='#f8fafb';ctx.beginPath();ctx.moveTo(-117,-199);ctx.lineTo(-53,-53);ctx.lineTo(-65,-57);ctx.closePath();ctx.fill();
+  }else{
+   const smg=current===1,sniper=current===2;
+   const long=sniper?221:smg?165:111;
+   const rear=sniper?42:smg?34:22;
+   // Rear stock
+   ctx.fillStyle='#1c2937';ctx.beginPath();ctx.moveTo(40,-97);ctx.lineTo(122,-75);ctx.lineTo(137,-42);ctx.lineTo(79,-56);ctx.closePath();ctx.fill();
+   ctx.strokeStyle='#627487';ctx.lineWidth=4;ctx.stroke();
+   // Grip, receiver, body
+   ctx.fillStyle='#263444';ctx.beginPath();ctx.moveTo(45,-85);ctx.lineTo(-long+20,-106);ctx.lineTo(-long+7,-134);ctx.lineTo(31,-141);ctx.lineTo(61,-112);ctx.closePath();ctx.fill();
+   ctx.strokeStyle='#111b27';ctx.lineWidth=5;ctx.stroke();
+   // Raised metal top and tactical rails
+   ctx.fillStyle='#6c8393';ctx.beginPath();ctx.moveTo(-long+17,-135);ctx.lineTo(33,-145);ctx.lineTo(47,-131);ctx.lineTo(-long+15,-124);ctx.closePath();ctx.fill();
+   for(let i=0;i<8;i++){
+    ctx.strokeStyle='#16232e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-long+22+i*17,-133);ctx.lineTo(-long+20+i*17,-127);ctx.stroke();
+   }
+   // barrel and suppressor
+   ctx.fillStyle='#0f1e2a';ctx.fillRect(-long-31,-125,65,13);
+   ctx.fillStyle='#829aaa';ctx.fillRect(-long-39,-127,11,17);
+   ctx.fillStyle='#4f667a';ctx.fillRect(-long-28,-125,32,4);
+   // magazine, trigger guard and pistol grip
+   ctx.fillStyle='#101d2b';ctx.beginPath();ctx.moveTo(-25,-87);ctx.lineTo(2,-82);ctx.lineTo(-11,-19);ctx.lineTo(-34,-24);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#445463';ctx.beginPath();ctx.moveTo(6,-88);ctx.lineTo(23,-83);ctx.lineTo(35,-38);ctx.lineTo(9,-42);ctx.closePath();ctx.fill();
+   ctx.strokeStyle='#0d1620';ctx.lineWidth=3;ctx.stroke();
+   ctx.strokeStyle='#111925';ctx.lineWidth=5;ctx.beginPath();ctx.arc(6,-71,16,-1.5,2.2);ctx.stroke();
+   // Optic: meaningful for the sniper.
+   if(sniper){
+    ctx.fillStyle='#111c27';ctx.fillRect(-103,-171,109,27);
+    ctx.fillStyle='#60788b';ctx.fillRect(-95,-167,89,7);
+    ctx.fillStyle='#1d2a38';ctx.beginPath();ctx.ellipse(-101,-157,14,17,0,0,TAU);ctx.fill();
+    ctx.fillStyle='#9dd8db';ctx.beginPath();ctx.ellipse(-101,-157,8,11,0,0,TAU);ctx.fill();
+    ctx.fillStyle='#171e28';ctx.fillRect(-71,-148,11,18);ctx.fillRect(-10,-148,11,18);
+   }else if(smg){
+    ctx.fillStyle='#0c151e';ctx.fillRect(-27,-158,20,24);
+    ctx.fillStyle='#9bc0ca';ctx.fillRect(-21,-157,8,8);
+   }else{
+    ctx.fillStyle='#0d141e';ctx.fillRect(-2,-156,6,20);
+    ctx.fillStyle='#617786';ctx.fillRect(-4,-159,10,5);
+   }
+   if(firing){
+    ctx.fillStyle='#ffe7a4';ctx.beginPath();ctx.moveTo(-long-43,-119);ctx.lineTo(-long-91,-160);ctx.lineTo(-long-75,-122);ctx.lineTo(-long-101,-93);ctx.lineTo(-long-43,-108);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff9e3';ctx.beginPath();ctx.arc(-long-49,-119,12,0,TAU);ctx.fill();
+   }
   }
-  ctx.strokeStyle=now-hitAt<180?'#96ffa5':'#f5f9ffdd';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(cx-15,H/2);ctx.lineTo(cx-5,H/2);ctx.moveTo(cx+5,H/2);ctx.lineTo(cx+15,H/2);
-  ctx.moveTo(cx,H/2-15);ctx.lineTo(cx,H/2-5);ctx.moveTo(cx,H/2+5);ctx.lineTo(cx,H/2+15);ctx.stroke();
+  // Front hand braces weapon; visible finger separation.
+  ctx.fillStyle='#2b3f4d';ctx.beginPath();ctx.moveTo(-64,-83);ctx.quadraticCurveTo(-37,-119,1,-93);ctx.lineTo(25,-60);ctx.lineTo(-19,-40);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#111a25';ctx.lineWidth=4;ctx.stroke();
+  for(let i=0;i<3;i++){ctx.strokeStyle='#60707d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-47+i*10,-83+i*2);ctx.lineTo(-33+i*10,-65+i*2);ctx.stroke();}
+  ctx.restore();
+  // Sight
+  ctx.lineWidth=2;ctx.strokeStyle=now-hitAt<190?'#9bffa4':'#efffffe6';
+  ctx.beginPath();ctx.moveTo(W/2-14,H/2);ctx.lineTo(W/2-5,H/2);
+  ctx.moveTo(W/2+5,H/2);ctx.lineTo(W/2+14,H/2);
+  ctx.moveTo(W/2,H/2-14);ctx.lineTo(W/2,H/2-5);
+  ctx.moveTo(W/2,H/2+5);ctx.lineTo(W/2,H/2+14);ctx.stroke();
  }
  function render(now){
   const fov=scope&&current===2?.29:FOV;
