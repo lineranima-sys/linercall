@@ -12,6 +12,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  let zoneIndex=0,paused=true,menu=true,finished=false,mode='world',last=0,elapsed=0,raf=0,saveAccumulator=0;
  let camera=0,checkpoint=40,dialogueLines=[],dialogueIndex=0,afterDialogue=null,notice='',noticeTime=0;
  let enemies=[],fx=[],slide={progress:0,hearts:3,lane:0,hazards:[],spawn:0,invul:0};
+ let bard={x:0,y:FLOOR-72,face:1,walking:false};
  let defeated=chapter.map(()=>[]);
  let flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
   dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
@@ -271,6 +272,16 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
     }
    }
   }
+  // O Bardo acompanha o herói a partir da vila, respeitando a superfície do chão.
+  if(zoneIndex===2||zoneIndex===3||zoneIndex===4){
+   const desired=clamp(p.x-(p.face>0?90:-90),0,zone().length-50);
+   const distance=desired-bard.x;
+   bard.walking=Math.abs(distance)>7;
+   if(bard.walking){bard.face=Math.sign(distance);bard.x+=Math.sign(distance)*Math.min(Math.abs(distance),165*dt);}
+   const platforms=zone().platforms.filter(([x,y,w])=>bard.x+43>x&&bard.x+7<x+w&&y<FLOOR);
+   const top=platforms.length?Math.min(...platforms.map(v=>v[1])):FLOOR;
+   bard.y=top-72;
+  }
   const before=p.y+p.h;
   p.vy=Math.min(950,p.vy+1740*dt);
   p.y+=p.vy*dt;p.ground=false;
@@ -325,6 +336,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    if(!flags.fishWon&&p.x>490){p.x=490;p.vx=0;}
    if(p.x>3730&&!flags.dragon){
     flags.dragon=true;
+    p.y=FLOOR-p.h;p.vy=0;p.ground=true;
     sequence(lore.dragon.slice(0,2),startDragonSlide);
    }
   }else if(zoneIndex===4){
@@ -355,7 +367,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   const targetCamera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
   camera+=(targetCamera-camera)*.12;
   if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.lane,slide.hazards);}
-  else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP},fx);}
+  else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP,bard},fx);}
   if(!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
    ctx.fillStyle='#21334dd0';ctx.fillRect(W/2-143,14,286,25);
    ctx.fillStyle='#e4778f';ctx.fillRect(W/2-139,18,278*clamp(fishHP/8,0,1),17);
