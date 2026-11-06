@@ -192,7 +192,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  }
  function hitTest(){
   if(p.swing<.08||p.swing>.245)return;
-  const box=swordBox(p,123);
+  const box=swordBox(p,76);
   for(const mob of enemies){
    if(mob.hp<=0||attackHits.has(mob.index)||!overlaps(box,bodyBox(mob)))continue;
    attackHits.add(mob.index);mob.hp--;mob.stun=.3;mob.x+=p.face*38;
@@ -256,10 +256,30 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   const target=direction*260;
   p.vx+=(target-p.vx)*Math.min(1,dt*(p.ground?15:10));
   if(direction)p.face=direction;
+  // Plataformas são sólidos completos: laterais e parte de baixo bloqueiam passagem.
+  const solids=zone().platforms.map(([x,y,w])=>({x,y,w,h:FLOOR-y}));
+  const oldX=p.x,oldY=p.y;
   p.x=clamp(p.x+p.vx*dt,0,zone().length-p.w);
+  for(const wall of solids){
+   if(p.y+p.h<=wall.y+1||p.y>=wall.y+wall.h-1)continue;
+   if(p.x+p.w>wall.x&&p.x<wall.x+wall.w){
+    if(p.vx>0&&oldX+p.w<=wall.x+3){p.x=wall.x-p.w;p.vx=0;}
+    else if(p.vx<0&&oldX>=wall.x+wall.w-3){p.x=wall.x+wall.w;p.vx=0;}
+    else if(oldX+p.w>wall.x&&oldX<wall.x+wall.w){
+     // Se o personagem já estiver dentro do bloco, expulse-o pelo lado mais próximo.
+     const leftDist=Math.abs(p.x+p.w-wall.x),rightDist=Math.abs(wall.x+wall.w-p.x);
+     p.x=leftDist<=rightDist?wall.x-p.w:wall.x+wall.w;p.vx=0;
+    }
+   }
+  }
   const before=p.y+p.h;
   p.vy=Math.min(950,p.vy+1740*dt);
   p.y+=p.vy*dt;p.ground=false;
+  if(p.vy<0)for(const wall of solids){
+   if(p.x+p.w-8>wall.x&&p.x+8<wall.x+wall.w&&oldY>=wall.y+wall.h-2&&p.y<wall.y+wall.h&&p.y+p.h>wall.y){
+    p.y=wall.y+wall.h;p.vy=0;break;
+   }
+  }
   if(p.vy>=0){
    const surfaces=[...zone().platforms.map(v=>[v[0],v[0]+v[2],v[1]]),
     ...zone().ground.map(v=>[v[0],v[1],FLOOR])].sort((a,b)=>a[2]-b[2]);
