@@ -3,7 +3,7 @@ import {overlaps,swordBox,bodyBox} from './story-combat-v3.js';
 import {drawWorld,drawSlide} from './story-art-v3.js';
 
 // Liner Story — Capítulo 1. Novo jogo, sem dependência de Firebase para salvar.
-const HERO_W=50,HERO_H=72,MAX_HP=7;
+const W=WIDTH,HERO_W=50,HERO_H=72,MAX_HP=7;
 const clamp=(n,a,b)=>Math.max(a,Math.min(n,b));
 const safeUid=s=>String(s||'guest').replace(/[^A-Za-z0-9_-]/g,'').slice(0,96);
 const hudHearts=hp=>'♥'.repeat(Math.max(0,hp))+'♡'.repeat(Math.max(0,MAX_HP-hp));
