@@ -11,7 +11,7 @@ const hudHearts=hp=>'♥'.repeat(Math.max(0,hp))+'♡'.repeat(Math.max(0,MAX_HP-
 export function mountStory(root,onExit=()=>{},uid='guest'){
  let zoneIndex=0,paused=true,menu=true,finished=false,mode='world',last=0,elapsed=0,raf=0,saveAccumulator=0;
  let camera=0,checkpoint=40,dialogueLines=[],dialogueIndex=0,afterDialogue=null,notice='',noticeTime=0;
- let enemies=[],fx=[],slide={progress:0,hearts:3,lane:0,hazards:[],spawn:0,invul:0};
+ let enemies=[],fx=[],slide={progress:0,hearts:3,lane:0,hazards:[],spawn:0,invul:0,jumpY:0,jumpV:0,duck:0};
  let bard={x:0,y:FLOOR-72,face:1,walking:false};
  let defeated=chapter.map(()=>[]);
  let flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
@@ -151,12 +151,12 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    });
  }
  function jump(){
-  if(mode==='slide'){slide.lane=0;return;}
+  if(mode==='slide'){if(slide.jumpY===0){slide.jumpV=-500;slide.jumpY=-1;}return;}
   if(menu||finished||paused)return;
   p.jumpBuffer=.16;
  }
  function attack(){
-  if(mode==='slide'){slide.lane=1;return;}
+  if(mode==='slide'){slide.duck=.55;return;}
   if(menu||finished||paused||p.attackCooldown>0)return;
   if(flags.rescue&&Math.abs(p.x-3480)<195){interact();return;}
   p.swing=.30;p.attackCooldown=.48;attackHits=new Set();
@@ -217,22 +217,26 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   });
  }
  function startDragonSlide(){
-  mode='slide';paused=false;slide={progress:0,hearts:3,lane:0,hazards:[],spawn:.3,invul:0};
+  mode='slide';paused=false;slide={progress:0,hearts:3,lane:0,hazards:[],spawn:.9,invul:0,jumpY:0,jumpV:0,duck:0};
   q('story3-goal').textContent=objective();
  }
  function updateSlide(dt){
   slide.progress+=dt/20;
+  slide.jumpY+=slide.jumpV*dt;
+  slide.jumpV+=1350*dt;
+  if(slide.jumpY>=0){slide.jumpY=0;slide.jumpV=0;}
+  slide.duck=Math.max(0,slide.duck-dt);
   slide.spawn-=dt;slide.invul=Math.max(0,slide.invul-dt);
   if(slide.spawn<=0){
    slide.spawn=1.15+Math.random()*.45;
-   slide.hazards.push({x:W+40,y:250+(Math.random()<.5?0:110),speed:310+slide.progress*130});
+   slide.hazards.push({x:W+40,kind:Math.random()<.5?'low':'high',speed:310+slide.progress*130});
   }
   for(const a of slide.hazards){
    a.x-=a.speed*dt;
-   if(a.x<240&&a.x>135&&Math.abs(a.y-(250+slide.lane*110))<35&&!a.hit&&slide.invul===0){
+   if(a.x<225&&a.x>150&&((a.kind==='low'&&slide.jumpY>-38)||(a.kind==='high'&&slide.duck<=0))&&!a.hit&&slide.invul===0){
     a.hit=true;slide.hearts--;slide.invul=1.2;
     if(slide.hearts<=0){
-     slide.progress=0;slide.hearts=3;slide.hazards=[];slide.spawn=2;
+     slide.progress=0;slide.hearts=3;slide.hazards=[];slide.spawn=2;slide.jumpY=0;slide.jumpV=0;slide.duck=0;
      note('O dragão alcançou vocês! A descida recomeça.',3);
     }
    }
@@ -366,7 +370,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
  function draw(){
   const targetCamera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
   camera+=(targetCamera-camera)*.12;
-  if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.lane,slide.hazards);}
+  if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.jumpY,slide.hazards,slide.duck);}
   else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP,bard},fx);}
   if(!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
    ctx.fillStyle='#21334dd0';ctx.fillRect(W/2-143,14,286,25);
@@ -410,7 +414,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(k==='a'||k==='arrowleft')keys.left=true;
   if(k==='d'||k==='arrowright')keys.right=true;
   if(k==='w'||k==='arrowup'){keys.up=true;if(!e.repeat)jump();}
-  if(k==='s'||k==='arrowdown'){keys.down=true;if(mode==='slide')slide.lane=1;}
+  if(k==='s'||k==='arrowdown'){keys.down=true;if(mode==='slide')slide.duck=.55;}
   if(k===' '&&!e.repeat)jump();
   if(['x','j'].includes(k)&&!e.repeat)attack();
   if(k==='e'&&!e.repeat)interact();
