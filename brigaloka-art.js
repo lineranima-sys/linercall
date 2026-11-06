@@ -146,7 +146,7 @@ export function drawFighterArt(ctx, fighter,now,opts={}){
   ctx.lineWidth=2;ctx.strokeStyle='#503f42';ctx.beginPath();ctx.moveTo(-21,-157);ctx.lineTo(-6,-158);ctx.moveTo(8,-158);ctx.lineTo(22,-160);ctx.stroke();
  }
  ctx.strokeStyle='#6c5156';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-6,-146);ctx.quadraticCurveTo(1,-141,11,-146);ctx.stroke();
- if(stagger){ctx.save();ctx.globalAlpha=.6;rect(ctx,-37,-213,78,218,'#fff8dd');ctx.restore();}
+ if(fighter.hitUntil>now){ctx.save();ctx.globalAlpha=.6;rect(ctx,-37,-213,78,218,'#fff8dd');ctx.restore();}
  ctx.restore();
 }
 export function drawStage(ctx,now,W=960,H=540,floor=458){
