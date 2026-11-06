@@ -1,6 +1,6 @@
 import {chapter,lore,WIDTH,HEIGHT,FLOOR} from './story-chapter-v3.js';
-import {overlaps,swordBox,bodyBox} from './story-combat-v3.js';
-import {drawWorld,drawSlide} from './story-art-v3.js';
+import {overlaps,swordBox,bodyBox} from './story-combat-v3.js?v=wall-sword-fix';
+import {drawWorld,drawSlide} from './story-art-v3.js?v=wall-sword-fix';
 
 // Liner Story — Capítulo 1. Novo jogo, sem dependência de Firebase para salvar.
 const W=WIDTH,HERO_W=50,HERO_H=72,MAX_HP=7;
