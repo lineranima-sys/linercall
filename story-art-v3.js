@@ -357,14 +357,22 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  c.fillStyle=vignette;c.fillRect(0,0,W,H);
  c.restore();
 }
-export function drawSlide(c,t,progress,lane,fire=[]){
- sky(c,'mountain',t,progress*2000);for(let i=0;i<9;i++)mountain(c,i*180-progress*600,520,340,190,'#6198b4','#e1e9ee');
- poly(c,[[0,490],[0,430],[300,365],[500,310],[960,425],[960,540]],'#a97049');
+export function drawSlide(c,t,progress,jumpY,fire=[],duck=0){
+ sky(c,'mountain',t,progress*2000);
+ for(let i=0;i<9;i++)mountain(c,i*180-progress*600,520,340,190,'#6198b4','#e1e9ee');
+ // A montanha tem uma superfície contínua e o herói acompanha a inclinação.
+ const hill=x=>x<=500?430-(x/500)*120:310+((x-500)/460)*115;
+ poly(c,[[0,540],[0,hill(0)],[500,hill(500)],[960,hill(960)],[960,540]],'#a97049');
  for(let i=0;i<110;i++){
-  const x=noise(i*21)*W,y=420-noise(i*7)*85+Math.sin(x*.01)*16;
+  const x=noise(i*21)*W,y=hill(x)+18+noise(i*7)*95;
   rect(c,x,y,10,6,i%4?'#ffdc75':'#f8bd62');
  }
- drawCharacter(c,180,250+lane*110,t,'hero',1,'jump');
- for(const a of fire){ellipse(c,a.x,a.y,22,22,'#e96650');ellipse(c,a.x-6,a.y-3,13,13,'#ffdb77');}
+ const x=180,base=hill(x)-70,ducking=duck>0;
+ drawCharacter(c,x,base+jumpY+(ducking?19:0),t,'hero',1,jumpY<0?'jump':ducking?'idle':'walk');
+ for(const a of fire){
+  const y=hill(a.x)-(a.kind==='high'?110:28);
+  ellipse(c,a.x,y,22,22,'#e96650');ellipse(c,a.x-6,y-3,13,13,'#ffdb77');
+ }
  rect(c,20,20,240,24,'#243853');rect(c,24,24,230*progress,16,'#ffd57a');
+ c.font='bold 16px sans-serif';c.fillStyle='#fff3d5';c.fillText('Pular: espaço / ↑    Abaixar: X / ↓',20,66);
 }
