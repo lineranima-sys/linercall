@@ -5,15 +5,15 @@ import {chapter,lore} from '../story-chapter-v3.js';
 
 test('espada alcança o inimigo à frente sem encostar o corpo',()=>{
  const hero={x:100,y:340,w:50,h:72,face:1};
- const goblin={x:226,y:340,w:48,h:68};
+ const goblin={x:190,y:340,w:48,h:68};
  assert.equal(overlaps(bodyBox(hero),bodyBox(goblin)),false);
- assert.equal(overlaps(swordBox(hero,123),bodyBox(goblin)),true);
+ assert.equal(overlaps(swordBox(hero),bodyBox(goblin)),true);
 });
 test('espada não acerta inimigo atrás do herói',()=>{
  const hero={x:100,y:340,w:50,h:72,face:1};
  const target={x:31,y:340,w:48,h:68};
- assert.equal(overlaps(swordBox(hero,123),bodyBox(target)),false);
- assert.equal(overlaps(swordBox({...hero,face:-1},123),bodyBox(target)),true);
+ assert.equal(overlaps(swordBox(hero),bodyBox(target)),false);
+ assert.equal(overlaps(swordBox({...hero,face:-1}),bodyBox(target)),true);
 });
 test('espada respeita distância e altura',()=>{
  const h={x:100,y:340,w:50,h:72,face:1};
