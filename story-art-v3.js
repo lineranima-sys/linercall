@@ -387,8 +387,15 @@ export function drawSlide(c,t,progress,jumpY,fire=[],duck=0){
   const x=noise(i*21)*W,y=420-noise(i*7)*85+Math.sin(x*.01)*16;
   rect(c,x,y,10,6,i%4?'#ffdc75':'#f8bd62');
  }
- drawCharacter(c,180,326+jumpY+(duck>0?22:0),t,'hero',1,jumpY<0?'jump':'walk');
- for(const a of fire){const y=a.kind==='low'?375:290;ellipse(c,a.x,y,22,22,'#e96650');ellipse(c,a.x-6,y-3,13,13,'#ffdb77');}
+ // Personagem escorrega rente às moedas; pulo e agachamento têm alturas distintas.
+ if(duck>0&&jumpY>=0){
+  c.save();c.translate(180,397);c.scale(1,.53);
+  drawCharacter(c,0,-72,t,'hero',1,'idle');c.restore();
+ }else drawCharacter(c,180,326+jumpY,t,'hero',1,jumpY<0?'jump':'walk');
+ for(const a of fire){
+  const y=a.kind==='low'?382:335;
+  ellipse(c,a.x,y,22,22,'#e96650');ellipse(c,a.x-6,y-3,13,13,'#ffdb77');
+ }
  rect(c,20,20,240,24,'#243853');rect(c,24,24,230*progress,16,'#ffd57a');
 }
 
