@@ -253,7 +253,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    fx.push({kind:'dust',x:p.x+25,y:p.y+70,life:.8,max:.8});
   }
   const direction=(keys.right?1:0)-(keys.left?1:0);
-  const target=direction*260;
+  const target=direction*185;
   p.vx+=(target-p.vx)*Math.min(1,dt*(p.ground?15:10));
   if(direction)p.face=direction;
   // Plataformas são sólidos completos: laterais e parte de baixo bloqueiam passagem.
@@ -267,8 +267,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
     else if(p.vx<0&&oldX>=wall.x+wall.w-3){p.x=wall.x+wall.w;p.vx=0;}
     else if(oldX+p.w>wall.x&&oldX<wall.x+wall.w){
      // Se o personagem já estiver dentro do bloco, expulse-o pelo lado mais próximo.
-     const leftDist=Math.abs(p.x+p.w-wall.x),rightDist=Math.abs(wall.x+wall.w-p.x);
-     p.x=leftDist<=rightDist?wall.x-p.w:wall.x+wall.w;p.vx=0;
+     p.x=oldX;p.vx=0;
     }
    }
   }
@@ -353,7 +352,8 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(saveAccumulator>5){saveAccumulator=0;save();}
  }
  function draw(){
-  camera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
+  const targetCamera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
+  camera+=(targetCamera-camera)*.12;
   if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.lane,slide.hazards);}
   else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP},fx);}
   if(!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
