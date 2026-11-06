@@ -2112,12 +2112,27 @@ function openCinemaDetails(id){
  renderSeriesDetails(item,0);
  $('cinema-detail-poster').src=poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX';$('cinema-detail-poster').alt=item.title||'Pôster';
  $('cinema-detail-backdrop').style.backgroundImage=poster?'url("'+poster.replace(/"/g,'%22')+'")':'linear-gradient(120deg,#302247,#141b31)';
- const purchaseButton=$('cinema-detail-buy');if(purchaseButton){
-  const key='movie:'+id,owned=hasLightyPurchase(key),catalogOnly=item.catalogOnly===true;
-  purchaseButton.textContent=catalogOnly?'🔒 Ainda não disponível no LightyFlix':owned?'✓ Filme comprado':'Comprar filme · 2.000 moedas';
-  purchaseButton.disabled=catalogOnly||item.type!=='movie'||owned;
-  purchaseButton.classList.toggle('hidden',item.type!=='movie');
-  purchaseButton.onclick=()=>{if(!catalogOnly)buyLightyContent(key,2000,'Filme');};
+ const purchaseButton=$('cinema-detail-buy'),ownership=$('cinema-detail-purchase-state');
+ if(purchaseButton){
+  const movie=item.type==='movie',owned=movie&&hasLightyPurchase('movie:'+id),ready=movie&&canWatchLightyMovie(item);
+  purchaseButton.classList.toggle('hidden',!movie);
+  purchaseButton.disabled=!movie||owned||!ready;
+  purchaseButton.textContent=owned?'✓ Filme comprado':ready?'Comprar filme · 2.000 LCoins':'◷ Filme sem vídeo disponível';
+  purchaseButton.onclick=()=>requestMoviePurchase(id);
+  if(ownership){
+   ownership.classList.toggle('hidden',!movie);
+   if(!movie)ownership.innerHTML='';
+   else if(owned){
+    ownership.innerHTML='<strong>✓ Esse filme é seu!</strong><p>'+
+     (ready?'Você pode assistir usando a fonte cadastrada.':'Compra registrada neste navegador. O vídeo ainda não foi disponibilizado; você pode recuperar as LCoins gastas.')+
+     '</p><div class="lighty-detail-buttons">'+
+     (ready?'<button class="btn btn-primary" data-lighty-movie-watch="'+safeText(id)+'">▶ Assistir agora</button>':
+       '<button class="btn lighty-refund-button" data-lighty-movie-refund="'+safeText(id)+'">Recuperar minhas LCoins</button>')+
+     '<button class="btn" data-lighty-movie-receipt="'+safeText(id)+'">✦ Ver comprovante</button></div>';
+   }else ownership.innerHTML='<strong>◷ Ainda não disponível para compra</strong><p>'+
+    (ready?'O filme está disponível. Confira o preço e confirme antes de comprar.':
+     'Este título aparece no catálogo, mas não tem uma fonte de reprodução. Não vamos cobrar suas LCoins por algo que você não consegue assistir.')+'</p>';
+  }
  }
  // Evitar botões de plataformas externas; limpar eventuais links antigos.
  $('cinema-official-link')?.remove();
@@ -2302,7 +2317,11 @@ function setupEvents() {
     const lightyScroll=event.target.closest('[data-lighty-scroll]');if(lightyScroll){const row=lightyScroll.parentElement?.querySelector(lightyScroll.dataset.lightyScroll==='episodes'?'.lighty-episode-row':'.lighty-season-row');if(row)row.scrollBy({left:(lightyScroll.dataset.direction==='next'?1:-1)*Math.max(220,row.clientWidth*.78),behavior:'smooth'});}
     const seasonBuy=event.target.closest('[data-buy-season]');if(seasonBuy)buyLightySeason(seasonBuy.dataset.buySeason,Number(seasonBuy.dataset.seasonIndex));
     const seasonSelect=event.target.closest('[data-select-season]');if(seasonSelect){const item=cinemaItems.find(entry=>entry.id===seasonSelect.dataset.seasonShow);if(item)renderSeriesDetails(item,Number(seasonSelect.dataset.selectSeason));}
-    const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie){const listing=cinemaItems.find(x=>x.id===lightyMovie.dataset.shopMovie);if(listing?.catalogOnly)toast('Este filme ainda não está disponível no LightyFlix.');else buyLightyContent('movie:'+lightyMovie.dataset.shopMovie,2000,'Filme');}
+    const lightyMovie=event.target.closest('[data-shop-movie]');if(lightyMovie)requestMoviePurchase(lightyMovie.dataset.shopMovie);
+    const filmBuy=event.target.closest('[data-lighty-movie-buy]');if(filmBuy)requestMoviePurchase(filmBuy.dataset.lightyMovieBuy);
+    const filmPlay=event.target.closest('[data-lighty-movie-watch]');if(filmPlay)playCinemaItem(filmPlay.dataset.lightyMovieWatch);
+    const filmReceipt=event.target.closest('[data-lighty-movie-receipt]');if(filmReceipt)movieReceipt(filmReceipt.dataset.lightyMovieReceipt);
+    const filmRefund=event.target.closest('[data-lighty-movie-refund]');if(filmRefund)requestMovieRefund(filmRefund.dataset.lightyMovieRefund);
     const openLighty=event.target.closest('[data-shop-open-cinema]');if(openLighty){switchView('cinema');openCinemaDetails(openLighty.dataset.shopOpenCinema);}
     const addFriend = event.target.closest('[data-friend-add]'); if(addFriend)sendFriendRequest(addFriend.dataset.friendAdd,addFriend.dataset.friendAddName);
     const acceptFriend = event.target.closest('[data-friend-accept]'); if(acceptFriend)answerFriendRequest(acceptFriend.dataset.friendAccept,true);
