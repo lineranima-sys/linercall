@@ -1,0 +1,28 @@
+/* LightyFlix - compras, recibos e indicação de posse */
+.lighty-purchase-layer{position:fixed;inset:0;z-index:3500;display:grid;place-items:center;padding:18px}
+.lighty-purchase-shade{position:absolute;inset:0;background:#060d20dc;backdrop-filter:blur(11px)}
+.lighty-purchase-dialog{position:relative;display:grid;grid-template-columns:minmax(135px,235px) minmax(0,1fr);width:min(740px,100%);max-height:min(90vh,760px);overflow:auto;background:linear-gradient(145deg,#141d35,#25213e);border:1px solid #c4a672;border-radius:19px;box-shadow:0 28px 90px #000c,0 0 0 4px #17233b}
+.lighty-purchase-dialog:focus{outline:none}
+.lighty-purchase-visual{position:relative;min-height:310px;background:linear-gradient(165deg,#34405b,#151b35);overflow:hidden}
+.lighty-purchase-visual img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover}
+.lighty-purchase-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#111b3fbb,transparent 55%)}
+.lighty-purchase-mark{position:absolute;bottom:19px;left:16px;z-index:1;letter-spacing:2px;font-weight:900;font-size:13px;color:#ffe3a0}
+.lighty-purchase-content{padding:42px 32px 30px;color:#f8f2e9;min-width:0}
+.lighty-purchase-kicker{font-size:11px;letter-spacing:2px;font-weight:900;color:#f7c986}
+.lighty-purchase-content h3{font-size:clamp(22px,3.3vw,35px);line-height:1.12;letter-spacing:-.6px;margin:13px 0;color:#fff4df}
+.lighty-purchase-description{font-size:15px;line-height:1.6;color:#d1d9e7;white-space:pre-line;margin:11px 0 16px}
+.lighty-purchase-detail{font-size:13px;line-height:1.5;border:1px solid #bea36b6b;border-radius:12px;padding:14px;background:#24344cc9;color:#ffe4b2;white-space:pre-line}
+.lighty-purchase-buttons{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+.lighty-purchase-buttons button{min-height:44px;font-weight:800;flex:1 1 135px;cursor:pointer}
+.lighty-refund-button{border-color:#e6a7a0!important;color:#ffddd7!important}
+.lighty-purchase-close{position:absolute;right:12px;top:12px;background:#0c1323c9;color:white;border:1px solid #ffffff55;border-radius:50%;height:36px;width:36px;font-size:24px;cursor:pointer;z-index:2}
+.cinema-card-owned-ribbon{position:absolute;top:9px;right:9px;z-index:5;background:#1a6759;color:#f0fff7;padding:7px 9px;border:1px solid #aaf8df;border-radius:6px;font-size:11px;font-weight:900;box-shadow:0 3px 10px #0008}
+.cinema-card-owned-ribbon.unavailable{background:#4d4272;border-color:#dec7fd}
+.lighty-detail-state{margin-top:14px;border:1px solid #7283a37a;border-radius:11px;padding:13px;background:#17243acb;line-height:1.55}
+.lighty-detail-state strong{color:#c5f8dd;display:block;font-size:14px;margin-bottom:4px}
+.lighty-detail-state p{margin:5px 0 10px;font-size:13px;color:#c4d2e5}
+.lighty-detail-state .lighty-detail-buttons{display:flex;gap:9px;flex-wrap:wrap}
+.lighty-detail-state .lighty-detail-buttons button{min-height:39px;font-size:12px}
+.lighty-catalog-warning{font-size:12px;color:#f5d7a9}
+.lighty-owned-view-note{margin-bottom:17px;color:#a9bdd8;font-size:14px}
+@media(max-width:560px){.lighty-purchase-dialog{grid-template-columns:1fr}.lighty-purchase-visual{height:150px;min-height:150px}.lighty-purchase-visual img{object-position:center 23%}.lighty-purchase-content{padding:23px 19px}.lighty-purchase-content h3{font-size:25px}.lighty-purchase-description{font-size:13px}.lighty-purchase-mark{font-size:11px}}
