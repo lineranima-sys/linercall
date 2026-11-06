@@ -1,0 +1,112 @@
+/* LINERCALL ARCADE / BRIGALOKA & SHOOT'E R! — independent cascade, 2026 */
+#game-content .brigaloka-game,
+#game-content .shooter-hub {width:100%;max-width:1180px;margin:0 auto;isolation:isolate;color:#f8f5ff;font-family:'Space Grotesk',system-ui,sans-serif}
+#game-content .brigaloka-game *,
+#game-content .shooter-hub * {box-sizing:border-box}
+#game-content .brigaloka-game button,
+#game-content .shooter-hub button {font-family:inherit;cursor:pointer;color:#fff;border:1px solid #7760a9;background:linear-gradient(145deg,#382c56,#202440);box-shadow:0 7px 0 #0d1020,0 14px 22px #0003;border-radius:13px;padding:13px 18px;font-size:13px;font-weight:800;letter-spacing:.01em;transition:transform .15s,box-shadow .15s,border-color .15s,filter .15s;min-width:0;white-space:normal;line-height:1.35;text-shadow:none}
+#game-content .brigaloka-game button:hover:not(:disabled),
+#game-content .shooter-hub button:hover:not(:disabled) {transform:translateY(-3px);box-shadow:0 10px 0 #0d1020,0 18px 26px #0005;border-color:#f2c46f;filter:brightness(1.09)}
+#game-content .brigaloka-game button:active:not(:disabled),
+#game-content .shooter-hub button:active:not(:disabled) {transform:translateY(4px);box-shadow:0 2px 0 #0d1020}
+#game-content .brigaloka-game button:focus-visible,
+#game-content .shooter-hub button:focus-visible {outline:3px solid #fbd781;outline-offset:4px}
+#game-content .brigaloka-game button:disabled,
+#game-content .shooter-hub button:disabled {opacity:.48;cursor:not-allowed}
+#game-content .brigaloka-game .btn-primary,
+#game-content .shooter-hub .btn-primary {background:linear-gradient(145deg,#ffdc81,#ec8251);color:#291a35!important;border-color:#ffe6aa;box-shadow:0 6px 0 #9c4f3d,0 14px 25px #0e10275c}
+#game-content .brigaloka-game .btn,
+#game-content .shooter-hub .btn {display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;min-height:44px}
+#game-content .brigaloka-head {position:relative;overflow:hidden;padding:26px clamp(18px,4vw,38px);border:1px solid #75659e;border-radius:22px;background:radial-gradient(ellipse at 83% 30%,#b9516e6b,transparent 48%),radial-gradient(ellipse at 8% 70%,#505cc36b,transparent 56%),linear-gradient(130deg,#151629,#2c2040 58%,#171a32);box-shadow:0 15px 35px #05091d66;min-height:158px;margin:0 0 23px}
+#game-content .brigaloka-head:after {content:'';position:absolute;right:-46px;top:-75px;width:300px;height:300px;border:43px solid #ffffff0a;transform:rotate(29deg);border-radius:50%;pointer-events:none}
+#game-content .brigaloka-head .eyebrow {font-size:11px;color:#a9f2ff;letter-spacing:.2em}
+#game-content .brigaloka-head h2 {font-family:'Space Grotesk',sans-serif;font-size:clamp(42px,7vw,84px)!important;line-height:1.05;margin:9px 0 12px;letter-spacing:-.07em;font-weight:900;font-style:italic;text-transform:uppercase;color:#fff9e7;text-shadow:4px 5px 0 #552742,7px 9px 0 #181126}
+#game-content .brigaloka-head h2 span {color:#ffb443}
+#game-content .brigaloka-head p {font-size:13px;color:#d1d0e6;max-width:730px;line-height:1.65}
+#game-content .shooter-hub .shooter-logo {font-family:'Space Grotesk',sans-serif!important;letter-spacing:-.055em!important;line-height:1.12!important;max-width:100%;font-size:clamp(36px,7vw,76px)!important}
+#game-content .shooter-main-menu,
+#game-content .shoot-choose,
+#game-content .shoot-lobby,
+#game-content .brig-menu,
+#game-content .brig-selection {padding:clamp(17px,3vw,27px);background:linear-gradient(160deg,#1a2037,#111a2d);border:1px solid #46506c;border-radius:18px;box-shadow:inset 0 1px 0 #ffffff10,0 10px 22px #0002}
+#game-content .shooter-main-menu h3,
+#game-content .brig-menu h3,
+#game-content .shoot-choose h3 {font-size:clamp(18px,3vw,25px);margin:0 0 17px;color:#fff6da}
+#game-content .shooter-mode-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+#game-content .shooter-mode-grid button {display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;text-align:left;gap:13px;min-height:205px;padding:22px;border:1px solid #61728f;border-radius:18px;background:linear-gradient(153deg,#344d74,#1b2c48 67%,#1a2036);box-shadow:inset 0 1px 0 #ffffff25,0 8px 0 #0b1427,0 17px 23px #0004;position:relative;overflow:hidden}
+#game-content .shooter-mode-grid button:nth-child(2){background:linear-gradient(145deg,#4a3869,#2e274a 72%,#1c193c)}
+#game-content .shooter-mode-grid button:nth-child(3){background:linear-gradient(145deg,#4d3e47,#30314a 72%,#1b2034)}
+#game-content .shooter-mode-grid button:before {content:'';position:absolute;right:-33px;bottom:-56px;border:40px solid #ffffff0c;width:130px;height:130px;border-radius:50%}
+#game-content .shooter-mode-grid button .mode-icon {display:grid;place-items:center;font-size:31px;width:58px;height:58px;border-radius:16px;background:#ffffff16;border:1px solid #ffffff33}
+#game-content .shooter-mode-grid button b {font-size:clamp(17px,2.7vw,23px);color:#fdfcff;line-height:1.25;display:block;margin:0}
+#game-content .shooter-mode-grid button small {font-size:12px;line-height:1.65;color:#d6e2f4;font-weight:500;max-width:270px;display:block}
+#game-content .shooter-mode-grid button .mode-foot {font-size:10px;letter-spacing:.15em;color:#ffe09c;margin-top:auto}
+#game-content .shoot-map-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:19px 0 26px}
+#game-content .shoot-map-tile {display:flex;position:relative;flex-direction:column;align-items:flex-start;justify-content:flex-end;text-align:left;min-height:170px;padding:17px 19px;background:linear-gradient(160deg,#344d60 0%,#162339 100%);border:2px solid #4b6682;border-radius:15px;overflow:hidden;box-shadow:0 8px 0 #0a1325}
+#game-content .shoot-map-tile:before{content:'';display:block;position:absolute;inset:0;background:linear-gradient(140deg,transparent,#0a1328ad),repeating-linear-gradient(115deg,#ffffff09 0 5px,transparent 5px 45px);pointer-events:none}
+#game-content .shoot-map-tile[data-shoot-map="folha"] {background:linear-gradient(135deg,#587d5b,#bd8156 60%,#283642)}
+#game-content .shoot-map-tile[data-shoot-map="tanjiro"] {background:linear-gradient(135deg,#547b92,#626c74 60%,#27373c)}
+#game-content .shoot-map-tile[data-shoot-map="chaves"] {background:linear-gradient(135deg,#b18f54,#955e55 60%,#3b3041)}
+#game-content .shoot-map-tile[data-shoot-map="undefined"] {background:linear-gradient(135deg,#465b82,#313e52 60%,#20283e)}
+#game-content .shoot-map-tile > * {position:relative;z-index:1}
+#game-content .shoot-map-tile b{font-size:21px;color:white;text-shadow:1px 2px 6px #0008}
+#game-content .shoot-map-tile span {font-size:12px;color:#f2f1ee;font-weight:550;margin:7px 0}
+#game-content .shoot-map-tile small {font-size:10px;letter-spacing:.16em;color:#fff0bc}
+#game-content .shoot-map-tile.selected {border-color:#fff08b;box-shadow:0 0 0 3px #e6b45a55,0 8px 0 #ad7737}
+#game-content .shooting-navigation {display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px;flex-wrap:wrap}
+#game-content .brig-menu {display:grid;gap:15px;padding:28px}
+#game-content .brig-menu p {font-size:14px;color:#d3d7ea}
+#game-content .brig-menu .brig-actions {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:0}
+#game-content .brig-menu .brig-actions button {min-height:130px;padding:22px;text-align:left;font-size:18px;justify-content:flex-start;align-items:flex-start;background:linear-gradient(140deg,#3e315c,#242440)}
+#game-content .brig-menu .brig-actions button:first-child{background:linear-gradient(140deg,#6b355b,#302547)}
+#game-content .brig-menu .brig-actions button:nth-child(2){background:linear-gradient(140deg,#395a78,#202b4c)}
+#game-content .brig-menu .brig-actions button:last-child{background:linear-gradient(140deg,#6e533d,#34304b)}
+#game-content .brig-roster {padding:17px;margin:16px 0;background:linear-gradient(140deg,#1c2643,#182038);border:1px solid #505776;border-radius:16px}
+#game-content .brig-roster h3 {font-size:17px;color:#fff4d0;margin:0 0 15px}
+#game-content .brig-roster-grid {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+#game-content .brig-roster-grid .brig-fighter-card {position:relative;min-width:0;min-height:205px;padding:12px 8px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:7px;border:2px solid #4c5976;background:radial-gradient(ellipse at 50% 32%,color-mix(in srgb,var(--fighter-accent,#b2a2df) 32%,transparent),transparent 72%),linear-gradient(150deg,#303b5e,#1a2037);box-shadow:inset 0 1px 0 #ffffff1c,0 6px 0 #0c1428;border-radius:13px;text-align:center}
+#game-content .brig-roster-grid .brig-fighter-card:before {content:'';position:absolute;top:0;left:0;right:0;height:5px;background:var(--fighter-accent,#d8b4f7)}
+#game-content .brig-roster-grid .brig-fighter-card.selected {border-color:#ffe28c;box-shadow:0 0 0 3px #ffd38144,0 6px 0 #a56a3b;transform:translateY(-2px)}
+#game-content .brig-roster-grid .brig-fighter-card .brig-fighter-art {display:grid;place-items:center;width:100%;height:116px;filter:drop-shadow(0 8px 8px #0007);flex:none}
+#game-content .brig-roster-grid .brig-fighter-card .brig-fighter-art canvas {width:100%;height:116px;max-width:122px;display:block}
+#game-content .brig-roster-grid .brig-fighter-card .brig-fighter-art img {display:block;height:110px;max-width:95px;object-fit:contain;border-radius:9px}
+#game-content .brig-roster-grid .brig-fighter-card b{font-size:clamp(11px,1.7vw,16px);color:#fff;line-height:1.2;text-align:center;letter-spacing:-.02em}
+#game-content .brig-roster-grid .brig-fighter-card small{font-size:9px;color:#c4d5e7;line-height:1.3;letter-spacing:.08em;text-align:center}
+#game-content .brig-selection .brig-selection-title{font-size:13px;color:#c6a7ff;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+#game-content .brig-selection .brig-actions{display:flex;flex-wrap:wrap;gap:13px;margin:22px 0 3px}
+#game-content #brig-canvas {display:block;width:100%;height:auto;max-height:75vh;border-radius:15px;border:2px solid #667493;box-shadow:0 15px 40px #02091766;background:#242448}
+#game-content .brig-hud {display:grid;grid-template-columns:1fr auto 1fr;gap:15px;align-items:center;border:1px solid #475679;border-radius:14px;padding:17px;background:linear-gradient(135deg,#101a32,#2a2550);box-shadow:0 9px 25px #0004}
+#game-content .brig-hud b{font-size:clamp(12px,1.7vw,22px);font-weight:900;color:#fff8de;text-transform:uppercase}
+#game-content .brig-hud strong{font-size:clamp(23px,5vw,47px);font-weight:1000;color:#ffe892;text-shadow:0 4px 0 #a9496c}
+#game-content .brig-meter{height:16px;border:1px solid #111c2f;box-shadow:inset 0 2px 3px #0007;background:#361e3d;border-radius:3px;margin:8px 0}
+#game-content .brig-meter i{display:block;height:100%;background:linear-gradient(90deg,#00b8bd,#baff68);border:1px solid #ffffff6b;box-shadow:0 0 9px #7feb88a1;transition:width .12s}
+#game-content .brig-hud>div:last-child .brig-meter i{background:linear-gradient(90deg,#fc98c3,#f85391);box-shadow:0 0 9px #fc73a7a1}
+#game-content .brig-hud small{color:#aeafff;font-size:11px;letter-spacing:.05em}
+#game-content .brig-fight-wrapper{position:relative}
+#game-content #brig-notice{display:flex;justify-content:center;align-items:center;background:#252742;border-color:#4c5278;font-size:13px;font-weight:750;color:#ffdc91}
+#game-content .brig-fight-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+#game-content .brig-fight-controls button{font-size:11px;min-height:46px;padding:8px}
+#game-content .brig-fight-controls small{font-size:9px;color:#e8ceaf}
+#game-content .brig-fight-controls button:active{background:#664974}
+#game-content .shoot-fps-screen{border:2px solid #748ba4;box-shadow:0 25px 45px #0007;border-radius:17px}
+#game-content .shooter-hud{display:flex;flex-wrap:wrap;gap:15px;justify-content:space-around;padding:16px;background:linear-gradient(105deg,#172438,#273a55);border:1px solid #64758e;border-radius:15px;font-size:13px}
+#game-content .shooter-hud span {font-size:clamp(11px,1.5vw,15px);font-variant-numeric:tabular-nums}
+#game-content .shooter-hub .arcade-case-panel,
+#game-content .brigaloka-game .arcade-case-panel {background:#1c2642;border:1px solid #525e86;border-radius:16px;padding:25px;color:#e5ecfa}
+@media(max-width:900px){
+ #game-content .shooter-mode-grid{grid-template-columns:1fr}
+ #game-content .shooter-mode-grid button{min-height:130px}
+ #game-content .brig-roster-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #game-content .brig-menu .brig-actions{grid-template-columns:1fr}
+ #game-content .brig-menu .brig-actions button{min-height:70px}
+}
+@media(max-width:560px){
+ #game-content .brig-roster-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #game-content .shoot-map-grid{grid-template-columns:1fr}
+ #game-content .brig-roster-grid .brig-fighter-card{min-height:180px}
+ #game-content .brig-roster-grid .brig-fighter-card .brig-fighter-art{height:90px}
+ #game-content .brig-roster-grid .brig-fighter-card .brig-fighter-art img{height:90px}
+ #game-content .brig-hud{gap:6px;padding:10px}
+ #game-content .brig-fight-controls{grid-template-columns:repeat(2,1fr)}
+ #game-content .brigaloka-head{min-height:0}
+}
