@@ -318,8 +318,8 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   if(x> -100&&x<W+80){poly(c,[[x-20,FLOOR],[x+9,FLOOR-55],[x+35,FLOOR]],'#779aa8');rect(c,x+5,FLOOR-58,14,14,'#d2dfe4');}
  }
  drawLandmarks(c,zone,camera,t,flags);
- if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);drawCharacter(c,1990-camera,FLOOR-71,t,'bard');}
- if(zone.id==='montanha'){drawCharacter(c,430-camera,FLOOR-71,t,'bard');}
+ if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);}
+ if(flags.bard&&(zone.id==='vila'||zone.id==='montanha'||zone.id==='castelo'))drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  if(zone.id==='castelo'){
   if(!flags.exploded)drawCharacter(c,480-camera,FLOOR-71,t,'malacord');
   if(flags.exploded&&!flags.cloneWon)drawCharacter(c,2760-camera,FLOOR-71,t,'shade',-1);
