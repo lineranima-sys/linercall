@@ -1086,3 +1086,6 @@ body > #toast.show{opacity:1;transform:translate(-50%,0)}
 .brig-meter{height:14px;border-radius:8px;overflow:hidden;background:#421e36;border:1px solid #6e4866;margin:6px 0}
 .brig-meter i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#68dbb2,#c4f67f);transition:width .15s}
 @media(max-width:740px){.shooter-mode-grid{grid-template-columns:1fr}.shoot-map-grid{grid-template-columns:1fr}.brig-roster-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.brig-hud b{font-size:11px}.brig-hud{gap:5px}}
+
+.brig-liner-portrait{width:58px;height:74px;object-fit:contain;border-radius:8px;display:block;image-rendering:auto;background:#83d8d7;margin:-10px auto -2px}
+.brig-fighter-card:has(.brig-liner-portrait){border-color:#7d91a4}
