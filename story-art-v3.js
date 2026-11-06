@@ -284,6 +284,9 @@ function human(c,x,y,t,kind='hero',face=1,state='idle',flash=false){
 export function drawCharacter(c,x,y,t,kind,face=1,state='idle',flash=false){human(c,x,y,t,kind,face,state,flash);}
 function enemy(c,m,camera,t){
  const x=m.x-camera,y=m.y;
+ c.save();
+ // A arte base olha para a direita. Espelhar também os olhos e a arma.
+ if(m.dir<0){c.translate(2*x+m.w,0);c.scale(-1,1);}
  if(m.kind==='slime'){
   ellipse(c,x+23,y+40,28,22,'#256c72');
   ellipse(c,x+23,y+30,29,28,'#4ec4a3');ellipse(c,x+18,y+17,18,11,'#78e9c1');
@@ -299,6 +302,7 @@ function enemy(c,m,camera,t){
   rect(c,x+4,y+39,39,11,'#86516a');rect(c,x+39,y+28,6,36,'#866c57');rect(c,x+43,y+21,13,6,'#b6d9dd');
  }
  if(m.hp<m.maxHp){rect(c,x-3,y-12,52,8,'#21354d');rect(c,x,y-9,46*m.hp/m.maxHp,3,'#fd7990');}
+ c.restore();
 }
 export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  const biome=zone.biome;c.save();

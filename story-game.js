@@ -1,6 +1,6 @@
 import {chapter,lore,WIDTH,HEIGHT,FLOOR} from './story-chapter-v3.js';
 import {overlaps,swordBox,bodyBox} from './story-combat-v3.js?v=wall-sword-fix';
-import {drawWorld,drawSlide} from './story-art-v3.js?v=wall-sword-fix';
+import {drawWorld,drawSlide} from './story-art-v3.js?v=enemy-ai-facing';
 
 // Liner Story — Capítulo 1. Novo jogo, sem dependência de Firebase para salvar.
 const W=WIDTH,HERO_W=50,HERO_H=72,MAX_HP=7;
@@ -253,7 +253,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    fx.push({kind:'dust',x:p.x+25,y:p.y+70,life:.8,max:.8});
   }
   const direction=(keys.right?1:0)-(keys.left?1:0);
-  const target=direction*260;
+  const target=direction*185;
   p.vx+=(target-p.vx)*Math.min(1,dt*(p.ground?15:10));
   if(direction)p.face=direction;
   // Plataformas são sólidos completos: laterais e parte de baixo bloqueiam passagem.
@@ -267,8 +267,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
     else if(p.vx<0&&oldX>=wall.x+wall.w-3){p.x=wall.x+wall.w;p.vx=0;}
     else if(oldX+p.w>wall.x&&oldX<wall.x+wall.w){
      // Se o personagem já estiver dentro do bloco, expulse-o pelo lado mais próximo.
-     const leftDist=Math.abs(p.x+p.w-wall.x),rightDist=Math.abs(wall.x+wall.w-p.x);
-     p.x=leftDist<=rightDist?wall.x-p.w:wall.x+wall.w;p.vx=0;
+     p.x=oldX;p.vx=0;
     }
    }
   }
@@ -298,11 +297,18 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    if(m.hp<=0)continue;
    m.stun=Math.max(0,m.stun-dt);m.ai+=dt;
    const delta=p.x-m.x;
-   if(m.stun===0&&Math.abs(delta)<230)m.dir=Math.sign(delta)||m.dir;
-   if(m.stun===0)m.x+=m.dir*(m.kind==='goblin'?46:27)*dt;
-   m.x=clamp(m.x,m.home-66,m.home+66);
+   const alerted=Math.abs(delta)<360&&Math.abs(p.y-m.y)<120;
+   const speed=m.kind==='goblin'?alerted?145:94:alerted?112:70;
+   // Patrulha e perseguição: não inverter a direção a cada frame nas bordas.
+   const left=Math.max(0,m.home-(alerted?190:105));
+   const right=Math.min(zone().length-m.w,m.home+(alerted?190:105));
+   if(m.stun<=0){
+    if(alerted&&Math.abs(delta)>30)m.dir=Math.sign(delta);
+    m.x+=m.dir*speed*dt;
+    if(m.x<=left){m.x=left;m.dir=1;}
+    else if(m.x>=right){m.x=right;m.dir=-1;}
+   }
    m.y=FLOOR-m.h;
-   if(Math.abs(m.x-m.home)>=65)m.dir*=-1;
    if(overlaps(bodyBox(p),bodyBox(m)))damage(1);
   }
   if(zoneIndex===3&&!flags.fishWon&&overlaps(bodyBox(p),{x:294,y:FLOOR-130,w:155,h:120}))damage(1);
@@ -346,7 +352,8 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(saveAccumulator>5){saveAccumulator=0;save();}
  }
  function draw(){
-  camera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
+  const targetCamera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
+  camera+=(targetCamera-camera)*.12;
   if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.lane,slide.hazards);}
   else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP},fx);}
   if(!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
