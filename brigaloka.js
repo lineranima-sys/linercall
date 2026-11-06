@@ -1,5 +1,6 @@
 import {drawFighterArt,drawStage,drawHitSparks} from './brigaloka-art.js?v=20261105-polish';
 import {LINER_PORTRAIT} from './liner-portrait.js';
+import {fightersInRange} from './story-combat-v3.js';
 // BrigaLoka — jogo de luta 2D em Canvas, homenagens visuais desenhadas por código.
 // Liner é inspirado nos dois desenhos compartilhados pelo criador.
 const ROSTER=[
@@ -77,9 +78,8 @@ export function mountBrigaLoka({root,user,addCoins}){
   a.attackType=type;
   a.face=a.x<b.x?1:-1;
   if(special)a.specialUntil=now+560;
-  const dist=Math.abs(a.x-b.x);
-  const reach=special?185:type==='kick'?105:86;
-  if(dist>reach||Math.abs(a.y-b.y)>90)return;
+  // Hitbox da mão/pé estende-se à frente do lutador; não exige contato entre corpos.
+  if(!fightersInRange(a,b,type))return;
   const dmg=(type==='punch'?7:type==='kick'?11:25)*((a.data.power||16)/16)*(b.block?.24:1);
   b.hp=clamp(b.hp-dmg,0,100);b.hitUntil=now+180;b.lastHitAt=now;a.energy=clamp(a.energy+(special?0:19),0,100);
   b.x=clamp(b.x+(a.face*clamp(dmg*.85,3,18)),55,W-55);
@@ -105,8 +105,8 @@ export function mountBrigaLoka({root,user,addCoins}){
   const delta=p.x-enemy.x,dist=Math.abs(delta);
   enemy.face=delta>0?1:-1;
   enemy.block=dist<120&&Math.sin(now/400)>0.86;
-  if(dist>102)enemy.x=clamp(enemy.x+Math.sign(delta)*125*dt,48,W-48);
-  if(dist<150&&now>=enemy.nextAttack){
+  if(dist>173)enemy.x=clamp(enemy.x+Math.sign(delta)*125*dt,48,W-48);
+  if(dist<223&&now>=enemy.nextAttack){
    const type=enemy.energy>=70&&Math.random()<.19?'special':Math.random()<.35?'kick':'punch';
    strike(enemy,p,type,now);
   }
@@ -152,6 +152,15 @@ export function mountBrigaLoka({root,user,addCoins}){
    actions(p,enemy,first,dt,now);
    if(versusCPU)cpu(now,dt);else actions(enemy,p,second,dt,now);
    if((now-started)/1000>=ROUND)endRound(p.hp===enemy.hp?'EMPATE!':p.hp>enemy.hp?'Você venceu!':'O rival venceu!');
+  }
+  // Pushboxes impedem que lutadores atravessem um ao outro.
+  if(!roundEnd&&p&&enemy){
+   const delta=enemy.x-p.x,overlap=78-Math.abs(delta);
+   if(overlap>0){
+    const side=delta>=0?1:-1;
+    p.x=clamp(p.x-side*overlap*.5,48,W-48);
+    enemy.x=clamp(enemy.x+side*overlap*.5,48,W-48);
+   }
   }
   render(now);
   if(!roundEnd)raf=requestAnimationFrame(tick);

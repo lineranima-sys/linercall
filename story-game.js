@@ -1,418 +1,427 @@
-import { createCoinSlide } from './coin-slide.js?v=20261105';
-// Herói em um mundo Luminoso · Capítulo 1 — aventura 2D original em Canvas.
-// A arte é desenhada no próprio jogo: não exige imagens externas.
-const CW=480, CH=270, FLOOR=220, HERO_H=36, HERO_W=30;
-const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const r01=n=>{const f=Math.sin(n*13.713+7.19)*43758.5453;return f-Math.floor(f);};
-const levels=[
- {name:'A longa estrada',length:3400,kind:'field',ground:[[0,480],[555,980],[1055,1470],[1545,1990],[2060,2520],[2590,3020],[3090,3470]],platforms:[[473,178,88],[972,176,90],[1460,180,92],[1980,174,90],[2510,174,92],[3010,180,90]],mobs:[360,670,880,1130,1330,1670,1810,2230,2410,2760,2950,3260]},
- {name:'A vila e o castelo',length:1250,kind:'village',ground:[[0,1280]],platforms:[],mobs:[]},
- {name:'Montanha Sagrada',length:2400,kind:'mountain',ground:[[0,820],[895,1260],[1335,1710],[1785,2440]],platforms:[[815,178,90],[1255,169,90],[1703,178,90]],mobs:[990,1160,1430,1650,1890,2010]},
- {name:'O castelo de Malacord',length:2380,kind:'castle',ground:[[0,2420]],platforms:[],mobs:[]}
-];
-// Sprites originais de 2px, agora com poses distintas e silhuetas legíveis.
-const heroIdle=[
- '.....PPPP......','....PHHHHP.....','...PHHHHHHP....','...HSSSSSSH....',
- '...HSESESHH....','...HSSSSSSH....','....HHHSS......','...CCAAACC.....',
- '..CCCAALACC....','..CCCAALACC....','...CAAAACC.....','...CAYYACC.....',
- '....AAAAC......','....ADDAA......','....DBBDB......','....DBBDB......',
- '...DBBBDBB.....','...DBB.DBB.....'
-];
-const heroWalkA=heroIdle.map((row,i)=>i>=14?['....DBBD.......','...DBBBDB......','..DBB..DBB.....','..BB....BB.....'][i-14]:row);
-const heroWalkB=heroIdle.map((row,i)=>i>=14?['.....DBBDB.....','.....DBBDB.....','.....DBBBDB....','.....BB.BB.....'][i-14]:row);
-const heroJump=heroIdle.map((row,i)=>i>=14?['....DBBDBB.....','...DBB...DB....','..BB.....BB....','..B.......B....'][i-14]:row);
-const heroAttack=heroIdle.map((row,i)=>i>=7&&i<=11?['..CCAAALAAAA...','..CCAAALAAAA...','..CCAAALAAAA...','...CAAAA......','....CAYY......'][i-7]:row);
-const bardIdle=[
- '....PPPPPP.....','...PPPPPPPP....','...PPTTPPPP....','....PSSSSP.....',
- '....PSEESP.....','.....SSSS......','...GGBGGGG.....','..GGGBGGGGG....',
- '..GGGBGGGGG....','...GGGBGGGG....','....GGBGG......','....DGDDD......',
- '....DDDDD......','....DDD.DD.....','....DD...DD....','....DD...DD....',
- '...DDD...DDD...','...DDD...DDD...'
-];
-const bardWalk=bardIdle.map((row,i)=>i>=14?['...DDD....DD...','..DDD.....DDD..','..DD.......DD..','..DD.......DD..'][i-14]:row);
-const goblinIdle=[
- '...GGGGGG......','..GGGGGGGG.....','.GGEGGEGGG.....','.GGGGGGGGG.....',
- '..GGTTTTGG.....','...RRRRRR......','..RRRYYRRR.....','..RRRRRRRR.....',
- '...RR..RR......','..BBB..BBB.....','..BBB..BBB.....','..BB....BB.....'
-];
-const colors={H:'#684336',P:'#c75864',S:'#f8cda4',E:'#252842',C:'#263a67',A:'#4486a3',L:'#8ce6e0',Y:'#f5d277',D:'#4b354f',B:'#272f46',G:'#39795e',R:'#526947',T:'#eddd9c'};
-export function mountStory(root,onExit,uid='guest'){
- let dead=false,raf=0,ticks=0,scene=0,paused=true,pending=null,last=0,camera=0,menu=true,intro=false,lastSave=0,bardX=0,bardY=FLOOR-36,coinSlide=null;
- const key={left:false,right:false,up:false,down:false};
- const flags={guards:false,fishNotice:false,fish:false,key:false,dragon:false,wedding:false,potion:false,princess:false,explosion:false,clone:false,bardo:false,rescue:false,win:false};
- const player={x:40,y:FLOOR-HERO_H,vx:0,vy:0,ground:true,face:1,hp:5,iframes:0,swing:0,cooldown:0,fishHP:3,peace:0,timer:60};
- const dragonImage=new Image();dragonImage.src='./assets/dragon-pixel.svg';
- const saveKey='linercall-luminous-save-v2-'+uid;
- let mobs=[];
- function build(){
-  root.innerHTML='<div class="luminous-shell"><header class="luminous-header"><div><span>LINERCALL ORIGINAL · CAPÍTULO 1</span><h2>Herói em um mundo Luminoso</h2><p>Capítulo 1 · Uma aventura de plataforma 2D pixel art</p></div><button class="btn" data-story-exit-new>← Minigames</button></header>'+
-   '<div class="luminous-hud"><b id="luminous-zone">A longa estrada</b><span id="luminous-hp">♥ ♥ ♥ ♥ ♥</span><b id="luminous-distance">0%</b></div>'+
-   '<div class="luminous-objective" id="luminous-objective">Objetivo: Começar uma nova aventura</div>'+
-   '<div class="luminous-screen"><canvas id="luminous-canvas" width="480" height="270" aria-label="Jogo de plataforma 2D em pixel art"></canvas>'+
-   '<div id="luminous-menu" class="luminous-menu"><div class="luminous-menu-card"><span class="eyebrow">LINERCALL APRESENTA</span><h2>HERÓI EM UM MUNDO <em>LUMINOSO</em></h2><span class="luminous-chapter">CAPÍTULO 1 · A CARTA DO BARDO</span><div class="luminous-menu-actions"><button type="button" data-story-continue class="btn btn-primary">▶ Continuar aventura</button><button type="button" data-story-new class="btn">✦ Novo jogo</button><button type="button" data-story-controls class="btn">⌨ Como jogar</button></div><small>Seu progresso fica salvo neste dispositivo.</small></div></div>'+
-   '<div class="luminous-dialog hidden" id="luminous-dialog" role="dialog" aria-live="polite"><div class="luminous-dialog-head"><span class="luminous-portrait" id="luminous-portrait">✦</span><div><small id="luminous-speaker">NARRADOR</small><h3 id="luminous-dialog-title"></h3></div></div><p id="luminous-dialog-body"></p><button class="btn btn-primary" data-story-next-new>Continuar →</button></div></div>'+
-   '<div class="luminous-touch"><div><button data-story-hold="left">◀</button><button data-story-hold="right">▶</button></div><div><button data-story-act="jump">▲ PULAR</button><button data-story-act="attack">⚔ ATACAR</button></div></div>'+
-   '<div class="luminous-slide-touch"><b>DESLIZE AUTOMÁTICO</b><div><button data-story-hold="up" aria-label="Desviar para cima">▲ SUBIR</button><button data-story-hold="down" aria-label="Desviar para baixo">▼ DESCER</button></div></div>'+
-   '<p class="luminous-instructions">A / D ou ← → mover · Espaço pular · X atacar ou interagir · O jogo é gratuito durante os testes.</p></div>';
+import {chapter,lore,WIDTH,HEIGHT,FLOOR} from './story-chapter-v3.js';
+import {overlaps,swordBox,bodyBox} from './story-combat-v3.js';
+import {drawWorld,drawSlide} from './story-art-v3.js';
+
+// Liner Story — Capítulo 1. Novo jogo, sem dependência de Firebase para salvar.
+const W=WIDTH,HERO_W=50,HERO_H=72,MAX_HP=7;
+const clamp=(n,a,b)=>Math.max(a,Math.min(n,b));
+const safeUid=s=>String(s||'guest').replace(/[^A-Za-z0-9_-]/g,'').slice(0,96);
+const hudHearts=hp=>'♥'.repeat(Math.max(0,hp))+'♡'.repeat(Math.max(0,MAX_HP-hp));
+
+export function mountStory(root,onExit=()=>{},uid='guest'){
+ let zoneIndex=0,paused=true,menu=true,finished=false,mode='world',last=0,elapsed=0,raf=0,saveAccumulator=0;
+ let camera=0,checkpoint=40,dialogueLines=[],dialogueIndex=0,afterDialogue=null,notice='',noticeTime=0;
+ let enemies=[],fx=[],slide={progress:0,hearts:3,lane:0,hazards:[],spawn:0,invul:0};
+ let defeated=chapter.map(()=>[]);
+ let flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
+  dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
+  exploded:false,cloneWon:false,rescue:false,win:false};
+ let fishHP=8,fishInvul=0,cloneCalm=0,rescueTime=60,attackHits=new Set();
+ const p={x:44,y:FLOOR-HERO_H,w:HERO_W,h:HERO_H,vx:0,vy:0,ground:true,face:1,hp:MAX_HP,
+  invul:0,swing:0,attackCooldown:0,coyote:0,jumpBuffer:0};
+ const keys={left:false,right:false,up:false,down:false};
+ const SAVE='linercall-story-ch1-v3-'+safeUid(uid);
+ root.innerHTML='<section class="story3" aria-label="Liner Story: O Herói sem Nome">'+
+  '<header class="story3-top"><div><span class="story3-overline">LINERCALL STORY · CAPÍTULO 1</span>'+
+  '<h2>O HERÓI <em>SEM NOME</em></h2></div><button class="story3-back" type="button" data-story3="exit">← Voltar aos jogos</button></header>'+
+  '<div class="story3-status"><b id="story3-area">A CARTA</b><span id="story3-hearts" aria-label="Vida">♥♥♥♥♥♥♥</span>'+
+  '<span id="story3-percent">0%</span><span class="story3-status-end" id="story3-save">SALVO LOCALMENTE</span></div>'+
+  '<div class="story3-objective" id="story3-goal">Sua aventura começa com uma carta...</div>'+
+  '<div class="story3-screen"><canvas id="story3-canvas" width="960" height="540" aria-label="Jogo 2D de plataforma em pixel art detalhada"></canvas>'+
+  '<div class="story3-menu" id="story3-menu"><div class="story3-panel"><small>LINERCALL APRESENTA</small>'+
+  '<h3>O HERÓI<br><span>SEM NOME</span></h3><p>Uma carta. Uma longa jornada. Um reino que esqueceu seu verdadeiro herói.</p>'+
+  '<div class="story3-actions"><button data-story3="continue" type="button">▶ Continuar aventura</button>'+
+  '<button data-story3="new" type="button">✦ Novo jogo</button>'+
+  '<button data-story3="help" type="button">⌨ Controles</button></div>'+
+  '<p class="story3-small">Capítulo 1 · versão reimaginada em beta. Sem cobrança de LCoins durante os testes.</p></div></div>'+
+  '<div class="story3-dialog hidden" id="story3-dialog" role="dialog" aria-live="polite" aria-label="Diálogo da história">'+
+  '<small id="story3-speaker">NARRADOR</small><h3 id="story3-dialog-title"></h3>'+
+  '<p id="story3-dialog-copy"></p><div class="story3-dialog-bottom"><span id="story3-dialog-count">1 / 3</span>'+
+  '<button data-story3="next" type="button">Continuar →</button></div></div>'+
+  '<div class="story3-complete hidden" id="story3-complete"><div class="story3-panel"><small>FIM DO CAPÍTULO 1</small>'+
+  '<h3>GANONDORF!</h3><p>O reino foi salvo. Mas o dragão ainda espera seu pagamento...</p>'+
+  '<button data-story3="new" type="button">↻ Rejogar capítulo</button>'+
+  '<button data-story3="exit" type="button">← Voltar aos minigames</button></div></div>'+
+  '</div><div class="story3-touch"><div class="story3-direction">'+
+  '<button type="button" data-hold="left" aria-label="Mover para esquerda">◀</button>'+
+  '<button type="button" data-hold="right" aria-label="Mover para direita">▶</button></div>'+
+  '<div class="story3-interact"><button type="button" data-story3="jump">↑ Pular</button>'+
+  '<button type="button" data-story3="attack">⚔ Golpear</button>'+
+  '<button type="button" data-story3="interact">✦ Ação</button></div></div>'+
+  '<p class="story3-help">A / D ou ← → mover · Espaço pular · X / J atacar · E interagir · P pausar · Progresso salvo neste dispositivo.</p>'+
+  '</section>';
+ const canvas=root.querySelector('#story3-canvas'),ctx=canvas.getContext('2d',{alpha:false});
+ if(!ctx){root.querySelector('.story3-help').textContent='Canvas indisponível neste navegador.';return ()=>{};}
+ ctx.imageSmoothingEnabled=false;
+ const q=id=>root.querySelector('#'+id), zone=()=>chapter[zoneIndex];
+ const note=(text,duration=3)=>{notice=text;noticeTime=duration;};
+ function objective(){
+  if(mode==='slide')return 'DESAFIO DO DRAGÃO · ↑ ou ↓ para trocar de faixa e desviar do fogo!';
+  if(zoneIndex===0)return 'Atravesse a longa estrada e derrote os monstros de Malacord.';
+  if(zoneIndex===1)return 'Explore a floresta e alcance as ruínas do reino.';
+  if(zoneIndex===2)return flags.guards?'Acompanhe o Bardo até a Montanha Sagrada.':'Descubra por que os guardas bloqueiam o castelo.';
+  if(zoneIndex===3)return !flags.fishWon?'Derrote o PEIXE GIGANTE sem encostar nele!':!flags.dragonComplete?'Encontre o dragão no topo da montanha.':'Entre no castelo pelo alto.';
+  if(flags.rescue&&!flags.win)return 'A gaiola vai pegar fogo! Corra até a princesa e pressione E para cortar as cordas.';
+  if(flags.exploded&&!flags.cloneWon)return 'A névoa copia os ataques. Pare de atacar e mantenha-se vivo!';
+  if(!flags.potion)return 'Procure o baú com o mapa do casamento e a poção.';
+  if(!flags.princess)return 'Descubra o que o Bardo encontrou no calabouço.';
+  return 'Continue pelo salão do casamento.';
  }
- build();
- const c=root.querySelector('#luminous-canvas').getContext('2d',{alpha:false});
- c.imageSmoothingEnabled=false;
- const modal=root.querySelector('#luminous-dialog');
- function dialogue(who,title,body,next){
-  paused=true;key.left=false;key.right=false;pending=next||null;
-  root.querySelector('#luminous-speaker').textContent=who;
-  root.querySelector('#luminous-portrait').textContent=({BARDO:'♫',HERÓI:'⚔',DRAGÃO:'🐉',MALACORD:'♛',GUARDA:'♜','CÓPIA DE NÉVOA':'◈','FIM DO CAPÍTULO 1':'✦'})[who]||'✧';
-  root.querySelector('#luminous-dialog-title').textContent=title;
-  root.querySelector('#luminous-dialog-body').textContent=body;
-  modal.classList.remove('hidden');
+ function updateHUD(){
+  q('story3-area').textContent=mode==='slide'?'FUGA DO DRAGÃO':zone().name.toUpperCase();
+  q('story3-hearts').textContent=mode==='slide'?'♥'.repeat(slide.hearts):hudHearts(p.hp);
+  q('story3-percent').textContent=(mode==='slide'?Math.floor(slide.progress*100):Math.floor(clamp(p.x/zone().length,0,1)*100))+'%';
+  q('story3-goal').textContent=noticeTime>0?notice:objective();
  }
- function resume(){modal.classList.add('hidden');paused=false;const f=pending;pending=null;if(f)f();saveGame();}
- function saveGame(){
-  if(menu||intro||dead||coinSlide)return;
-  const save={version:2,scene,x:Math.round(player.x),hp:player.hp,flags:{...flags},
-   fishHP:player.fishHP,deadMobs:mobs.filter(m=>!m.alive).map(m=>m.seed),timestamp:Date.now()};
-  try{localStorage.setItem(saveKey,JSON.stringify(save));}catch{}
-  lastSave=ticks;
+ function spawnMobs(){
+  enemies=zone().enemies.map(([x,kind],i)=>({x,y:FLOOR-(kind==='goblin'?68:55),w:48,h:kind==='goblin'?68:55,
+   hp:kind==='goblin'?3:2,maxHp:kind==='goblin'?3:2,kind,home:x,dir:i%2?1:-1,
+   ai:Math.random()*4,index:i,stun:0})).filter(m=>!defeated[zoneIndex].includes(m.index));
  }
- function readSave(){try{const value=JSON.parse(localStorage.getItem(saveKey)||'null');return value?.version===2&&Number.isInteger(value.scene)&&value.scene>=0&&value.scene<levels.length?value:null;}catch{return null;}}
- function resetFlags(){for(const k of Object.keys(flags))flags[k]=false;flags.fishSong=false;}
- function newGame(){
-  try{localStorage.removeItem(saveKey);}catch{}
-  resetFlags();scene=0;initActors();menu=false;intro=true;paused=true;
-  root.querySelector('#luminous-menu').classList.add('hidden');objective();
-  dialogue('NARRADOR','Uma manhã longe de casa...','Em uma cabana distante da vila, o herói sem nome descansava. Até que um mensageiro deixou uma carta do seu melhor amigo.',()=>{
-   dialogue('HERÓI','Uma carta do Bardo','O herói senta à mesa, rompe o selo e lê a carta. A caligrafia é familiar e parece apressada.',()=>{
-    dialogue('BARDO','A princesa foi capturada!','“Malacord se disfarçou de você e tomou o castelo! A princesa está presa. Preciso de sua ajuda, velho amigo. — Bardo”',()=>{
-     dialogue('HERÓI','A jornada começa agora','O herói guarda a carta, pega sua espada e deixa a cabana. Uma estrada longa e cheia de monstros o espera.',()=>{intro=false;saveGame();});
-    });
-   });
-  });
+ function setZone(index,spawnX=46){
+  zoneIndex=index;mode='world';checkpoint=spawnX;
+  p.x=spawnX;p.y=FLOOR-p.h;p.vx=0;p.vy=0;p.ground=true;p.coyote=0;
+  p.hp=Math.max(4,p.hp);p.invul=1.7;camera=0;spawnMobs();save();
+ }
+ function save(){
+  if(menu||finished||mode==='slide')return;
+  try{
+   localStorage.setItem(SAVE,JSON.stringify({
+    version:3,zone:zoneIndex,x:Math.round(p.x),hp:p.hp,checkpoint,
+    flags:{...flags},fishHP,defeated,ts:Date.now()
+   }));
+   q('story3-save').textContent='PROGRESSO SALVO';
+  }catch{q('story3-save').textContent='SALVAMENTO INDISPONÍVEL';}
+ }
+ function readSave(){
+  try{
+   const v=JSON.parse(localStorage.getItem(SAVE)||'null');
+   return v?.version===3&&Number.isInteger(v.zone)&&v.zone>=0&&v.zone<chapter.length?v:null;
+  }catch{return null;}
+ }
+ function reset(){
+  flags={guards:false,fishTriggered:false,fishSong:false,fishWon:false,key:false,
+   dragon:false,dragonComplete:false,castleIntro:false,wedding:false,potion:false,princess:false,
+   exploded:false,cloneWon:false,rescue:false,win:false};
+  defeated=chapter.map(()=>[]);fishHP=8;fishInvul=0;cloneCalm=0;rescueTime=60;
+  p.hp=MAX_HP;p.invul=0;finished=false;menu=false;mode='world';elapsed=0;attackHits.clear();
+  q('story3-menu').classList.add('hidden');q('story3-complete').classList.add('hidden');
+  setZone(0);sequence(lore.intro);
  }
  function continueGame(){
-  const save=readSave();if(!save){newGame();return;}
-  resetFlags();Object.assign(flags,save.flags||{});
-  // Se o jogador sair durante o deslizamento, o desafio recomeça.
-  if(save.scene===2&&flags.dragon&&!flags.slideDone)flags.dragon=false;
-  const clearedSlide=save.scene===2&&flags.slideDone;
-  scene=clearedSlide?3:save.scene;initActors();
-  player.x=clearedSlide?35:clamp(save.x||35,0,levels[scene].length-20);
-  if(scene===2&&!flags.dragon&&player.x>2110)player.x=2060;
-  player.hp=clamp(save.hp||5,1,5);player.fishHP=clamp(save.fishHP??3,0,3);
-  for(const mob of mobs)if((save.deadMobs||[]).includes(mob.seed))mob.alive=false;
-  bardX=player.x-40;menu=false;intro=false;paused=false;
-  root.querySelector('#luminous-menu').classList.add('hidden');objective();
-  dialogue('CAPÍTULO 1','Progresso restaurado','Você voltou ao ponto em que parou. Boa aventura!');
+  const saved=readSave();if(!saved){reset();return;}
+  menu=false;finished=false;flags={...flags,...saved.flags};
+  defeated=chapter.map((_,i)=>Array.isArray(saved.defeated?.[i])?saved.defeated[i].filter(Number.isInteger):[]);
+  fishHP=clamp(Number(saved.fishHP)||8,1,8);p.hp=clamp(saved.hp||MAX_HP,1,MAX_HP);
+  zoneIndex=saved.zone;checkpoint=clamp(saved.checkpoint||40,40,zone().length-50);
+  const x=clamp(saved.x||checkpoint,40,zone().length-80);
+  if(zoneIndex===3&&!flags.fishWon&&x>475)checkpoint=40;
+  if(zoneIndex===3&&flags.dragon&&!flags.dragonComplete&&x>3620){flags.dragon=false;checkpoint=3020;}
+  if(zoneIndex===4&&flags.rescue&&!flags.win)rescueTime=60;
+  spawnMobs();p.x=zoneIndex===3&&!flags.fishWon&&x>475?40:x;
+  if(zoneIndex===3&&flags.dragon&&!flags.dragonComplete)p.x=Math.min(p.x,3470);
+  p.y=FLOOR-p.h;p.vx=p.vy=0;p.ground=true;p.invul=2;
+  mode='world';q('story3-menu').classList.add('hidden');
+  sequence([['NARRADOR','Bem-vindo de volta!','A aventura continua de onde você parou. Seu progresso anterior está preservado.']]);
  }
- function objective(){
-  const descriptions=[
-   'Atravesse a longa estrada e derrote os monstros de Malacord',
-   flags.guards?'Encontre o Bardo e siga para a Montanha Sagrada':'Descubra por que os guardas não deixam você entrar',
-   flags.fish?'Suba até o dragão que descansa sob a árvore':'Resgate o Bardo do peixe e encontre a chave',
-   flags.rescue?'Liberte a princesa: X nas cordas, antes de 1:00!':flags.explosion&&!flags.clone?'Não ataque a cópia de névoa':flags.potion?'Siga pelo salão e descubra a armadilha':'Explore o castelo e procure o baú'
-  ];
-  const el=root.querySelector('#luminous-objective');if(el)el.textContent='OBJETIVO · '+descriptions[scene];
+ function sequence(lines,done=null){
+  if(!lines?.length){done?.();return;}
+  dialogueLines=lines;dialogueIndex=0;afterDialogue=done;paused=true;
+  keys.left=keys.right=keys.up=keys.down=false;showDialogue();
  }
-
- function initActors(){
-  player.x=35;player.y=FLOOR-HERO_H;player.vy=0;player.hp=5;player.iframes=0;player.peace=0;bardX=player.x-48;bardY=player.y;
-  mobs=levels[scene].mobs.map((x,i)=>({x,home:x,hp:2,alive:true,dir:i%2?1:-1,aware:false,seed:i+scene*13}));
+ function showDialogue(){
+  const [who,title,body]=dialogueLines[dialogueIndex];
+  q('story3-speaker').textContent=who;q('story3-dialog-title').textContent=title;q('story3-dialog-copy').textContent=body;
+  q('story3-dialog-count').textContent=(dialogueIndex+1)+' / '+dialogueLines.length;
+  q('story3-dialog').classList.remove('hidden');
  }
- function nextLevel(who,title,body){
-  scene++;initActors();objective();saveGame();dialogue(who,title,body);
+ function advance(){
+  if(q('story3-dialog').classList.contains('hidden'))return;
+  if(++dialogueIndex<dialogueLines.length){showDialogue();return;}
+  q('story3-dialog').classList.add('hidden');dialogueLines=[];paused=false;
+  const done=afterDialogue;afterDialogue=null;done?.();save();
  }
- function leaveSlide(){
-  const help=root.querySelector('.luminous-instructions');
-  if(help)help.textContent='A / D ou ← → mover · Espaço pular · X atacar ou interagir · Salvo automaticamente.';
-  coinSlide=null;key.up=key.down=false;
-  root.querySelector('.luminous-shell')?.classList.remove('coin-slide-active');
-  objective();
+ function showHelp(){
+  q('story3-menu').classList.add('hidden');
+  sequence([['CONTROLES','Movimentação','A e D / setas: andar. Espaço / W: pular. X ou J: espada. E: interagir. No celular, use os botões na tela.'],
+   ['COMBATE','Não encoste nos inimigos','O golpe acerta à frente do corpo, antes de você se aproximar demais. Depois de sofrer dano, você fica invulnerável por um instante.'],
+   ['DICAS','Salvamento e checkpoints','Seu progresso é salvo automaticamente. Use a espada para atacar de longe e procure plataformas para atravessar buracos.']],()=>{
+    if(menu)q('story3-menu').classList.remove('hidden');
+   });
  }
- function startSlide(){
-  const help=root.querySelector('.luminous-instructions');
-  if(help)help.textContent='DESCIDA DE OURO · Você desliza sozinho! Use ↑ e ↓ (ou W/S) para fugir das bolas de fogo.';
-  key.left=key.right=key.up=key.down=false;
-  const shell=root.querySelector('.luminous-shell');
-  shell?.classList.add('coin-slide-active');
-  const objectiveText=root.querySelector('#luminous-objective');
-  if(objectiveText)objectiveText.textContent='DESAFIO · Deslize sozinho e use ↑ ↓ para escapar do fogo do dragão!';
-  coinSlide=createCoinSlide(c,{
-   drawHero:(x,y)=>{c.save();c.translate(Math.round(x),Math.round(y));c.rotate(-.13);
-     sprite(heroJump,0,0,2);c.restore();},
-   onLose:()=>{
-    leaveSlide();
-    dialogue('NARRADOR','As chamas te alcançaram!','O herói se protege e volta ao início da pilha de moedas. O dragão ainda está furioso! Vamos tentar a descida novamente.',()=>startSlide());
-   },
-   onWin:()=>{
-    leaveSlide();flags.slideDone=true;
-    dialogue('HERÓI','MOEDAS... DE CHOCOLATE?!','Ao chegar no fim da descida, o herói abre uma embalagem dourada e descobre que as moedas são de chocolate! Malacord enganou o dragão!',()=>{
-     dialogue('DRAGÃO','Por favor, não contem a ninguém!','Envergonhado, o dragão promete levá-los ao castelo em troca de moedas verdadeiras. Ele pede que o segredo fique entre vocês.',()=>{
-      nextLevel('NARRADOR','Pelo alto do castelo','O dragão transporta o herói e o Bardo até a torre. É hora de descer ao salão e encontrar Malacord.');
-     });
-    });
-   }
-  });
- }
- const box=(x,y,w,h,fill)=>{c.fillStyle=fill;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
- function sprite(rows,x,y,s=2,palette=colors){
-  for(let iy=0;iy<rows.length;iy++)for(let ix=0;ix<rows[iy].length;ix++){
-   const col=palette[rows[iy][ix]];if(col)box(x+ix*s,y+iy*s,s,s,col);
-  }
- }
- function clouds(x,y,size){
-  box(x+8,y,40*size,17*size,'#f0ffff');box(x,y+10*size,70*size,18*size,'#cff7ff');
-  box(x+18*size,y-7*size,35*size,20*size,'#ffffff');box(x+9*size,y+24*size,55*size,5*size,'#79d9ef');
- }
- function backdrop(){
-  const kind=levels[scene].kind;
-  const gradient=c.createLinearGradient(0,0,0,CH);
-  if(kind==='castle'){gradient.addColorStop(0,'#2a3259');gradient.addColorStop(1,'#97718b');}
-  else{gradient.addColorStop(0,'#00b1f9');gradient.addColorStop(.65,'#77dcf5');gradient.addColorStop(1,'#c4f7e3');}
-  c.fillStyle=gradient;c.fillRect(0,0,CW,CH);
-  if(kind!=='castle'){box(364,18,40,40,'#f5fce0');box(370,12,28,28,'#fffcdb');}
-  for(let i=0;i<10;i++){const x=((i*123-camera*.21)%(CW+150)+(CW+150))%(CW+150)-100;clouds(x,33+(i%4)*24,.6+(i%3)*.2);}
-  for(let i=0;i<12;i++){
-   const x=i*102-camera*.37;const h=kind==='mountain'?105:kind==='castle'?140:72;
-   c.fillStyle=kind==='castle'?'#50466b':kind==='mountain'?'#59aabf':'#62b9ca';
-   c.beginPath();c.moveTo(x-70,220);c.lineTo(x+15,220-h-(i%3)*12);c.lineTo(x+98,220);c.fill();
-  }
-  for(let i=0;i<18;i++){
-   const x=((i*99-camera*.58)%(CW+130)+(CW+130))%(CW+130)-60;
-   if(kind==='castle'){box(x,130,40,90,'#615574');box(x+9,109,23,25,'#83758e');}
-   else{box(x+15,167,8,56,'#765a45');box(x,143+(i%3)*5,43,29,'#208e65');box(x+8,129+(i%3)*5,26,30,kind==='mountain'?'#31a88a':'#45c883');}
-  }
- }
- function land(x,y,w,height=CH-y){
-  const sx=x-camera;if(sx>520||sx+w< -40)return;
-  const castle=levels[scene].kind==='castle';
-  box(sx,y,w,height,castle?'#64516e':'#5a3b49');box(sx,y,w,4,castle?'#d0b8ca':'#70d54c');box(sx,y+4,w,4,castle?'#9c8ba4':'#9ce757');
-  for(let i=0;i<w;i+=11){if(r01(x+i)>.2)box(sx+i,y+16+(i%7)*3,6,4,castle?'#8e7b93':'#a26c4f');if(r01(x+i+31)>.5)box(sx+i+3,y+35,4,4,'#c08b63');}
- }
- function fish(x,y){
-  box(x-46,y-16,80,44,'#3f97aa');box(x-24,y-26,47,19,'#6ac8d0');box(x-66,y-32,22,65,'#257489');
-  box(x+18,y-7,8,8,'#fff');box(x+21,y-4,4,4,'#192b3e');
-  for(let i=0;i<4;i++)box(x+i*10,y+25,6,10,'#e5e8db');
- }
- function decorations(){
-  const at=x=>x-camera;
-  if(scene===0&&player.x<140){const cabin=80-camera;box(cabin-73,143,66,69,'#9e6545');box(cabin-79,140,78,10,'#654152');box(cabin-61,160,27,34,'#e7b67b');box(cabin-52,169,9,25,'#54353f');box(cabin-22,162,10,12,'#c8f3ed');box(cabin-80,132,80,9,'#b97557');}
-  if(scene===0)for(let i=0;i<35;i++){const x=at(i*108+45);if(x<0||x>480)continue;
-   if(i%4===0){box(x,209,4,9,'#36a66a');box(x-3,206,10,5,'#f9d560');}
-   if(i%7===0){box(x,194,19,22,'#b17b38');box(x+4,199,10,10,'#f9d75a');}
-  }
-  if(scene===1){
-   for(const x of [180,415,640]){let t=at(x);box(t,146,41,72,'#e6dfd2');box(t+6,114,29,32,'#9ab6c9');box(t+9,107,23,13,'#f7ecd4');}
-   let t=at(350);box(t-30,196,75,22,'#e1e1e3');box(t-23,192,61,7,'#5fcaf2');box(t,176,8,19,'#fff');
-   t=at(1030);box(t-110,69,205,150,'#a7a0b9');box(t-87,43,53,175,'#8f89aa');box(t+40,42,53,176,'#8f89aa');
-   box(t-25,141,52,78,'#463b65');box(t-13,155,25,64,'#2c2449');
-   for(let i=0;i<6;i++)box(t-85+i*30,97,14,18,'#514c70');
-   sprite(bardIdle,at(1175),FLOOR-HERO_H);
-  }
-  if(scene===2){
-   for(let i=0;i<10;i++){const x=at(i*245+170);box(x,167,22,51,'#81707b');box(x-7,161,36,9,'#c9ae9a');}
-   if(!flags.fish)fish(at(485),163);
-   const x=at(2220);if(x>-140&&x<560){
-    box(x+45,85,14,130,'#765047');
-    for(let i=0;i<5;i++)box(x+i*17,59+(i%3)*8,47,37,i%2?'#3ab883':'#288e72');
-    for(let i=0;i<34;i++)box(x-14+i%10*13,201-Math.floor(i/10)*7,12,8,'#f8cc64');
-    if(dragonImage.complete&&dragonImage.naturalWidth)c.drawImage(dragonImage,Math.round(x-42),112,183,105);
-    else{box(x+9,166,98,39,'#367b98');box(x+26,145,50,26,'#62bda5');box(x+84,146,33,25,'#57a99e');}
-    box(x+5,201,29,12,'#b78060');box(x+9,205,21,7,'#fce0a4');
-   }
-  }
-  if(scene===3){
-   for(let i=0;i<18;i++){const x=at(i*152+100);box(x,66,19,155,'#6c577d');box(x-9,53,37,17,'#aa93ae');box(x+33,104,12,49,'#d36573');box(x+37,104,4,49,'#ffe0a8');}
-   if(!flags.potion){const x=at(850);box(x-15,189,38,30,'#9a653b');box(x-17,182,42,8,'#e0a05b');box(x,194,8,12,'#fdd74b');}
-   if(flags.explosion&&!flags.clone){const x=at(1680);sprite(heroIdle,x,FLOOR-HERO_H,2,{...colors,C:'#a6b4c6',H:'#b8d8dd',S:'#bad5df'});}
-   if(flags.clone){const x=at(2000);sprite(bardIdle,x,FLOOR-HERO_H);}
-   if(flags.rescue){const x=at(2240);box(x-33,129,81,89,'#5e516e');for(let i=0;i<9;i++)box(x-30+i*9,131,3,85,'#dec4cf');box(x+5,173,21,30,'#eeb8b9');box(x+8,163,15,11,'#ffd2a8');box(x+43,144,9,60,'#e4c28d');}
-  }
- }
- function draw(){
-  if(coinSlide){
-    coinSlide.draw();
-    const part=coinSlide.state;
-    root.querySelector('#luminous-zone').textContent='Desafio: Descida de Ouro';
-    root.querySelector('#luminous-hp').textContent='♥ '.repeat(part.hearts).trim();
-    root.querySelector('#luminous-distance').textContent=Math.min(100,Math.floor(part.elapsed/coinSlide.durationFrames*100))+'%';
-    return;
-  }
-  camera=clamp(player.x-145,0,levels[scene].length-CW+30);
-  backdrop();
-  if(intro){drawCabinCutscene();return;}
-  levels[scene].ground.forEach(g=>land(g[0],FLOOR,g[1]-g[0]));
-  levels[scene].platforms.forEach(p=>land(p[0],p[1],p[2],10));
-  decorations();
-  for(const m of mobs){if(!m.alive)continue;const x=m.x-camera;if(x>-35&&x<500)sprite(goblinIdle,x,FLOOR-24+Math.sin(ticks*.07+m.seed)*2,2);}
-  const px=player.x-camera;
-  if(scene===1&&flags.guards||scene===2||scene===3&&!flags.wedding){
-   const bx=bardX-camera,walking=Math.abs(player.x-bardX)>7;
-   sprite(walking&&Math.floor(ticks/9)%2?bardWalk:bardIdle,bx,bardY);
-   box(bx+4,bardY-9,22,3,'#f3d88c');
-  }
-  if(player.iframes<=0||Math.floor(player.iframes/6)%2===1){
-   const pose=player.swing>0?heroAttack:!player.ground?heroJump:Math.abs(player.vx)>.1?(Math.floor(ticks/6)%2?heroWalkA:heroWalkB):heroIdle;
-   c.save();if(player.face<0){c.translate(Math.round(px)+30,0);c.scale(-1,1);sprite(pose,0,player.y);}else sprite(pose,px,player.y);c.restore();
-  }
-  if(player.swing>0){
-   c.save();c.translate(Math.round(px)+(player.face>0?27:0),player.y+17);if(player.face<0)c.scale(-1,1);
-   box(0,-3,8,6,'#785c38');box(8,-8,4,16,'#d9a75a');box(12,-3,23,6,'#dbeeff');box(35,-2,7,4,'#fffbee');box(13,-8,22,2,'#b6f5f7');
-   c.restore();
-  }
-  box(7,7,116,19,'#233b57');box(10,10,player.hp*22,12,'#f17480');
-  c.font='bold 11px monospace';c.fillStyle='#fff';c.fillText('♥ '+player.hp+'    ✦',13,40);
-  if(scene===2&&flags.fishNotice&&!flags.fish){box(146,7,192,25,'#21445a');box(150,12,Math.max(0,player.fishHP)*60,10,'#65d3f4');c.fillStyle='white';c.fillText('PEIXE MONSTRUOSO',170,29);}
-  if(scene===3&&flags.rescue&&!flags.win){box(147,7,186,26,'#963f62');c.fillStyle='white';c.fillText('RESGATE: '+Math.ceil(player.timer)+'s',164,23);}
-  if(scene===3&&flags.explosion&&!flags.clone){for(let i=0;i<28;i++)box(r01(i*42+Math.floor(ticks/5))*CW,r01(i*23+Math.floor(ticks/9))*200,5,5,'#d9dfec88');}
-  root.querySelector('#luminous-zone').textContent=levels[scene].name;
-  root.querySelector('#luminous-hp').textContent='♥ '.repeat(player.hp).trim();
-  root.querySelector('#luminous-distance').textContent=Math.floor(clamp(player.x/levels[scene].length,0,1)*100)+'%';
- }
- function drawCabinCutscene(){
-   box(0,0,CW,CH,'#61465f');box(0,0,CW,33,'#423650');box(0,220,CW,50,'#876448');
-   for(let i=0;i<8;i++)box(i*66,218,3,52,'#684c3f');
-   box(52,44,133,118,'#9b745e');box(61,52,115,101,'#4b6170');
-   box(68,60,98,84,'#83d4ed');box(82,80,65,34,'#d8ffff');box(62,96,111,4,'#fff7dd');
-   box(308,87,43,96,'#80513e');box(298,81,63,12,'#e6ad66');box(319,97,21,13,'#f6e5a6');
-   box(105,178,269,12,'#ad7b53');box(118,190,14,46,'#604154');box(343,190,14,46,'#604154');
-   box(205,166,65,8,'#eedcb4');box(214,154,49,16,'#fff4d5');box(218,157,40,2,'#658494');
-   sprite(heroIdle,137,141,3);box(290,165,10,14,'#d8bd8f');box(294,153,4,11,'#ffcd71');
-   c.fillStyle='#fff3c5';c.font='bold 12px monospace';c.fillText('UMA CARTA DO BARDO...',120,45);
- }
- function damage(){
-  if(player.iframes>0)return;
-  player.hp--;player.iframes=65;
-  if(player.hp<=0){player.hp=5;player.x=Math.max(25,player.x-240);dialogue('NARRADOR','Você ainda não foi derrotado','O herói retorna a um ponto seguro e recupera o fôlego. Continue tentando!');}
+ function jump(){
+  if(mode==='slide'){slide.lane=0;return;}
+  if(menu||finished||paused)return;
+  p.jumpBuffer=.16;
  }
  function attack(){
-  if(paused||menu||coinSlide||player.cooldown>0)return;
-  player.swing=13;player.cooldown=28;
-  for(const m of mobs){if(!m.alive)continue;if(Math.abs(m.x-player.x)<48){m.hp--;if(m.hp<=0)m.alive=false;}}
-  if(scene===2&&!flags.fish&&Math.abs(485-player.x)<70){
-   player.fishHP--;
-   if(player.fishHP===1&&!flags.fishSong){flags.fishSong=true;dialogue('BARDO','O peixe está adormecendo!','Mesmo com a mão ferida, o Bardo toca uma canção. O peixe vai ficando sonolento e abre a boca. Mais um golpe para libertar a chave!');}
-   if(player.fishHP<=0){flags.fish=true;flags.key=true;dialogue('BARDO','A chave dentro do peixe!','O peixe dormiu e deixou cair a chave de dentro da boca. Agora podemos abrir a passagem para a Montanha Sagrada!');}
-  }
-  if(scene===3&&flags.explosion&&!flags.clone){player.peace=0;damage();dialogue('CÓPIA DE NÉVOA','Ele copia seus golpes!','Cada vez que você ataca, a cópia de névoa também ataca. Talvez seja melhor guardar a espada...');}
-  if(scene===3&&flags.rescue&&!flags.win&&Math.abs(2240-player.x)<85){
-   flags.win=true;
-   dialogue('HERÓI','Não precisamos machucá-la!','O herói arremessa o resto da espada nas cordas que prendem as grades. A princesa é libertada sem que ninguém perca um braço!',()=>{
-    dialogue('BARDO','Malacord foi preso!','O Bardo e o herói colocam Malacord no calabouço. Ao acordar, ele anuncia seu novo nome...',()=>{
-     dialogue('FIM DO CAPÍTULO 1','GANONDORF!','E assim acaba Herói em um mundo Luminoso — Capítulo 1. Obrigado por jogar!');});
-   });
+  if(mode==='slide'){slide.lane=1;return;}
+  if(menu||finished||paused||p.attackCooldown>0)return;
+  if(flags.rescue&&Math.abs(p.x-3480)<195){interact();return;}
+  p.swing=.30;p.attackCooldown=.48;attackHits=new Set();
+  if(zoneIndex===4&&flags.exploded&&!flags.cloneWon){
+   cloneCalm=0;damage(1,true);note('A CÓPIA REPETIU SEU GOLPE! Pare de atacar.',3);
   }
  }
- function events(dt){
-  if(scene===0&&player.x>3320)nextLevel('NARRADOR','O reino está próximo','Após uma longa viagem enfrentando monstros do perverso Malacord, o herói chega ao lugar onde todos conhecem seu rosto.');
-  if(scene===1){
-   if(player.x>790&&!flags.guards){flags.guards=true;dialogue('GUARDA','O verdadeiro herói está lá dentro!','Seu rosto é igual ao do herói de nossas estátuas, mas você é uma farsa! Os guardas se recusam a deixá-lo passar.',()=>{
-    dialogue('BARDO','A Montanha Sagrada','O Bardo sugere buscar o dragão que vive na Montanha Sagrada. Com ele, talvez possam entrar pelo alto do castelo.');});}
-   if(player.x>1190)nextLevel('BARDO','Precisamos de uma chave','Vamos subir a montanha. Mas a passagem está trancada... Espera. O QUE É ISSO NA MINHA MÃO?!');
-  }
-  if(scene===2){
-   if(player.x>275&&!flags.fishNotice){flags.fishNotice=true;dialogue('BARDO','O peixe está mordendo minha mão!','Derrote o peixe monstruoso. Vou tentar ajudá-lo com meu alaúde!');}
-   if(!flags.fish&&player.x>440)player.x=440;
-   if(player.x>2135&&!flags.dragon){
-    flags.dragon=true;
-    dialogue('DRAGÃO','Vocês serão devorados!','O dragão não quer ajudar e começa a cuspir fogo! O herói salta sobre a pilha de moedas e desliza montanha abaixo. Use SOMENTE ↑ e ↓ para desviar das bolas de fogo!',()=>{
-     startSlide();
+ function interact(){
+  if(menu||finished||paused)return;
+  if(zoneIndex===4&&flags.rescue&&!flags.win){
+   if(Math.abs(p.x-3480)<195){
+    flags.win=true;rescueTime=Math.max(0,rescueTime);
+    sequence(lore.finale,()=>{
+     finished=true;paused=true;try{localStorage.removeItem(SAVE);}catch{}
+     q('story3-complete').classList.remove('hidden');
     });
-   }
+   }else note('A gaiola está mais à frente. Corra!',2.4);
+  }else note('Procure algo importante pelo caminho.',1.4);
+ }
+ function damage(amount=1,shadow=false){
+  if(p.invul>0||menu||paused)return;
+  p.hp=clamp(p.hp-amount,0,MAX_HP);p.invul=1.3;
+  p.vx+=shadow?(p.face>0?-150:150):(-p.face*135);
+  fx.push({kind:'spark',x:p.x+22,y:p.y+20,life:1,max:1,color:'#ff7590'});
+  if(p.hp<=0){
+   p.hp=MAX_HP;p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=2.5;
+   if(zoneIndex===4&&flags.rescue)rescueTime=60;
+   note('Você se recuperou no último checkpoint.',4);save();
   }
-  if(scene===3){
-   if(player.x>390&&!flags.wedding){flags.wedding=true;dialogue('MALACORD','Eu vou me casar com a princesa!','O vilão, disfarçado de herói, está vestido para o casamento. O herói e o Bardo se separam para procurar a princesa.');}
-   if(player.x>800&&!flags.potion){flags.potion=true;dialogue('HERÓI','A espada flamejante','Em um baú estão o mapa do casamento e uma poção. O herói derrama o líquido sobre sua espada, que começa a arder em chamas!');}
-   if(player.x>1100&&!flags.princess){flags.princess=true;dialogue('POV DO BARDO','A princesa avisa','No calabouço, o Bardo encontra e solta a princesa. Ela grita: “Não é isso que o Malacord quer! Que ele derrame uma poção os caramba!”');}
-   if(player.x>1410&&!flags.explosion){flags.explosion=true;dialogue('NARRADOR','A ESPADA EXPLODE!','A espada flamejante pisca e explode, ferindo o herói. A névoa enche o salão. A princesa é acorrentada e surge uma cópia do herói feita de fumaça.');}
-   if(flags.explosion&&!flags.clone){
-    if(player.x>1580)player.x=1580;
-    player.peace+=dt;
-    if(player.peace>220){flags.clone=true;dialogue('NARRADOR','A cópia se desfez','O herói parou de atacar. Como a névoa copiava os seus ataques, ela simplesmente perdeu a forma e virou pó.');}
-   }
-   if(player.x>1940&&flags.clone&&!flags.bardo){flags.bardo=true;dialogue('BARDO','Toma esta, Malacord!','Mesmo com uma mão machucada, o Bardo acerta a cara do Malacord com o alaúde. O vilão voa e cai desacordado.');}
-   if(player.x>2130&&flags.bardo&&!flags.rescue){flags.rescue=true;player.timer=60;dialogue('HERÓI','UM MINUTO PARA SALVÁ-LA!','A chave está presa ao braço da princesa?! Não vamos arrancar o braço dela! As grades entrarão em chamas. Acerte as cordas da gaiola com X para soltá-las.');}
-   if(flags.rescue&&!flags.win){
-    player.timer-=dt/60;
-    if(player.timer<=0){player.timer=60;dialogue('NARRADOR','Tente de novo!','O herói afasta a gaiola das chamas. Você ganhou mais uma chance: aproxime-se das cordas e aperte X.');}
+ }
+ function markDefeated(m){
+  m.hp=0;defeated[zoneIndex].push(m.index);
+  for(let i=0;i<8;i++)fx.push({kind:'spark',x:m.x+10+Math.random()*38,y:m.y+Math.random()*30,life:.5+Math.random()*.6,max:1,color:'#ffe19c'});
+ }
+ function hitTest(){
+  if(p.swing<.08||p.swing>.245)return;
+  const box=swordBox(p,123);
+  for(const mob of enemies){
+   if(mob.hp<=0||attackHits.has(mob.index)||!overlaps(box,bodyBox(mob)))continue;
+   attackHits.add(mob.index);mob.hp--;mob.stun=.3;mob.x+=p.face*38;
+   fx.push({kind:'spark',x:mob.x+20,y:mob.y+24,life:.8,max:.8,color:'#f8eab1'});
+   if(mob.hp<=0)markDefeated(mob);
+  }
+  if(zoneIndex===3&&!flags.fishWon&&!attackHits.has('fish')){
+   const hit={x:270,y:FLOOR-145,w:208,h:128};
+   if(overlaps(box,hit)&&fishInvul<=0){
+    attackHits.add('fish');fishHP--;fishInvul=.26;
+    fx.push({kind:'spark',x:345,y:FLOOR-80,life:1,max:1,color:'#d4faff'});
+    if(fishHP<=4&&!flags.fishSong){flags.fishSong=true;sequence(lore.fishSong);}
+    if(fishHP<=0){flags.fishWon=true;flags.key=true;sequence(lore.fishWin);save();}
    }
   }
  }
- function step(dt){
-  if(paused||menu)return;
-  if(coinSlide){ticks+=dt;coinSlide.update(dt,key.up,key.down);return;}
-  ticks+=dt;player.swing=Math.max(0,player.swing-dt);player.cooldown=Math.max(0,player.cooldown-dt);player.iframes=Math.max(0,player.iframes-dt);
-  const speed=((key.right?1:0)-(key.left?1:0))*2.7*dt;
-  if(speed)player.face=Math.sign(speed);
-  player.vx=speed;player.x=clamp(player.x+speed,0,levels[scene].length);
-  if(scene===1||scene===2||scene===3){
-   const target=player.x-player.face*46;
-   bardX+=clamp(target-bardX,-2.2*dt,2.2*dt);
-   bardY+=(player.y-bardY)*Math.min(1,.17*dt);
-  }
-  for(const m of mobs){
-   if(!m.alive)continue;
-   const diff=player.x-m.x;
-   if(Math.abs(diff)<125)m.aware=true;else if(Math.abs(diff)>180)m.aware=false;
-   if(m.aware)m.dir=Math.sign(diff)||m.dir;else if(Math.abs(m.x-m.home)>36)m.dir=Math.sign(m.home-m.x);
-   const candidate=m.x+m.dir*(m.aware?1.05:.42)*dt;
-   if(levels[scene].ground.some(([a,b])=>candidate>=a+5&&candidate<=b-18))m.x=candidate;else m.dir*=-1;
-  }
-  const oldBottom=player.y+HERO_H;
-  player.vy=Math.min(10,player.vy+.37*dt);player.y+=player.vy*dt;player.ground=false;
-  for(const [a,b] of levels[scene].ground){
-   if(player.x+12>a&&player.x+7<b&&player.vy>=0&&oldBottom<=FLOOR+3&&player.y+HERO_H>=FLOOR){player.y=FLOOR-HERO_H;player.vy=0;player.ground=true;}
-  }
-  for(const [x,y,w] of levels[scene].platforms){
-   if(player.x+12>x&&player.x<x+w&&player.vy>=0&&oldBottom<=y+3&&player.y+HERO_H>=y){player.y=y-HERO_H;player.vy=0;player.ground=true;}
-  }
-  if(player.y>CH+35){damage();player.x=Math.max(20,player.x-175);player.y=FLOOR-HERO_H;player.vy=0;}
-  for(const mob of mobs)if(mob.alive&&Math.abs(mob.x-player.x)<18&&Math.abs((FLOOR-HERO_H)-player.y)<28)damage();
-  if(scene===2&&flags.fishNotice&&!flags.fish&&!flags.fishSong && Math.abs(485-player.x)<65 && Math.floor(ticks)%105<2)damage();
-  events(dt);
-  if(ticks-lastSave>330)saveGame();
+ function transition(index,text){
+  const carryHP=Math.max(4,p.hp);setZone(index);p.hp=carryHP;
+  sequence([['NARRADOR',chapter[index].name,text]],()=>{
+   if(index===4&&!flags.castleIntro){flags.castleIntro=true;sequence(lore.castle);}
+  });
  }
- function loop(t){
-  if(dead)return;
-  const dt=clamp((t-(last||t))/16.667,.35,2);last=t;
-  step(dt);draw();raf=requestAnimationFrame(loop);
+ function startDragonSlide(){
+  mode='slide';paused=false;slide={progress:0,hearts:3,lane:0,hazards:[],spawn:.3,invul:0};
+  q('story3-goal').textContent=objective();
  }
- function jump(){if(!coinSlide&&!paused&&!menu&&player.ground){player.ground=false;player.vy=-8.7;}}
+ function updateSlide(dt){
+  slide.progress+=dt/20;
+  slide.spawn-=dt;slide.invul=Math.max(0,slide.invul-dt);
+  if(slide.spawn<=0){
+   slide.spawn=1.15+Math.random()*.45;
+   slide.hazards.push({x:W+40,y:250+(Math.random()<.5?0:110),speed:310+slide.progress*130});
+  }
+  for(const a of slide.hazards){
+   a.x-=a.speed*dt;
+   if(a.x<240&&a.x>135&&Math.abs(a.y-(250+slide.lane*110))<35&&!a.hit&&slide.invul===0){
+    a.hit=true;slide.hearts--;slide.invul=1.2;
+    if(slide.hearts<=0){
+     slide.progress=0;slide.hearts=3;slide.hazards=[];slide.spawn=2;
+     note('O dragão alcançou vocês! A descida recomeça.',3);
+    }
+   }
+  }
+  slide.hazards=slide.hazards.filter(a=>a.x> -55&&!a.hit);
+  if(slide.progress>=1){
+   slide.progress=1;mode='world';paused=true;flags.dragonComplete=true;
+   sequence(lore.dragon.slice(2),()=>transition(4,'O dragão os deixou sobre a torre. O castelo está silencioso demais.'));
+  }
+ }
+ function updateWorld(dt){
+  if(p.attackCooldown>0)p.attackCooldown=Math.max(0,p.attackCooldown-dt);
+  if(p.swing>0)p.swing=Math.max(0,p.swing-dt);
+  p.invul=Math.max(0,p.invul-dt);fishInvul=Math.max(0,fishInvul-dt);
+  p.coyote=p.ground ? .13 : Math.max(0,p.coyote-dt);
+  p.jumpBuffer=Math.max(0,p.jumpBuffer-dt);
+  if(p.jumpBuffer>0&&p.coyote>0){
+   p.vy=-680;p.ground=false;p.coyote=0;p.jumpBuffer=0;
+   fx.push({kind:'dust',x:p.x+25,y:p.y+70,life:.8,max:.8});
+  }
+  const direction=(keys.right?1:0)-(keys.left?1:0);
+  const target=direction*260;
+  p.vx+=(target-p.vx)*Math.min(1,dt*(p.ground?15:10));
+  if(direction)p.face=direction;
+  p.x=clamp(p.x+p.vx*dt,0,zone().length-p.w);
+  const before=p.y+p.h;
+  p.vy=Math.min(950,p.vy+1740*dt);
+  p.y+=p.vy*dt;p.ground=false;
+  if(p.vy>=0){
+   const surfaces=[...zone().platforms.map(v=>[v[0],v[0]+v[2],v[1]]),
+    ...zone().ground.map(v=>[v[0],v[1],FLOOR])].sort((a,b)=>a[2]-b[2]);
+   const feet=p.y+p.h;
+   for(const [left,right,top] of surfaces){
+    if(p.x+p.w-10>left&&p.x+10<right&&before<=top+14&&feet>=top){
+     p.y=top-p.h;p.vy=0;p.ground=true;break;
+    }
+   }
+  }
+  if(p.y>HEIGHT+100){
+   damage(1);p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=Math.max(p.invul,1.5);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
+  }
+  hitTest();
+  for(const m of enemies){
+   if(m.hp<=0)continue;
+   m.stun=Math.max(0,m.stun-dt);m.ai+=dt;
+   const delta=p.x-m.x;
+   if(m.stun===0&&Math.abs(delta)<230)m.dir=Math.sign(delta)||m.dir;
+   if(m.stun===0)m.x+=m.dir*(m.kind==='goblin'?46:27)*dt;
+   m.x=clamp(m.x,m.home-66,m.home+66);
+   m.y=FLOOR-m.h;
+   if(Math.abs(m.x-m.home)>=65)m.dir*=-1;
+   if(overlaps(bodyBox(p),bodyBox(m)))damage(1);
+  }
+  if(zoneIndex===3&&!flags.fishWon&&overlaps(bodyBox(p),{x:294,y:FLOOR-130,w:155,h:120}))damage(1);
+  for(const f of fx)f.life-=dt*1.7;fx=fx.filter(f=>f.life>0).slice(-90);
+  const stops=zone().checkpoints;
+  for(const at of stops)if(p.x>at&&checkpoint<at){checkpoint=at;note('Checkpoint ativado!',2);save();}
+  if(zoneIndex===0&&p.x>=zone().length-110)transition(1,'A estrada termina, mas a floresta de Malacord ainda separa o herói de casa.');
+  else if(zoneIndex===1&&p.x>=zone().length-110)transition(2,'Depois de derrotar os monstros, o herói avista as estátuas e fontes de sua vila.');
+  else if(zoneIndex===2){
+   if(p.x>1530&&!flags.guards){flags.guards=true;sequence(lore.arrival);}
+   if(p.x>2030&&flags.guards)transition(3,'A passagem pela montanha está trancada. O Bardo avista uma criatura estranha no caminho.');
+  }else if(zoneIndex===3){
+   if(!flags.fishWon&&p.x>160&&!flags.fishTriggered){flags.fishTriggered=true;sequence(lore.fish);}
+   if(!flags.fishWon&&p.x>490){p.x=490;p.vx=0;}
+   if(p.x>3730&&!flags.dragon){
+    flags.dragon=true;
+    sequence(lore.dragon.slice(0,2),startDragonSlide);
+   }
+  }else if(zoneIndex===4){
+   if(p.x>1030&&!flags.potion){flags.potion=true;sequence(lore.potion);}
+   if(p.x>1900&&!flags.princess){flags.princess=true;sequence(lore.princess);}
+   if(p.x>2600&&!flags.exploded){flags.exploded=true;cloneCalm=0;sequence(lore.explosion);}
+   if(flags.exploded&&!flags.cloneWon){
+    p.x=Math.min(p.x,2910);
+    if(p.invul<=0&&Math.abs(p.x-2760)<105&&Math.abs(p.vx)>130)damage(1);
+    if(p.swing<=0)cloneCalm+=dt;else cloneCalm=0;
+    if(cloneCalm>5.5){
+     flags.cloneWon=true;sequence(lore.cloneWin,()=>{
+      flags.rescue=true;rescueTime=60;p.x=Math.max(p.x,2915);checkpoint=3000;save();
+     });
+    }
+   }else if(flags.rescue&&!flags.win){
+    rescueTime-=dt;
+    if(rescueTime<=0){
+     rescueTime=60;p.x=3030;p.y=FLOOR-p.h;p.vx=0;
+     note('O fogo cresceu! Volte depressa até a princesa.',4);
+    }
+   }
+  }
+  saveAccumulator+=dt;
+  if(saveAccumulator>5){saveAccumulator=0;save();}
+ }
+ function draw(){
+  camera=clamp(p.x-W*.36,0,Math.max(0,zone().length-W));
+  if(mode==='slide'){drawSlide(ctx,elapsed*1000,slide.progress,slide.lane,slide.hazards);}
+  else{drawWorld(ctx,zone(),camera,elapsed*1000,p,enemies, {...flags,fishHP},fx);}
+  if(!menu&&!finished&&zoneIndex===3&&!flags.fishWon&&mode==='world'){
+   ctx.fillStyle='#21334dd0';ctx.fillRect(W/2-143,14,286,25);
+   ctx.fillStyle='#e4778f';ctx.fillRect(W/2-139,18,278*clamp(fishHP/8,0,1),17);
+   ctx.textAlign='center';ctx.font='bold 13px monospace';ctx.fillStyle='#ffffff';
+   ctx.fillText('O PEIXE MONSTRUOSO',W/2,35);
+  }
+  if(flags.rescue&&!flags.win&&zoneIndex===4){
+   ctx.fillStyle='#552c42d9';ctx.fillRect(W/2-110,13,220,49);
+   ctx.textAlign='center';ctx.font='bold 29px monospace';ctx.fillStyle='#ffddc3';
+   const secs=Math.max(0,Math.ceil(rescueTime));
+   const clock=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
+   ctx.fillText(clock,W/2,47);
+  }
+  if(flags.exploded&&!flags.cloneWon&&zoneIndex===4&&!menu){
+   ctx.fillStyle='#d4e6f7';ctx.font='bold 15px monospace';ctx.textAlign='center';
+   ctx.fillText('Não ataque. Deixe a névoa imitar o silêncio.',W/2,76);
+  }
+  updateHUD();
+ }
+ function frame(now){
+  if(!root.isConnected)return;
+  const dt=last?clamp((now-last)/1000,0,.033):0;last=now;
+  elapsed+=dt;
+  if(!paused&&!menu&&!finished){
+   if(mode==='slide')updateSlide(dt);else updateWorld(dt);
+  }
+  if(noticeTime>0)noticeTime=Math.max(0,noticeTime-dt);
+  draw();raf=requestAnimationFrame(frame);
+ }
  function onKeyDown(e){
-  if(dead||e.target?.matches('input, textarea, select'))return;
+  if(e.target?.matches?.('input,textarea,select'))return;
   const k=e.key.toLowerCase();
-  if(coinSlide){if(['arrowup','w'].includes(k))key.up=true;if(['arrowdown','s'].includes(k))key.down=true;
-   if(['arrowup','arrowdown','w','s','arrowleft','arrowright',' '].includes(k))e.preventDefault();return;}
-  if(['arrowleft','arrowright','arrowup','a','d','w',' ','x','z'].includes(k))e.preventDefault();
-  if(k==='arrowleft'||k==='a')key.left=true;
-  if(k==='arrowright'||k==='d')key.right=true;
-  if(!e.repeat&&(k==='arrowup'||k==='w'||k===' '))jump();
-  if(!e.repeat&&(k==='x'||k==='z'))attack();
-  if(k==='enter'&&!modal.classList.contains('hidden'))resume();
+  if(['arrowleft','arrowright','arrowup','arrowdown',' ','a','d','w','s','x','j','e','p','enter'].includes(k))e.preventDefault();
+  if(!q('story3-dialog').classList.contains('hidden')){
+   if(!e.repeat&&['enter',' ','e'].includes(k))advance();return;
+  }
+  if(menu){if(k==='enter')continueGame();return;}
+  if(finished)return;
+  if(k==='p'&&!e.repeat){paused=!paused;note(paused?'Pausado. Pressione P para continuar.':'De volta à aventura.',3);return;}
+  if(k==='a'||k==='arrowleft')keys.left=true;
+  if(k==='d'||k==='arrowright')keys.right=true;
+  if(k==='w'||k==='arrowup'){keys.up=true;if(!e.repeat)jump();}
+  if(k==='s'||k==='arrowdown'){keys.down=true;if(mode==='slide')slide.lane=1;}
+  if(k===' '&&!e.repeat)jump();
+  if(['x','j'].includes(k)&&!e.repeat)attack();
+  if(k==='e'&&!e.repeat)interact();
  }
- function onKeyUp(e){const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')key.left=false;if(k==='arrowright'||k==='d')key.right=false;if(k==='arrowup'||k==='w')key.up=false;if(k==='arrowdown'||k==='s')key.down=false;}
- function onBlur(){key.left=key.right=key.up=key.down=false;}
+ function onKeyUp(e){
+  const k=e.key.toLowerCase();
+  if(k==='a'||k==='arrowleft')keys.left=false;
+  if(k==='d'||k==='arrowright')keys.right=false;
+  if(k==='w'||k==='arrowup')keys.up=false;
+  if(k==='s'||k==='arrowdown')keys.down=false;
+ }
  function onClick(e){
-  if(e.target.closest('[data-story-new]')){newGame();return;}
-  if(e.target.closest('[data-story-continue]')){continueGame();return;}
-  if(e.target.closest('[data-story-controls]')){root.querySelector('#luminous-menu').classList.add('hidden');menu=false;dialogue('COMO JOGAR','Controles','A / D ou as setas movem o herói. Espaço pula, X ataca ou interage. Na montanha, o Bardo ajuda. O progresso é salvo automaticamente.',()=>{menu=true;root.querySelector('#luminous-menu').classList.remove('hidden');});return;}
-  if(e.target.closest('[data-story-next-new]')){resume();return;}
-  if(e.target.closest('[data-story-exit-new]')){destroy();onExit();return;}
-  const action=e.target.closest('[data-story-act]')?.dataset.storyAct;
-  if(!coinSlide&&action==='jump')jump();if(!coinSlide&&action==='attack')attack();
+  const action=e.target.closest?.('[data-story3]')?.dataset.story3;
+  if(!action)return;
+  if(action==='exit'){onExit();return;}
+  if(action==='new'){try{localStorage.removeItem(SAVE);}catch{}reset();}
+  if(action==='continue')continueGame();
+  if(action==='help')showHelp();
+  if(action==='next')advance();
+  if(action==='jump')jump();
+  if(action==='attack')attack();
+  if(action==='interact')interact();
  }
- function onHold(e){const btn=e.target.closest('[data-story-hold]');if(!btn)return;e.preventDefault();key[btn.dataset.storyHold]=true;btn.setPointerCapture?.(e.pointerId);}
- function onRelease(e){const btn=e.target.closest('[data-story-hold]');if(btn)key[btn.dataset.storyHold]=false;}
- root.addEventListener('click',onClick);root.addEventListener('pointerdown',onHold);root.addEventListener('pointerup',onRelease);root.addEventListener('pointercancel',onRelease);
- window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);window.addEventListener('blur',onBlur);
- function destroy(){
-  saveGame();dead=true;cancelAnimationFrame(raf);root.removeEventListener('click',onClick);
-  root.removeEventListener('pointerdown',onHold);root.removeEventListener('pointerup',onRelease);root.removeEventListener('pointercancel',onRelease);
-  window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);window.removeEventListener('blur',onBlur);
-  root.innerHTML='';
+ const pointerKeys=new Map();
+ function onPointerDown(e){
+  const b=e.target.closest?.('[data-hold]');if(!b)return;
+  e.preventDefault();const k=b.dataset.hold;keys[k]=true;pointerKeys.set(e.pointerId,k);
+  b.setPointerCapture?.(e.pointerId);
  }
- initActors();objective();
- const canContinue=readSave(),btn=root.querySelector('[data-story-continue]');
- if(btn){btn.disabled=!canContinue;btn.title=canContinue?'Continuar da última fase':'Nenhum save encontrado';}
- raf=requestAnimationFrame(loop);
- return destroy;
+ function onPointerUp(e){const k=pointerKeys.get(e.pointerId);if(k){keys[k]=false;pointerKeys.delete(e.pointerId);}}
+ function onVisibility(){if(document.hidden){keys.left=keys.right=keys.up=keys.down=false;last=0;}}
+ root.addEventListener('click',onClick);
+ root.addEventListener('pointerdown',onPointerDown);
+ root.addEventListener('pointerup',onPointerUp);
+ root.addEventListener('pointercancel',onPointerUp);
+ document.addEventListener('keydown',onKeyDown);
+ document.addEventListener('keyup',onKeyUp);
+ document.addEventListener('visibilitychange',onVisibility);
+ if(readSave()){q('story3-menu').querySelector('[data-story3="continue"]').textContent='▶ Continuar do último checkpoint';}
+ else q('story3-menu').querySelector('[data-story3="continue"]').textContent='▶ Começar aventura';
+ spawnMobs();
+ raf=requestAnimationFrame(frame);
+ return ()=>{
+  cancelAnimationFrame(raf);keys.left=keys.right=keys.up=keys.down=false;
+  root.removeEventListener('click',onClick);
+  root.removeEventListener('pointerdown',onPointerDown);
+  root.removeEventListener('pointerup',onPointerUp);
+  root.removeEventListener('pointercancel',onPointerUp);
+  document.removeEventListener('keydown',onKeyDown);
+  document.removeEventListener('keyup',onKeyUp);
+  document.removeEventListener('visibilitychange',onVisibility);
+ };
 }

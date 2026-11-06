@@ -1,0 +1,63 @@
+/* Liner Story 3 — tema exclusivo na área story-game-content (fora do #game-content). */
+.story3{width:100%;max-width:1200px;margin:0 auto;color:#f4f1eb;font-family:'Space Grotesk',sans-serif}
+.story3 *{box-sizing:border-box}
+.story3-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:14px 18px;background:linear-gradient(125deg,#182d45,#2b2947);border:1px solid #4f6076;border-radius:14px;box-shadow:0 10px 20px #0209153c}
+.story3-overline{display:block;color:#b4e4d7;font-size:11px;font-weight:800;letter-spacing:2.1px;text-transform:uppercase;margin-bottom:7px}
+.story3-top h2{margin:0;font-size:clamp(17px,2vw,27px);letter-spacing:.9px;font-weight:900;line-height:1.1;color:#fcf6ea}
+.story3-top h2 em{color:#ffcb80;font-style:normal}
+.story3 button{border:1px solid #697d9d;color:#fff2e5;background:linear-gradient(#4a5a7c,#2d3956);border-radius:9px;font-weight:800;letter-spacing:.2px;padding:11px 17px;cursor:pointer;box-shadow:0 4px 0 #151e34;min-height:43px;touch-action:manipulation}
+.story3 button:hover{filter:brightness(1.15);border-color:#fcde9a}
+.story3 button:active{transform:translateY(3px);box-shadow:0 1px 0 #151e34}
+.story3-back{white-space:nowrap}
+.story3-status{display:flex;align-items:center;gap:14px;justify-content:space-between;background:#101e34;border:1px solid #34536a;border-bottom:none;border-radius:12px 12px 0 0;padding:9px 16px;font-size:13px;min-height:42px}
+#story3-area{color:#dfe8ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#story3-hearts{color:#f67c94;font-size:17px;text-shadow:0 0 10px #d84f6d5e;white-space:nowrap;letter-spacing:1px}
+#story3-percent{font-variant-numeric:tabular-nums;color:#ffd18b;font-weight:900}
+.story3-status-end{font-size:10px;color:#a4c4bf;white-space:nowrap}
+.story3-objective{background:#293c59;color:#d9e7ef;padding:10px 16px;font-size:13px;font-weight:700;min-height:42px;border-left:1px solid #34536a;border-right:1px solid #34536a}
+.story3-screen{width:100%;position:relative;aspect-ratio:16/9;overflow:hidden;background:#192946;border:4px solid #3d5771;box-shadow:0 10px 40px #02081682,0 0 0 1px #15283a;border-radius:0 0 10px 10px}
+#story3-canvas{display:block;width:100%;height:100%;object-fit:fill;image-rendering:auto;background:#79bbcd}
+.story3-menu,.story3-dialog,.story3-complete{position:absolute;z-index:6;inset:0}
+.story3-menu,.story3-complete{display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,#10152dc9,#1125409c)}
+.story3-panel{width:min(92%,550px);max-height:96%;overflow:auto;text-align:center;background:linear-gradient(165deg,#192b43f5,#303151f3);border:3px solid #dfbc84;box-shadow:0 0 0 6px #101d2a,0 14px 55px #050811b8,inset 0 0 0 2px #77718b;border-radius:5px;padding:25px 28px}
+.story3-panel small{font-size:11px;font-weight:800;letter-spacing:2.7px;color:#a3e5e8}
+.story3-panel h3{margin:12px 0;font-weight:900;line-height:1.08;font-size:clamp(28px,4.3vw,55px);letter-spacing:-1.5px;color:#f0f3e8;text-shadow:4px 5px 0 #121f38}
+.story3-panel h3 span{color:#ffd58a}
+.story3-panel p{line-height:1.55;color:#e4d7d0;font-size:14px}
+.story3-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:16px 0}
+.story3-actions button:first-child,.story3-complete button:first-of-type,.story3-dialog button{background:linear-gradient(#ffd68f,#d69365);color:#342b44;border-color:#ffe8be;box-shadow:0 4px 0 #85514e}
+.story3-small{font-size:11px!important;color:#9fb2c6!important}
+.story3-dialog{inset:auto 4% 3%;max-width:92%;width:auto;margin:auto;min-height:156px;background:linear-gradient(120deg,#16243ef7,#2e3258f7);padding:15px 20px 12px;border:3px solid #efc28e;box-shadow:0 0 0 4px #102137,0 8px 40px #030914c5;border-radius:6px;backdrop-filter:blur(7px)}
+.story3-dialog small{color:#94f3d6;font-weight:900;letter-spacing:2px;font-size:12px}
+.story3-dialog h3{margin:5px 0;color:#ffe4a0;font-size:clamp(16px,2.1vw,26px)}
+.story3-dialog p{margin:5px 0 12px;line-height:1.45;color:#f1f0ec;font-size:clamp(12px,1.45vw,17px)}
+.story3-dialog-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.story3-dialog-bottom span{font-size:12px;color:#b6c6dc}
+.story3-touch{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-top:16px}
+.story3-direction,.story3-interact{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+.story3-direction button{font-size:23px;padding:8px 22px}
+.story3-interact button:nth-child(2){border-color:#ffcd8f;background:linear-gradient(#a24f62,#702c50)}
+.story3-interact button:last-child{background:linear-gradient(#408b8f,#28566b)}
+.story3-help{margin:14px 0 6px;font-size:12px;color:#a4bad1;line-height:1.5}
+.story3 .hidden{display:none!important}
+@media(max-width:720px){
+ .story3-top{padding:10px}
+ .story3-status{gap:5px;padding:8px 6px;font-size:10px}
+ .story3-status-end{display:none}
+ #story3-hearts{font-size:12px;letter-spacing:0}
+ .story3-objective{font-size:11px;padding:9px}
+ .story3-panel{padding:10px 12px}
+ .story3-panel h3{font-size:26px;margin:6px}
+ .story3-panel p{font-size:10px;line-height:1.25;margin:8px}
+ .story3-panel small{font-size:8px}
+ .story3-actions{margin:7px;gap:6px}
+ .story3-actions button{font-size:10px;padding:6px 9px;min-height:33px}
+ .story3-dialog{inset:auto 2% 2%;padding:7px 9px;min-height:0;border-width:2px}
+ .story3-dialog p{font-size:10px;margin:3px 0;line-height:1.25}
+ .story3-dialog h3{font-size:13px}
+ .story3-dialog-bottom button{min-height:27px;font-size:10px;padding:4px 7px}
+ .story3-touch{gap:8px;flex-direction:row;margin-top:10px}
+ .story3-direction button{padding:7px 12px}
+ .story3-interact button{font-size:11px;padding:7px 8px}
+ .story3-help{font-size:10px}
+}
