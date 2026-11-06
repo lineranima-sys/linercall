@@ -1,24 +1,6 @@
+import {loadShooterMap,shooterBlocked,shooterElevation,shooterCell} from './shooter-maps.js';
 // SHOOT’E R! — FPS retro em raycasting (visão em primeira pessoa).
 // Treino contra drones 3D estilizados. Não é PvP online e não envolve violência gráfica.
-const LEVEL=[
-'111111111111111111',
-'100000000000000001',
-'101100000110000001',
-'100100000010000001',
-'100000000000000001',
-'100000110000000001',
-'100000110000000001',
-'100000000000000001',
-'100000000000000001',
-'100011000001100001',
-'100000000001000001',
-'100000000000000001',
-'100000000000000001',
-'100000110000110001',
-'100000000000000001',
-'100000000000000001',
-'111111111111111111'
-];
 const TAU=Math.PI*2;
 const FOV=1.18;
 const DEG=Math.PI/180;
@@ -27,7 +9,8 @@ const DURATION=85;
 const TARGET=12;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 function angleDelta(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b));}
-function wall(x,y){return LEVEL[Math.floor(y)]?.[Math.floor(x)]!=='0';}
+let ACTIVE_MAP=loadShooterMap('undefined');
+function wall(x,y){return shooterBlocked(ACTIVE_MAP,x,y);}
 function canStand(x,y,r=.19){
  return !wall(x-r,y-r)&&!wall(x+r,y-r)&&!wall(x-r,y+r)&&!wall(x+r,y+r);
 }
@@ -42,7 +25,8 @@ function castRay(x,y,angle){
  for(let i=0;i<32;i++){
   if(sideX<sideY){mapX+=stepX;dist=sideX;sideX+=deltaX;side=0;}
   else{mapY+=stepY;dist=sideY;sideY+=deltaY;side=1;}
-  if(wall(mapX+.5,mapY+.5))break;
+  if(mapX<0||mapY<0||mapX>=ACTIVE_MAP.width||mapY>=ACTIVE_MAP.height){dist=25;break;}
+  if(shooterCell(ACTIVE_MAP,mapX,mapY)==='1')break;
  }
  return {dist:clamp(dist,.06,25),side,hitX:x+dx*dist,hitY:y+dy*dist};
 }
@@ -52,17 +36,18 @@ const GUNS=[
  {name:'Fuzil de precisão',mag:5,ammo:5,reserve:30,delay:900,reload:2400,damage:125,reach:22,color:'#ffdd80'},
  {name:'Faca',mag:Infinity,ammo:Infinity,reserve:Infinity,delay:520,reload:0,damage:68,reach:1.25,color:'#e1eaf2'}
 ];
-export function mountShooter({root,user,addCoins}){
+export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo',onPose=null,onFire=null,getOpponents=null}){
+ ACTIVE_MAP=loadShooterMap(mapId);
  const guns=GUNS.map(g=>({...g}));
  const el=document.createElement('section');
  el.className='arcade-game shooter-game shooter-fps';
- el.innerHTML='<span class="eyebrow">FPS RETRÔ · ARENA DE TREINAMENTO</span>'+
+ el.innerHTML='<span class="eyebrow">FPS RETRÔ · CENÁRIOS EXPLORÁVEIS</span>'+
  '<h2 class="shooter-logo">SHOOT<span>’E</span> R!</h2>'+
- '<p>Agora em <b>primeira pessoa</b>: movimentação, mira com mouse, paredes em 3D, recarga e fuzil com zoom. Combate contra robôs de treino (solo).</p>'+
+ '<p><b>Mapa: '+ACTIVE_MAP.name+'</b> · '+ACTIVE_MAP.subtitle+'. Entre nas casas pelas portas, explore os arredores e suba pelos degraus. Limite invisível no exterior.</p>'+
  '<div class="shooter-hud"><span id="shoot-hp">❤️ 100 HP</span><span id="shoot-weapon">Pistola</span><span id="shoot-score">0/12</span><span id="shoot-timer">85 s</span></div>'+
  '<div class="shoot-fps-screen"><canvas id="shoot-canvas" width="900" height="520" tabindex="0" aria-label="Visão em primeira pessoa do SHOOT’E R!"></canvas>'+
  '<div class="shoot-fps-paused" id="shoot-overlay"><b>SHOOT’E R!</b><span>FPS EM PRIMEIRA PESSOA</span><small>Clique em Iniciar para controlar o personagem.</small></div></div>'+
- '<div class="shooter-keys"><b>WASD</b> mover · <b>Mouse</b> olhar · <b>Esquerdo</b> atirar · <b>Direito</b> mira do fuzil · <b>1–4</b> armas · <b>R</b> recarregar · <b>Esc</b> solta mouse</div>'+
+ '<div class="shooter-keys"><b>WASD</b> mover · <b>Mouse</b> olhar · <b>Esquerdo</b> atirar · <b>Direito</b> mira do fuzil · <b>1–4</b> armas · <b>R</b> recarregar · <b>Esc</b> solta mouse · <b>PgUp/PgDn</b> olhar vertical</div>'+
  '<p id="shoot-message" class="arcade-note">Elimine 12 drones antes do fim do tempo para ganhar 45 LCoins (uma vez por dia).</p>'+
  '<div class="shooter-actions"><button type="button" class="btn btn-primary" data-shoot-start>▶ Iniciar partida</button>'+
  '<button type="button" class="btn" data-shoot-reload>Recarregar (R)</button>'+
@@ -72,7 +57,8 @@ export function mountShooter({root,user,addCoins}){
  root.replaceChildren(el);
  const $=s=>el.querySelector(s),canvas=$('#shoot-canvas'),ctx=canvas.getContext('2d',{alpha:false}),hud=$('#shoot-weapon'),message=$('#shoot-message'),overlay=$('#shoot-overlay');
  const W=canvas.width,H=canvas.height;
- let px=9,py=8,look=0,kills=0,life=100,pressed=new Set(),enemies=[],particles=[];
+ let px=ACTIVE_MAP.spawn[0],py=ACTIVE_MAP.spawn[1],look=0,pitch=0,kills=0,life=100,pressed=new Set(),enemies=[],particles=[];
+ let lastPosePublish=0;
  let playing=false,done=false,shooting=false,scope=false,shotAt=-1e4,flashAt=0,hitAt=0,spawnAt=0,reloadEnds=0;
  let current=0,startTime=0,lastFrame=0,raf=0,dragX=null,frame=0,rewarded=false;
  const day=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -88,7 +74,7 @@ export function mountShooter({root,user,addCoins}){
  }
  function start(){
   if(raf)cancelAnimationFrame(raf);
-  px=9;py=8;look=-Math.PI/2;life=100;kills=0;playing=true;done=false;shooting=false;scope=false;
+  px=ACTIVE_MAP.spawn[0];py=ACTIVE_MAP.spawn[1];look=-Math.PI/2;pitch=0;life=100;kills=0;playing=true;done=false;shooting=false;scope=false;
   startTime=performance.now();lastFrame=startTime;spawnAt=startTime-800;shotAt=-1e4;flashAt=0;hitAt=0;
   enemies=[];particles=[];reloadEnds=0;current=0;pressed.clear();
   guns.forEach((g,i)=>{g.ammo=GUNS[i].ammo;g.reserve=GUNS[i].reserve;});
@@ -100,10 +86,10 @@ export function mountShooter({root,user,addCoins}){
   raf=requestAnimationFrame(tick);
  }
  function spawn(){
-  if(enemies.length>=8)return;
+  if(mode==='multi'||enemies.length>=8)return;
   const spots=[];
-  for(let row=1;row<LEVEL.length-1;row++)
-   for(let col=1;col<LEVEL[row].length-1;col++)
+  for(let row=1;row<ACTIVE_MAP.height-1;row++)
+   for(let col=1;col<ACTIVE_MAP.width-1;col++)
     if(canStand(col+.5,row+.5,.24)&&Math.hypot(col+.5-px,row+.5-py)>3.2)spots.push([col+.5,row+.5]);
   if(!spots.length)return;
   const [x,y]=spots[Math.floor(Math.random()*spots.length)];
@@ -119,8 +105,8 @@ export function mountShooter({root,user,addCoins}){
  function finish(success){
   if(done)return;
   done=true;playing=false;shooting=false;scope=false;
-  const won=success&&kills>=TARGET;
-  if(won&&!localStorage.getItem(todayKey())){
+  const won=success&&(mode==='multi'||kills>=TARGET);
+  if(mode!=='multi'&&won&&!localStorage.getItem(todayKey())){
    localStorage.setItem(todayKey(),'1');
    addCoins(45);rewarded=true;
   }
@@ -137,6 +123,7 @@ export function mountShooter({root,user,addCoins}){
   if(g.ammo<=0){startReload(now);return;}
   shotAt=now;flashAt=now;
   if(current!==3)g.ammo--;
+  if(onFire){try{onFire({x:px,y:py,angle:look,pitch,weapon:current,time:now});}catch{}}
   const range=g.reach,wallHit=castRay(px,py,look),wallDist=wallHit.dist;
   const maxDist=Math.min(range,wallDist+.02);
   let victim=null,nearest=maxDist;
@@ -156,7 +143,7 @@ export function mountShooter({root,user,addCoins}){
    hitAt=now;
    particles.push({x:victim.x,y:victim.y,expires:now+230});
    if(victim.hp<=0){kills++;enemies.splice(enemies.indexOf(victim),1);}
-   if(kills>=TARGET)finish(true);
+   if(kills>=TARGET&&mode!=='multi')finish(true);
   }
   updateHud(Math.max(0,DURATION-(now-startTime)/1000));
  }
@@ -166,16 +153,18 @@ export function mountShooter({root,user,addCoins}){
   const dx=Math.cos(look)*forward-Math.sin(look)*side;
   const dy=Math.sin(look)*forward+Math.cos(look)*side;
   const mag=Math.hypot(dx,dy)||1;
-  const speed=(scope?1.5:2.7)*dt;
+  const speed=(scope?1.5:3.05)*dt;
   const nextX=px+dx/mag*speed,nextY=py+dy/mag*speed;
   if(canStand(nextX,py))px=nextX;
   if(canStand(px,nextY))py=nextY;
   if(pressed.has('arrowleft'))look-=dt*2.2;
   if(pressed.has('arrowright'))look+=dt*2.2;
+  if(pressed.has('pageup'))pitch=clamp(pitch+dt*.85,-.62,.62);
+  if(pressed.has('pagedown'))pitch=clamp(pitch-dt*.85,-.62,.62);
   look=(look+TAU)%TAU;
  }
  function think(dt,now){
-  if(now-spawnAt>1700){spawn();spawnAt=now;}
+  if(mode!=='multi'&&now-spawnAt>1700){spawn();spawnAt=now;}
   for(const e of enemies){
    e.anim+=dt*3;
    const dx=px-e.x,dy=py-e.y,distance=Math.hypot(dx,dy);
@@ -195,38 +184,48 @@ export function mountShooter({root,user,addCoins}){
   }
  }
  function background(){
-  const sky=ctx.createLinearGradient(0,0,0,H/2);
-  sky.addColorStop(0,'#091727');sky.addColorStop(1,'#526e87');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H/2);
-  const floor=ctx.createLinearGradient(0,H/2,0,H);
-  floor.addColorStop(0,'#283745');floor.addColorStop(1,'#111923');
-  ctx.fillStyle=floor;ctx.fillRect(0,H/2,W,H/2);
-  ctx.strokeStyle='#47607718';
-  for(let i=0;i<8;i++){
-   const y=H/2+(i*i+2)*3.0;
-   if(y>H)break;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
-  }
+  const horizon=H/2+Math.tan(pitch)*H*.62;
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,ACTIVE_MAP.sky[0]);sky.addColorStop(1,ACTIVE_MAP.sky[1]);
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,Math.max(0,Math.min(H,horizon)));
+  const floor=ctx.createLinearGradient(0,Math.max(0,horizon),0,H);
+  floor.addColorStop(0,ACTIVE_MAP.floor[0]);floor.addColorStop(1,ACTIVE_MAP.floor[1]);
+  ctx.fillStyle=floor;ctx.fillRect(0,Math.max(0,horizon),W,H);
+  // Horizonte com silhuetas do cenário, não com a parede do mapa.
+  ctx.fillStyle=ACTIVE_MAP.style==='tanjiro'?'#3152475c':ACTIVE_MAP.style==='folha'?'#82675238':'#59473938';
+  for(let x=-40;x<W+100;x+=75){const y=horizon-25-18*Math.sin(x/130);ctx.fillRect(x,y,80,H/18);}
  }
  function drawWalls(fov){
   const depth=new Float32Array(Math.ceil(W/COLS)),a=look-fov/2;
+  const horizon=H/2+Math.tan(pitch)*H*.62;
+  const elevation=shooterElevation(ACTIVE_MAP,px,py);
   for(let c=0;c<depth.length;c++){
    const screenX=c*COLS,rayAngle=a+(screenX/W)*fov;
    const hit=castRay(px,py,rayAngle);
    const distance=Math.max(.09,hit.dist*Math.cos(rayAngle-look));
    depth[c]=distance;
+   // Limite invisível: castRay termina na borda sem desenhar muro.
+   if(distance>=24)continue;
    const height=Math.min(H*4,H/(distance*Math.tan(fov/2)*2)*1.75);
-   const top=(H-height)/2;
-   const shade=clamp(1-distance/16,.12,1)*(hit.side?.79:1);
+   const top=horizon-height*.67+elevation*height*.45;
+   const [wr,wg,wb]=ACTIVE_MAP.wall;
+   const shade=clamp(1-distance/24,.24,1)*(hit.side?.83:1);
+   const r=Math.round(wr*shade),g=Math.round(wg*shade),b=Math.round(wb*shade);
    const pattern=Math.abs((hit.side?hit.hitX:hit.hitY)%1-.5);
-   const highlight=pattern<.038?1.17:1;
-   const r=Math.floor(clamp((57+shade*75)*shade*highlight,0,255));
-   const g=Math.floor(clamp((70+shade*95)*shade*highlight,0,255));
-   const b=Math.floor(clamp((91+shade*99)*shade*highlight,0,255));
-   ctx.fillStyle='rgb('+r+','+g+','+b+')';
-   ctx.fillRect(screenX,top,COLS+1,height);
-   if(pattern<.055){ctx.fillStyle='rgba(14,24,40,.3)';ctx.fillRect(screenX,top,COLS+1,height);}
-   const seamY=top+height*.52;
-   ctx.fillStyle='rgba(6,12,22,.18)';ctx.fillRect(screenX,seamY,COLS+1,2);
+   ctx.fillStyle='rgb('+r+','+g+','+b+')';ctx.fillRect(screenX,top,COLS+1,height);
+   if(pattern<.05){ctx.fillStyle='#212a3277';ctx.fillRect(screenX,top,COLS+1,height);}
+   // Fachada: madeira, janelas, telhado/cobertura com traços distintos por mapa.
+   ctx.fillStyle=ACTIVE_MAP.roof;
+   ctx.fillRect(screenX,top,COLS+1,Math.max(2,height*.12));
+   if(ACTIVE_MAP.style==='chaves'||ACTIVE_MAP.style==='folha'){
+    ctx.fillStyle='#462f2850';ctx.fillRect(screenX,top+height*.35,COLS+1,3);
+    ctx.fillRect(screenX,top+height*.70,COLS+1,2);
+   }else if(ACTIVE_MAP.style==='tanjiro'){
+    ctx.fillStyle='#ddd3ba66';ctx.fillRect(screenX,top+height*.44,COLS+1,2);
+   }
+   if(pattern>.25&&pattern<.32&&distance>1.7){
+    ctx.fillStyle='#7cbbd0aa';ctx.fillRect(screenX,top+height*.28,COLS+1,height*.20);
+   }
   }
   return depth;
  }
@@ -243,7 +242,7 @@ export function mountShooter({root,user,addCoins}){
   for(const e of visible){
    const x=W/2+Math.tan(e.offset)/(Math.tan(fov/2))*W/2;
    const height=clamp(H/(e.dist*Math.tan(fov/2)*2)*1.2,10,H*2.3),width=height*.60;
-   const ground=H/2+height*.35,top=ground-height;
+   const ground=H/2+Math.tan(pitch)*H*.62+height*.35,top=ground-height;
    const col=clamp(Math.floor(x/COLS),0,depth.length-1);
    if(depth[col]<e.dist-.1)continue;
    const body=ctx.createLinearGradient(0,top,0,ground);
@@ -261,6 +260,35 @@ export function mountShooter({root,user,addCoins}){
    ctx.fillStyle='#131d26';ctx.fillRect(x-width*.4,top+height*.32,width*.15,height*.25);ctx.fillRect(x+width*.25,top+height*.32,width*.15,height*.25);
    ctx.fillStyle='#1f2934';ctx.fillRect(x-width*.35,top-height*.08,width*.70,height*.075);
    ctx.fillStyle='#80ecbe';ctx.fillRect(x-width*.35,top-height*.08,width*.70*(e.hp/65),height*.075);
+  }
+ }
+ function drawProps(fov,depth){
+  const horizon=H/2+Math.tan(pitch)*H*.62;
+  const objects=[...ACTIVE_MAP.props,...(typeof getOpponents==='function'?(getOpponents()||[]).map(p=>({...p,type:'opponent'})):[])];
+  objects.sort((a,b)=>Math.hypot(b.x-px,b.y-py)-Math.hypot(a.x-px,a.y-py));
+  for(const prop of objects){
+   const dist=Math.hypot(prop.x-px,prop.y-py);
+   if(dist<.35||dist>18)continue;
+   const bearing=angleDelta(Math.atan2(prop.y-py,prop.x-px),look);
+   if(Math.abs(bearing)>fov/2+.2||castRay(px,py,Math.atan2(prop.y-py,prop.x-px)).dist<dist-.3)continue;
+   const sx=W/2+Math.tan(bearing)/Math.tan(fov/2)*W/2;
+   const height=Math.min(H*1.7,H/(dist*Math.tan(fov/2)*2)*.95);
+   if(depth[Math.min(depth.length-1,Math.max(0,Math.floor(sx/COLS)))]<dist-.25)continue;
+   const top=horizon-height*.48;
+   if(prop.type==='tree'){
+    ctx.fillStyle='#5c4731';ctx.fillRect(sx-height*.07,top,height*.14,height);
+    ctx.fillStyle='#447659';ctx.beginPath();ctx.arc(sx,top+height*.18,height*.34,0,TAU);ctx.fill();
+   }else if(prop.type==='plant'){
+    ctx.fillStyle='#5b4838';ctx.fillRect(sx-height*.18,top+height*.46,height*.36,height*.42);
+    ctx.fillStyle='#4d8655';ctx.beginPath();ctx.arc(sx,top+height*.30,height*.30,0,TAU);ctx.fill();
+   }else if(prop.type==='opponent'){
+    ctx.fillStyle='#d6dce5';ctx.beginPath();ctx.arc(sx,top+height*.16,height*.23,0,TAU);ctx.fill();
+    ctx.fillStyle='#e17b57';ctx.fillRect(sx-height*.23,top+height*.36,height*.46,height*.50);
+   }else{
+    ctx.fillStyle=prop.type==='barrel'?'#94674b':'#72533d';
+    ctx.fillRect(sx-height*.30,top+height*.44,height*.60,height*.42);
+    ctx.fillStyle='#dbc49f';ctx.fillRect(sx-height*.31,top+height*.46,height*.62,height*.08);
+   }
   }
  }
  function gunView(now){
@@ -290,6 +318,7 @@ export function mountShooter({root,user,addCoins}){
   background();
   const depths=drawWalls(fov);
   drawEnemies(fov,depths,now);
+  drawProps(fov,depths);
   gunView(now);
   if(now-hitAt<180){ctx.fillStyle='#caffbd';ctx.font='bold 23px sans-serif';ctx.textAlign='center';ctx.fillText('✕',W/2,H/2-30);}
   const vignette=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,W*.68);
@@ -300,7 +329,7 @@ export function mountShooter({root,user,addCoins}){
   if(!playing)return;
   const dt=clamp((now-lastFrame)/1000,0,.05);lastFrame=now;
   const remaining=DURATION-(now-startTime)/1000;
-  if(remaining<=0){finish(kills>=TARGET&&life>0);render(now);return;}
+  if(remaining<=0){finish(mode==='multi'||kills>=TARGET&&life>0);render(now);return;}
   if(reloadEnds&&now>=reloadEnds){
    const g=gun(),amount=Math.min(g.mag-g.ammo,g.reserve);
    g.ammo+=amount;g.reserve-=amount;reloadEnds=0;
@@ -309,13 +338,14 @@ export function mountShooter({root,user,addCoins}){
   move(dt);think(dt,now);
   if(shooting)fire(now);
   render(now);updateHud(remaining);
+  if(onPose&&now-lastPosePublish>175){lastPosePublish=now;try{onPose({x:px,y:py,angle:look,pitch,weapon:current,hp:life});}catch{}}
   if(playing)raf=requestAnimationFrame(tick);
  }
  function keyDown(event){
   if(!el.isConnected)return;
   if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
   const key=event.key.toLowerCase();
-  if(['w','a','s','d','r','arrowup','arrowdown','arrowleft','arrowright','1','2','3','4',' '].includes(key))event.preventDefault();
+  if(['w','a','s','d','r','arrowup','arrowdown','arrowleft','arrowright','pageup','pagedown','1','2','3','4',' '].includes(key))event.preventDefault();
   pressed.add(key);
   if(['1','2','3','4'].includes(key)&&playing){
    current=Number(key)-1;scope=false;reloadEnds=0;updateHud(DURATION-(performance.now()-startTime)/1000);
@@ -326,7 +356,7 @@ export function mountShooter({root,user,addCoins}){
  function keyUp(event){pressed.delete(event.key.toLowerCase());}
  function mouseMove(event){
   if(!playing)return;
-  if(document.pointerLockElement===canvas)look+=event.movementX*.0028*(scope?.48:1);
+  if(document.pointerLockElement===canvas){look+=event.movementX*.0028*(scope?.48:1);pitch=clamp(pitch-event.movementY*.0026,-.62,.62);}
   else if(dragX!==null){look+=(event.clientX-dragX)*.004;dragX=event.clientX;}
  }
  function down(event){
@@ -341,7 +371,7 @@ export function mountShooter({root,user,addCoins}){
  function up(event){if(event.target?.closest?.('[data-hold-key],[data-hold-fire],[data-hold-scope]'))return;
   if(event.button===2){scope=false;return;}shooting=false;dragX=null;}
  function pointerMove(e){if(!playing||e.pointerType!=='touch'||dragX===null)return;
-  look+=(e.clientX-dragX)*.006;dragX=e.clientX;}
+  look+=(e.clientX-dragX)*.006;pitch=clamp(pitch-(e.movementY||0)*.002,-.62,.62);dragX=e.clientX;}
  function touchDown(e){
   const key=e.target.closest('[data-hold-key]');
   if(key){e.preventDefault();pressed.add(key.dataset.holdKey);key.setPointerCapture?.(e.pointerId);return;}
