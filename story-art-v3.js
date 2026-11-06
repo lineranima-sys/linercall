@@ -318,12 +318,13 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   if(x> -100&&x<W+80){poly(c,[[x-20,FLOOR],[x+9,FLOOR-55],[x+35,FLOOR]],'#779aa8');rect(c,x+5,FLOOR-58,14,14,'#d2dfe4');}
  }
  drawLandmarks(c,zone,camera,t,flags);
- if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);drawCharacter(c,1990-camera,FLOOR-71,t,'bard');}
- if(zone.id==='montanha'){drawCharacter(c,430-camera,FLOOR-71,t,'bard');}
+ if(zone.id==='vila'){drawCharacter(c,1810-camera,FLOOR-71,t,'guard');drawCharacter(c,1885-camera,FLOOR-71,t,'guard',-1);if(flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');}
+ if(zone.id==='montanha'&&flags.bard)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  if(zone.id==='castelo'){
   if(!flags.exploded)drawCharacter(c,480-camera,FLOOR-71,t,'malacord');
   if(flags.exploded&&!flags.cloneWon)drawCharacter(c,2760-camera,FLOOR-71,t,'shade',-1);
-  if(flags.princessFreed||flags.rescue)drawCharacter(c,3520-camera,FLOOR-71,t,'princess');
+  if(flags.rescue&&!flags.win)drawCharacter(c,3520-camera,FLOOR-71,t,'princess');
+  if(flags.bard&&flags.princess)drawCharacter(c,flags.bard.x-camera,flags.bard.y,t,'bard',flags.bard.face,flags.bard.walking?'walk':'idle');
  }
  for(const m of mobs)if(m.hp>0&&m.x-camera>-90&&m.x-camera<W+90)enemy(c,m,camera,t);
  for(const f of fx)if(f.life>0){
@@ -332,11 +333,11 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
   else if(f.kind==='dust')ellipse(c,f.x-camera,f.y,7*f.life,4*f.life,'#e9e8df');
   c.restore();
  }
- if(hero.invul<=0||Math.floor(t/80)%2===0)
+ if(true)
   human(c,hero.x-camera,hero.y,t,'hero',hero.face,hero.swing>0?'attack':!hero.ground?'jump':Math.abs(hero.vx)>30?'walk':'idle');
  if(hero.swing>0){
   const hb=swordBox(hero,76),face=hero.face,cx=hb.x-camera,cy=hb.y;
-  c.save();c.globalAlpha=.17;rect(c,cx,cy,hb.w,hb.h,'#e4faff');c.globalAlpha=1;
+  c.save();
   const sx=hero.x-camera+(face>0?49:0), sy=hero.y+23;
   c.translate(sx,sy);if(face<0)c.scale(-1,1);
   // Espada curta e proporcional ao herói (aprox. 70 px), com alcance real correspondente.
@@ -357,14 +358,14 @@ export function drawWorld(c,zone,camera,t,hero,mobs,flags,fx=[]){
  c.fillStyle=vignette;c.fillRect(0,0,W,H);
  c.restore();
 }
-export function drawSlide(c,t,progress,lane,fire=[]){
+export function drawSlide(c,t,progress,jumpY,fire=[],duck=0){
  sky(c,'mountain',t,progress*2000);for(let i=0;i<9;i++)mountain(c,i*180-progress*600,520,340,190,'#6198b4','#e1e9ee');
  poly(c,[[0,490],[0,430],[300,365],[500,310],[960,425],[960,540]],'#a97049');
  for(let i=0;i<110;i++){
   const x=noise(i*21)*W,y=420-noise(i*7)*85+Math.sin(x*.01)*16;
   rect(c,x,y,10,6,i%4?'#ffdc75':'#f8bd62');
  }
- drawCharacter(c,180,250+lane*110,t,'hero',1,'jump');
- for(const a of fire){ellipse(c,a.x,a.y,22,22,'#e96650');ellipse(c,a.x-6,a.y-3,13,13,'#ffdb77');}
+ drawCharacter(c,180,326+jumpY+(duck>0?22:0),t,'hero',1,jumpY<0?'jump':'walk');
+ for(const a of fire){const y=a.kind==='low'?375:290;ellipse(c,a.x,y,22,22,'#e96650');ellipse(c,a.x-6,y-3,13,13,'#ffdb77');}
  rect(c,20,20,240,24,'#243853');rect(c,24,24,230*progress,16,'#ffd57a');
 }
