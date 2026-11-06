@@ -1,3 +1,4 @@
+import {LINER_PORTRAIT} from './liner-portrait.js';
 // BrigaLoka — jogo de luta 2D em Canvas, homenagens visuais desenhadas por código.
 // Liner é inspirado nos dois desenhos compartilhados pelo criador.
 const ROSTER=[
@@ -53,7 +54,7 @@ export function mountBrigaLoka({root,user,addCoins}){
  let p=null,enemy=null,notice='',rewarded=false,rounds=0;
  root.innerHTML='<section class="arcade-game brigaloka-game"><header class="brigaloka-head"><span class="eyebrow">LINERCALL FIGHTING CLUB</span><h2>BRIGA<span>LOKA</span>!</h2><p>Jogo de luta 2D com cinco personagens. Escolha seu lutador e vença a batalha!</p></header><div id="brig-stage"></div></section>';
  const stage=root.querySelector('#brig-stage');
- const choose=(label,selected,prefix)=>'<div class="brig-roster"><h3>'+label+'</h3><div class="brig-roster-grid">'+ROSTER.map(c=>'<button type="button" class="brig-fighter-card '+(c.id===selected.id?'selected':'')+'" data-brig-'+prefix+'="'+c.id+'"><span style="--brig-color:'+c.accent+'">●</span><b>'+c.name+'</b><small>'+c.tag+'</small></button>').join('')+'</div></div>';
+ const choose=(label,selected,prefix)=>'<div class="brig-roster"><h3>'+label+'</h3><div class="brig-roster-grid">'+ROSTER.map(c=>'<button type="button" class="brig-fighter-card '+(c.id===selected.id?'selected':'')+'" data-brig-'+prefix+'="'+c.id+'"><span style="--brig-color:'+c.accent+'">'+(c.id==='liner'?'<img class="brig-liner-portrait" src="'+LINER_PORTRAIT+'" alt="Liner conforme desenho original">':'●')+'</span><b>'+c.name+'</b><small>'+c.tag+'</small></button>').join('')+'</div></div>';
  function menu(){
   page='menu';stopFrame();
   stage.innerHTML='<div class="brig-menu"><p>Escolha como você quer lutar:</p><div class="brig-actions">'+
