@@ -152,7 +152,7 @@ export function mountShooter({root,user,getDb,addCoins}){
   const id=room.id,playerRef=doc(db,'shooterRooms',id,'players',uid);
   const opponent=uid===room.hostUid?room.guestUid:room.hostUid;
   sceneCleanup=mountShooterFPS({
-   root:container.querySelector('#shooting-stage'),user,addCoins:()=>{},mapId,mode:'multi',
+   root:container.querySelector('#shooting-stage'),user,addCoins:()=>{},mapId,mode:'multi',spawnIndex:uid===room.hostUid?0:1,
    getOpponents:()=>latestOpponents,
    onPose:pose=>{
     latestPose=pose;
