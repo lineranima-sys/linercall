@@ -7,7 +7,7 @@ import { mountBrigaLoka } from './brigaloka.js?v=20261105-fighter-art-redesign';
 import { createSocialControls } from './social-controls.js?v=20261105';
 import { createNotifications } from './social-notifications.js?v=20261105';
 import { createPokemonOnline } from './pokemon-online.js?v=20261105-ranking-semanal';
-import { mountStory } from './story-game.js?v=20261106-enemy-camera-fix';
+import { mountStory } from './story-game.js?v=20261106-bard-slide-fix';
 import { LIGHTY_SERIES, getLightyEpisodes, localizeLightyEpisodes } from './lightyflix-episodios.js?v=20261104-ptbr-order';
 import { LIGHTY_PRICES, episodePrice, quoteSeason, ownsEpisode, lightyEpisodeKey, lightySeasonKey } from './lightyflix-pricing.js?v=20261105-episodes-150-300';
 
