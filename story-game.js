@@ -161,19 +161,19 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
   if(flags.rescue&&Math.abs(p.x-3480)<195){interact();return;}
   p.swing=.30;p.attackCooldown=.48;attackHits=new Set();
   if(zoneIndex===4&&flags.exploded&&!flags.cloneWon){
-   cloneCalm=0;damage(1,true);note('A CÓPIA REPETIU SEU GOLPE! Pare de atacar.',3);
+   cloneCalm=0;damage(1,true);note('Sua cópia repetiu o golpe!',2);
   }
  }
  function interact(){
   if(menu||finished||paused)return;
   if(zoneIndex===4&&flags.rescue&&!flags.win){
-   if(Math.abs(p.x-3480)<195){
+   if(Math.abs(p.x-3480)<100){
     flags.win=true;rescueTime=Math.max(0,rescueTime);
     sequence(lore.finale,()=>{
      finished=true;paused=true;try{localStorage.removeItem(SAVE);}catch{}
      q('story3-complete').classList.remove('hidden');
     });
-   }else note('A gaiola está mais à frente. Corra!',2.4);
+   }else note('A estrutura está presa por cordas; aproxime-se para examinar.',2.4);
   }else note('Procure algo importante pelo caminho.',1.4);
  }
  function damage(amount=1,shadow=false){
@@ -302,7 +302,7 @@ export function mountStory(root,onExit=()=>{},uid='guest'){
    }
   }
   if(p.y>HEIGHT+100){
-   damage(1);p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=Math.max(p.invul,1.5);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
+   damage(1);p.x=checkpoint;p.y=FLOOR-p.h;p.vx=p.vy=0;p.invul=Math.max(p.invul,.8);note('Cuidado com os buracos! Checkpoint restaurado.',2.6);
   }
   hitTest();
   for(const m of enemies){
