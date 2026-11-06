@@ -36,7 +36,7 @@ const GUNS=[
  {name:'Fuzil de precisão',mag:5,ammo:5,reserve:30,delay:900,reload:2400,damage:125,reach:22,color:'#ffdd80'},
  {name:'Faca',mag:Infinity,ammo:Infinity,reserve:Infinity,delay:520,reload:0,damage:68,reach:1.25,color:'#e1eaf2'}
 ];
-export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo',onPose=null,onFire=null,getOpponents=null}){
+export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo',spawnIndex=0,onPose=null,onFire=null,getOpponents=null}){
  ACTIVE_MAP=loadShooterMap(mapId);
  const guns=GUNS.map(g=>({...g}));
  const el=document.createElement('section');
@@ -74,7 +74,7 @@ export function mountShooterFPS({root,user,addCoins,mapId='undefined',mode='solo
  }
  function start(){
   if(raf)cancelAnimationFrame(raf);
-  px=ACTIVE_MAP.spawn[0];py=ACTIVE_MAP.spawn[1];look=-Math.PI/2;pitch=0;life=100;kills=0;playing=true;done=false;shooting=false;scope=false;
+  px=mode==='multi'&&spawnIndex===1?24:ACTIVE_MAP.spawn[0];py=mode==='multi'&&spawnIndex===1?14:ACTIVE_MAP.spawn[1];look=mode==='multi'?(spawnIndex===1?Math.PI:0):-Math.PI/2;pitch=0;life=100;kills=0;playing=true;done=false;shooting=false;scope=false;
   startTime=performance.now();lastFrame=startTime;spawnAt=startTime-800;shotAt=-1e4;flashAt=0;hitAt=0;
   enemies=[];particles=[];reloadEnds=0;current=0;pressed.clear();
   guns.forEach((g,i)=>{g.ammo=GUNS[i].ammo;g.reserve=GUNS[i].reserve;});
