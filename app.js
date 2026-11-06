@@ -1768,8 +1768,25 @@ function getYouTubeEmbed(value) {
 }
 
 function cinemaCard(item) {
-  const poster=validWebUrl(item.poster||item.backdrop||''),title=safeText(item.title||'Sem título'),type=item.type==='series'?'SÉRIE':'FILME';
-  return `<article class="cinema-card"><button class="cinema-card-open" data-cinema-open="${safeText(item.id)}" aria-label="Ver detalhes de ${title}"><div class="cinema-card-poster"><img src="${poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX'}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/500x750/17152b/e7d8ff?text=SEM+CAPA'"><span class="cinema-card-type">${type}</span><span class="cinema-card-view">Ver detalhes</span></div><div class="cinema-card-info"><h4>${title}</h4><p>${safeText(item.description||'')}</p><div class="cinema-meta"><span>⏱ ${safeText(item.duration||'Duração não informada')}</span><span>📅 ${safeText(item.releaseDate||item.year||'Data não informada')}</span></div></div></button><div class="cinema-card-actions"><button class="btn cinema-coming-soon" type="button" disabled>◷ Em breve</button><button class="btn" data-mylist="${safeText(item.id)}">${getMyList().includes(item.id)?'✓ Remover da lista':'+ Minha lista'}</button></div></article>`;
+ const poster=validWebUrl(item.poster||item.backdrop||''),title=safeText(item.title||'Sem título');
+ const movie=item.type==='movie',type=movie?'FILME':'SÉRIE',id=safeText(item.id);
+ const owned=movie&&hasLightyPurchase('movie:'+item.id),ready=movie&&canWatchLightyMovie(item);
+ const state=owned?'<span class="cinema-card-owned-ribbon'+(ready?'':' unavailable')+'">✓ COMPRADO</span>':'';
+ const action=!movie
+  ?'<button class="btn cinema-coming-soon" type="button" disabled>◷ Em breve</button>'
+  :owned?(ready?'<button class="btn btn-primary" data-lighty-movie-watch="'+id+'">▶ Assistir</button>':
+   '<button class="btn btn-primary" data-lighty-movie-receipt="'+id+'">✓ Ver compra</button>')
+   :ready?'<button class="btn btn-primary" data-lighty-movie-buy="'+id+'">Comprar · 2.000</button>'
+   :'<button class="btn cinema-coming-soon" type="button" disabled>◷ Indisponível</button>';
+ return '<article class="cinema-card"><button class="cinema-card-open" data-cinema-open="'+id+'" aria-label="Ver detalhes de '+title+'">'+
+  '<div class="cinema-card-poster"><img src="'+(poster||'https://placehold.co/500x750/17152b/e7d8ff?text=LIGHTYFLIX')+'" alt="'+title+
+  '" loading="lazy" onerror="this.src=\'https://placehold.co/500x750/17152b/e7d8ff?text=SEM+CAPA\'">'+
+  '<span class="cinema-card-type">'+type+'</span>'+state+'<span class="cinema-card-view">Ver detalhes</span></div>'+
+  '<div class="cinema-card-info"><h4>'+title+'</h4><p>'+safeText(item.description||'')+'</p>'+
+  '<div class="cinema-meta"><span>⏱ '+safeText(item.duration||'Duração não informada')+'</span><span>📅 '+
+  safeText(item.releaseDate||item.year||'Data não informada')+'</span></div></div></button>'+
+  '<div class="cinema-card-actions">'+action+'<button class="btn" data-mylist="'+id+'">'+
+  (getMyList().includes(item.id)?'✓ Remover da lista':'+ Minha lista')+'</button></div></article>';
 }
 
 function renderCinema() {
@@ -2064,8 +2081,29 @@ function renderSeriesDetails(item,selectedSeason=0){
 }
 
 let cinemaFilter='all';
-function setCinemaTab(tab){$('cinema-home-view')?.classList.toggle('hidden',tab!=='home');$('cinema-all-view')?.classList.toggle('hidden',tab!=='all');$('cinema-list-view')?.classList.toggle('hidden',tab!=='list');document.querySelectorAll('[data-cinema-tab]').forEach(b=>b.classList.toggle('active',b.dataset.cinemaTab===tab));if(tab==='list')renderCinemaList();}
-function renderCinemaAll(){const items=cinemaFilter==='all'?cinemaItems:cinemaItems.filter(item=>item.type===cinemaFilter);if($('cinema-all-grid'))$('cinema-all-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Nenhum conteúdo nesta categoria.</div>';renderCinemaList();$('cinema-list-count').textContent=getMyList().length;}function renderCinemaList(){const ids=getMyList(),items=cinemaItems.filter(item=>ids.includes(item.id));if($('cinema-list-grid'))$('cinema-list-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Sua lista está vazia. Adicione filmes e séries pelo catálogo.</div>';if($('cinema-list-count'))$('cinema-list-count').textContent=ids.length;}
+function setCinemaTab(tab){
+ for(const [name,id] of [['home','cinema-home-view'],['all','cinema-all-view'],['list','cinema-list-view'],['owned','cinema-owned-view']])
+  $(id)?.classList.toggle('hidden',tab!==name);
+ document.querySelectorAll('[data-cinema-tab]').forEach(b=>b.classList.toggle('active',b.dataset.cinemaTab===tab));
+ if(tab==='list')renderCinemaList();
+ if(tab==='owned')renderCinemaOwned();
+}
+function renderCinemaAll(){
+ const items=cinemaFilter==='all'?cinemaItems:cinemaItems.filter(item=>item.type===cinemaFilter);
+ if($('cinema-all-grid'))$('cinema-all-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Nenhum conteúdo nesta categoria.</div>';
+ renderCinemaList();renderCinemaOwned();
+ $('cinema-list-count').textContent=getMyList().length;
+}
+function renderCinemaList(){
+ const ids=getMyList(),items=cinemaItems.filter(item=>ids.includes(item.id));
+ if($('cinema-list-grid'))$('cinema-list-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Sua lista está vazia. Adicione filmes e séries pelo catálogo.</div>';
+ if($('cinema-list-count'))$('cinema-list-count').textContent=ids.length;
+}
+function renderCinemaOwned(){
+ const items=cinemaItems.filter(item=>item.type==='movie'&&hasLightyPurchase('movie:'+item.id));
+ if($('cinema-owned-grid'))$('cinema-owned-grid').innerHTML=items.length?items.map(cinemaCard).join(''):'<div class="empty-state">Você ainda não tem filmes adquiridos. Quando comprar um filme disponível, ele aparecerá aqui.</div>';
+ if($('cinema-owned-count'))$('cinema-owned-count').textContent=String(items.length);
+}
 function openCinemaDetails(id){
  const item=cinemaItems.find(entry=>entry.id===id);if(!item)return;
  const poster=validWebUrl(item.poster||item.backdrop||'');
